@@ -4,6 +4,7 @@
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { api } from '$lib/api';
 	import type { Webhook } from '$lib/types';
+	import { t } from 'svelte-i18n';
 
 	let passwordForm = $state({
 		current_password: '',
@@ -238,28 +239,28 @@
 </svelte:head>
 
 <div class="settings-page">
-	<h1>Account Settings</h1>
+	<h1>{$t('settings.title')}</h1>
 
 	<div class="settings-section">
-		<h2>Account Information</h2>
+		<h2>{$t('settings.account_info')}</h2>
 		<div class="info-group">
-			<label>Display Name</label>
+			<label>{$t('settings.display_name')}</label>
 			<p class="info-value">{$user?.display_name}</p>
 		</div>
 
 		<div class="info-group">
-			<label>Email</label>
+			<label>{$t('settings.email')}</label>
 			<p class="info-value">{$user?.email}</p>
 		</div>
 
 		<div class="info-group">
-			<label>Community/Neighbourhood</label>
-			<p class="info-value">{$user?.neighbourhood || 'Not set'}</p>
-			<p class="info-hint"><a href="/communities">Manage your communities</a></p>
+			<label>{$t('settings.neighbourhood')}</label>
+			<p class="info-value">{$user?.neighbourhood || $t('common.not_set')}</p>
+			<p class="info-hint"><a href="/communities">{$t('settings.manage_communities')}</a></p>
 		</div>
 
 		<div class="info-group">
-			<label>Member Since</label>
+			<label>{$t('settings.member_since')}</label>
 			<p class="info-value">{new Date($user?.created_at || '').toLocaleDateString()}</p>
 		</div>
 	</div>
@@ -267,17 +268,17 @@
 	<hr class="section-divider" />
 
 	<div class="settings-section">
-		<h2>Change Password</h2>
+		<h2>{$t('settings.change_password')}</h2>
 
 		{#if passwordForm.success}
-			<div class="alert alert-success">Password changed successfully!</div>
+			<div class="alert alert-success">{$t('settings.password_changed')}</div>
 		{:else if passwordForm.error}
 			<div class="alert alert-error">{passwordForm.error}</div>
 		{/if}
 
 		<form class="form" onsubmit={handlePasswordChange}>
 			<div class="form-group">
-				<label for="current-password">Current Password</label>
+				<label for="current-password">{$t('settings.current_password')}</label>
 				<input
 					id="current-password"
 					type="password"
@@ -288,7 +289,7 @@
 			</div>
 
 			<div class="form-group">
-				<label for="new-password">New Password</label>
+				<label for="new-password">{$t('settings.new_password')}</label>
 				<input
 					id="new-password"
 					type="password"
@@ -300,7 +301,7 @@
 			</div>
 
 			<div class="form-group">
-				<label for="confirm-password">Confirm New Password</label>
+				<label for="confirm-password">{$t('settings.confirm_password')}</label>
 				<input
 					id="confirm-password"
 					type="password"
@@ -311,7 +312,7 @@
 			</div>
 
 			<button type="submit" class="btn btn-primary" disabled={passwordForm.loading}>
-				{passwordForm.loading ? 'Changing...' : 'Change Password'}
+				{$passwordForm.loading ? $t('settings.changing') : $t('settings.change_password')}
 			</button>
 		</form>
 	</div>
@@ -319,17 +320,17 @@
 	<hr class="section-divider" />
 
 	<div class="settings-section">
-		<h2>Change Email</h2>
+		<h2>{$t('settings.change_email')}</h2>
 
 		{#if emailForm.success}
-			<div class="alert alert-success">Email changed successfully!</div>
+			<div class="alert alert-success">{$t('settings.email_changed')}</div>
 		{:else if emailForm.error}
 			<div class="alert alert-error">{emailForm.error}</div>
 		{/if}
 
 		<form class="form" onsubmit={handleEmailChange}>
 			<div class="form-group">
-				<label for="new-email">New Email</label>
+				<label for="new-email">{$t('settings.new_email')}</label>
 				<input
 					id="new-email"
 					type="email"
@@ -340,7 +341,7 @@
 			</div>
 
 			<div class="form-group">
-				<label for="email-password">Password (to confirm change)</label>
+				<label for="email-password">{$t('settings.password_confirm_label')}</label>
 				<input
 					id="email-password"
 					type="password"
@@ -351,7 +352,7 @@
 			</div>
 
 			<button type="submit" class="btn btn-primary" disabled={emailForm.loading}>
-				{emailForm.loading ? 'Changing...' : 'Change Email'}
+				{$emailForm.loading ? $t('settings.changing') : $t('settings.change_email')}
 			</button>
 		</form>
 	</div>
@@ -359,7 +360,7 @@
 	<hr class="section-divider" />
 
 	<div class="settings-section">
-		<h2>Telegram Notifications</h2>
+		<h2>{$t('settings.telegram')}</h2>
 		<p class="section-desc">
 			Link your Telegram account to receive instant alerts for messages, bookings, and community events.
 		</p>
@@ -372,13 +373,13 @@
 
 		{#if ($user as any)?.telegram_chat_id}
 			<div class="telegram-linked">
-				<span class="linked-badge">Telegram linked</span>
+				<span class="linked-badge">{$t('settings.telegram_linked')}</span>
 				<button
 					class="btn btn-danger"
 					onclick={unlinkTelegram}
 					disabled={telegramState.unlinking}
 				>
-					{telegramState.unlinking ? 'Unlinking...' : 'Unlink Telegram'}
+					{$telegramState.unlinking ? $t('settings.changing') : $t('settings.telegram_unlink')}
 				</button>
 			</div>
 		{:else if telegramState.botUrl}
@@ -395,7 +396,7 @@
 				onclick={startTelegramLink}
 				disabled={telegramState.loading}
 			>
-				{telegramState.loading ? 'Generating link...' : 'Link Telegram Account'}
+				{$telegramState.loading ? $t('settings.changing') : $t('settings.telegram_link')}
 			</button>
 		{/if}
 	</div>
@@ -403,7 +404,7 @@
 	<hr class="section-divider" />
 
 	<div class="settings-section">
-		<h2>Outbound Webhooks</h2>
+		<h2>{$t('settings.webhooks')}</h2>
 		<p class="section-desc">
 			Register URLs to receive signed HTTP POST callbacks when events happen — for Slack, Discord, or any custom integration.
 		</p>
@@ -429,16 +430,16 @@
 				<div class="alert alert-error">{webhookForm.error}</div>
 			{/if}
 			<div class="form-group">
-				<label for="webhook-url">Endpoint URL</label>
+				<label for="webhook-url">{$t('settings.webhook_url')}</label>
 				<input id="webhook-url" type="url" bind:value={webhookForm.url} placeholder="https://..." required disabled={webhookForm.loading} />
 			</div>
 			<div class="form-group">
-				<label for="webhook-secret">Signing Secret</label>
+				<label for="webhook-secret">{$t('settings.webhook_secret')}</label>
 				<input id="webhook-secret" type="text" bind:value={webhookForm.secret} placeholder="Min 8 characters" required disabled={webhookForm.loading} />
 				<span class="form-hint">Used to generate the X-NeighbourGood-Signature header so you can verify deliveries.</span>
 			</div>
 			<div class="form-group">
-				<label>Events to subscribe</label>
+				<label>{$t('settings.webhook_events')}</label>
 				<div class="event-grid">
 					{#each ALL_EVENTS as evt}
 						<label class="event-checkbox">
@@ -454,7 +455,7 @@
 				</div>
 			</div>
 			<button type="submit" class="btn btn-primary" disabled={webhookForm.loading || webhookForm.event_types.length === 0}>
-				{webhookForm.loading ? 'Adding...' : 'Add Webhook'}
+				{$webhookForm.loading ? $t('settings.adding') : $t('settings.add_webhook')}
 			</button>
 		</form>
 	</div>

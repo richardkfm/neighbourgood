@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { isLoggedIn } from '$lib/stores/auth';
+	import { t } from 'svelte-i18n';
 
 	interface MapCommunity {
 		id: number;
@@ -119,7 +120,7 @@
 				});
 				L.marker([userLat, userLng], { icon: userIcon })
 					.addTo(map)
-					.bindPopup('<strong>You are here</strong>');
+					.bindPopup(`<strong>${$t('explore.you_are_here')}</strong>`);
 			}
 
 			// Community markers – size scales with activity
@@ -144,7 +145,7 @@
 							${c.member_count} member${c.member_count !== 1 ? 's' : ''}
 							&middot; ${c.resource_count} item${c.resource_count !== 1 ? 's' : ''}
 							&middot; ${c.skill_count} skill${c.skill_count !== 1 ? 's' : ''}<br/>
-							<a href="/communities/${c.id}">View community</a>
+							<a href="/communities/${c.id}">${$t('explore.view_community')}</a>
 						`);
 				}
 			}
@@ -161,11 +162,11 @@
 <div class="explore-page">
 	<div class="explore-header slide-up">
 		<div>
-			<h1>Explore Communities</h1>
-			<p class="subtitle">Discover neighbourhood groups near you or start your own.</p>
+			<h1>{$t('explore.title')}</h1>
+			<p class="subtitle">{$t('explore.subtitle')}</p>
 		</div>
 		{#if !$isLoggedIn}
-			<a href="/register" class="btn-cta">Join NeighbourGood</a>
+			<a href="/register" class="btn-cta">{$t('explore.join_neighbourgood')}</a>
 		{/if}
 	</div>
 
@@ -177,32 +178,32 @@
 		<div bind:this={mapContainer} class="map-container"></div>
 		{#if loading}
 			<div class="map-loading">
-				<p>Loading map...</p>
+				<p>{$t('explore.map_loading')}</p>
 			</div>
 		{/if}
 	</div>
 
 	{#if !userLocated && !loading}
 		<div class="location-hint fade-in">
-			<p>Could not detect your location. Allow location access to see communities near you, or browse the map manually.</p>
+			<p>{$t('explore.no_location')}</p>
 		</div>
 	{/if}
 
 	{#if communities.length === 0 && !loading && !error}
 		<div class="no-communities fade-in">
-			<h2>No communities yet</h2>
-			<p>Be the first to create a neighbourhood group in your area!</p>
+			<h2>{$t('explore.no_communities')}</h2>
+			<p>{$t('explore.first_community')}</p>
 			{#if $isLoggedIn}
-				<a href="/onboarding" class="btn-primary">Create a Community</a>
+				<a href="/onboarding" class="btn-primary">{$t('explore.create_community')}</a>
 			{:else}
-				<a href="/register" class="btn-primary">Sign Up to Create One</a>
+				<a href="/register" class="btn-primary">{$t('explore.sign_up_create')}</a>
 			{/if}
 		</div>
 	{/if}
 
 	{#if sortedCommunities.length > 0}
 		<section class="community-list slide-up" style="animation-delay: 0.1s">
-			<h2>Communities</h2>
+			<h2>{$t('explore.communities_heading')}</h2>
 			<div class="list-grid">
 				{#each sortedCommunities as c, i (c.id)}
 					{@const level = activityLevel(c)}
@@ -213,10 +214,10 @@
 						<div class="list-card-header">
 							<h3>{c.name}</h3>
 							{#if level === 'high'}
-								<span class="badge-active">Active</span>
+								<span class="badge-active">{$t('explore.active_badge')}</span>
 							{/if}
 							{#if c.mode === 'red'}
-								<span class="badge-crisis">Crisis</span>
+								<span class="badge-crisis">{$t('explore.crisis_badge')}</span>
 							{/if}
 						</div>
 						<div class="list-card-meta">
@@ -238,11 +239,11 @@
 
 	{#if !$isLoggedIn}
 		<section class="cta-section slide-up" style="animation-delay: 0.15s">
-			<h2>Ready to connect with your neighbours?</h2>
-			<p>Join NeighbourGood to share resources, exchange skills, and be prepared when it matters.</p>
+			<h2>{$t('explore.cta_title')}</h2>
+			<p>{$t('explore.cta_desc')}</p>
 			<div class="cta-actions">
-				<a href="/register" class="btn-cta">Create Account</a>
-				<a href="/login" class="btn-secondary">Already have an account?</a>
+				<a href="/register" class="btn-cta">{$t('auth.register_btn')}</a>
+				<a href="/login" class="btn-secondary">{$t('auth.have_account')}</a>
 			</div>
 		</section>
 	{/if}

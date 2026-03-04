@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from 'svelte-i18n';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 
@@ -99,7 +101,7 @@
 		e.preventDefault();
 		createError = '';
 		if (!newCommunityId) {
-			createError = 'Please select a community';
+			createError = get(t)('resources.please_select_community');
 			return;
 		}
 		try {
@@ -153,10 +155,10 @@
 
 <div class="skills-page">
 	<div class="page-header">
-		<h1>Skill Exchange</h1>
+		<h1>{$t('skills.title')}</h1>
 		{#if $isLoggedIn}
 			<button class="btn-primary" onclick={() => (showCreateForm = !showCreateForm)}>
-				{showCreateForm ? 'Cancel' : '+ Share a Skill'}
+				{showCreateForm ? $t('common.cancel') : $t('skills.share_btn')}
 			</button>
 		{/if}
 	</div>
@@ -168,39 +170,39 @@
 
 	{#if showCreateForm}
 		<div class="create-form-card">
-			<h2>Share a Skill</h2>
+			<h2>{$t('skills.share_title')}</h2>
 			{#if createError}
 				<p class="error">{createError}</p>
 			{/if}
 			<form onsubmit={handleCreate}>
 				<label>
-					<span>Title</span>
+					<span>{$t('skills.title_label')}</span>
 					<input type="text" bind:value={newTitle} required placeholder="e.g. Piano Lessons" />
 				</label>
 				<label>
-					<span>Description</span>
+					<span>{$t('skills.description_label')}</span>
 					<textarea bind:value={newDescription} rows="3" placeholder="What skill are you offering or looking for?"></textarea>
 				</label>
 				<div class="form-row">
 					<label>
-						<span>Category</span>
+						<span>{$t('skills.category_label')}</span>
 						<select bind:value={newCategory}>
 							{#each CATEGORIES.slice(1) as cat}
-								<option value={cat.value}>{cat.label}</option>
+								<option value={cat.value}>{$t('skills.categories.' + cat.value)}</option>
 							{/each}
 						</select>
 					</label>
 					<label>
-						<span>Type</span>
+						<span>{$t('skills.type_label')}</span>
 						<select bind:value={newSkillType}>
-							<option value="offer">I'm offering</option>
-							<option value="request">I'm looking for</option>
+							<option value="offer">{$t('skills.type_offering')}</option>
+							<option value="request">{$t('skills.type_seeking')}</option>
 						</select>
 					</label>
 				</div>
 				{#if myCommunities.length > 0}
 					<label>
-						<span>Community</span>
+						<span>{$t('skills.community_label')}</span>
 						<select bind:value={newCommunityId} required>
 							{#each myCommunities as c}
 								<option value={c.id}>{c.name} ({c.postal_code})</option>
@@ -208,9 +210,9 @@
 						</select>
 					</label>
 				{:else}
-					<p class="hint">You need to <a href="/communities">join a community</a> before sharing skills.</p>
+					<p class="hint">{$t('skills.need_community')}</p>
 				{/if}
-				<button type="submit" class="btn-primary" disabled={myCommunities.length === 0}>Post Skill Listing</button>
+				<button type="submit" class="btn-primary" disabled={myCommunities.length === 0}>{$t('skills.post_btn')}</button>
 			</form>
 		</div>
 	{/if}
@@ -219,23 +221,33 @@
 		<input
 			type="search"
 			class="search-input"
-			placeholder="Search skills..."
+			placeholder={$t('skills.search_placeholder')}
 			bind:value={searchQuery}
 			oninput={handleSearchInput}
 		/>
 		<select bind:value={filterCategory}>
 			{#each CATEGORIES as cat}
-				<option value={cat.value}>{cat.label}</option>
+				<option value={cat.value}>
+					{cat.value === '' ? $t('skills.all_categories') : $t('skills.categories.' + cat.value)}
+				</option>
 			{/each}
 		</select>
 		<select bind:value={filterType}>
-			{#each TYPE_FILTERS as t}
-				<option value={t.value}>{t.label}</option>
+			{#each TYPE_FILTERS as typeFilter}
+				<option value={typeFilter.value}>
+					{#if typeFilter.value === ''}
+						{$t('skills.all_types')}
+					{:else if typeFilter.value === 'offer'}
+						{$t('skills.offers')}
+					{:else}
+						{$t('skills.requests')}
+					{/if}
+				</option>
 			{/each}
 		</select>
 		{#if myCommunities.length > 0}
 			<select bind:value={filterCommunity}>
-				<option value="">All Communities</option>
+				<option value="">{$t('skills.all_communities')}</option>
 				{#each myCommunities as c}
 					<option value={c.id}>{c.name}</option>
 				{/each}
@@ -245,16 +257,16 @@
 	</div>
 
 	{#if loading}
-		<p class="loading">Loading skills...</p>
+		<p class="loading">{$t('common.loading')}</p>
 	{:else if skills.length === 0}
 		<div class="empty-state">
-			<p>No skill listings found.</p>
+			<p>{$t('skills.no_skills')}</p>
 			{#if searchQuery || filterCategory || filterType}
-				<p>Try adjusting your search or filters.</p>
+				<p>{$t('resources.adjust_filters')}</p>
 			{:else if $isLoggedIn}
-				<p>Be the first to offer a skill to your neighbourhood!</p>
+				<p>{$t('skills.first_skill')}</p>
 			{:else}
-				<p><a href="/register">Sign up</a> to start exchanging skills.</p>
+				<p>{$t('skills.sign_up_skills')}</p>
 			{/if}
 		</div>
 	{:else}
@@ -268,7 +280,7 @@
 						<div class="card-header">
 							<span class="category-badge">{skill.category}</span>
 							<span class="type-badge" class:type-offer={skill.skill_type === 'offer'} class:type-request={skill.skill_type === 'request'}>
-								{skill.skill_type === 'offer' ? 'Offering' : 'Looking for'}
+								{skill.skill_type === 'offer' ? $t('skills.offering') : $t('skills.looking_for')}
 							</span>
 						</div>
 						<h3>{skill.title}</h3>

@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { theme } from '$lib/stores/theme';
+	import { t } from 'svelte-i18n';
 
 	interface MapCommunity {
 		id: number;
@@ -135,7 +137,7 @@
 				});
 				L.marker([userLat, userLng], { icon: userIcon })
 					.addTo(map)
-					.bindPopup('<strong>You are here</strong>');
+					.bindPopup(`<strong>${get(t)('communities.you_are_here')}</strong>`);
 			}
 
 			// Community markers
@@ -160,7 +162,7 @@
 						${c.member_count} member${c.member_count !== 1 ? 's' : ''}
 						&middot; ${c.resource_count} item${c.resource_count !== 1 ? 's' : ''}
 						&middot; ${c.skill_count} skill${c.skill_count !== 1 ? 's' : ''}<br/>
-						<a href="/communities/${c.id}">View community</a>
+						<a href="/communities/${c.id}">${get(t)('communities.view_community')}</a>
 					`);
 			}
 		} catch (e) {
@@ -176,10 +178,10 @@
 <div class="communities-page">
 	<div class="page-header">
 		<div>
-			<h1>Communities</h1>
-			<p class="subtitle">Your community and nearby neighbourhoods on the map.</p>
+			<h1>{$t('communities.title')}</h1>
+			<p class="subtitle">{$t('communities.subtitle')}</p>
 		</div>
-		<a href="/onboarding" class="btn-find">Find or Create</a>
+		<a href="/onboarding" class="btn-find">{$t('communities.find_or_create')}</a>
 	</div>
 
 	{#if error}
@@ -190,20 +192,20 @@
 		<div bind:this={mapContainer} class="map-container"></div>
 		{#if loading}
 			<div class="map-loading">
-				<p>Loading map...</p>
+				<p>{$t('communities.loading_map')}</p>
 			</div>
 		{/if}
 	</div>
 
 	{#if !userLocated && !loading}
 		<div class="location-hint fade-in">
-			<p>Could not detect your location. Allow location access to see communities near you, or browse the map manually.</p>
+			<p>{$t('communities.location_error')}</p>
 		</div>
 	{/if}
 
 	{#if myCommunities.length > 0}
 		<section class="my-community-section">
-			<h2>Your Community</h2>
+			<h2>{$t('communities.your_community')}</h2>
 			{#each myCommunities as c (c.id)}
 				<a href="/communities/{c.id}" class="my-community-card">
 					<div class="my-card-left">
@@ -212,7 +214,7 @@
 							<span class="tag">{c.postal_code}</span>
 							<span class="tag">{c.city}</span>
 							{#if c.mode === 'red'}
-								<span class="tag tag-crisis">Crisis</span>
+								<span class="tag tag-crisis">{$t('communities.crisis_badge')}</span>
 							{/if}
 						</div>
 						{#if c.description}
@@ -228,9 +230,9 @@
 		</section>
 	{:else if !loading}
 		<div class="empty-state fade-in">
-			<h2>No communities yet</h2>
-			<p>Join or create a community to connect with your neighbours.</p>
-			<a href="/onboarding" class="btn-primary">Find a Community</a>
+			<h2>{$t('communities.no_communities_yet')}</h2>
+			<p>{$t('communities.join_prompt')}</p>
+			<a href="/onboarding" class="btn-primary">{$t('communities.find_or_create')}</a>
 		</div>
 	{/if}
 </div>

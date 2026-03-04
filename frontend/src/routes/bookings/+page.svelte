@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 	import { api } from '$lib/api';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { statusColor, type Booking } from '$lib/types';
@@ -120,11 +121,11 @@
 
 {#if !$isLoggedIn}
 	<div class="empty-state">
-		<p>Please <a href="/login">log in</a> to view your bookings.</p>
+		<p>{$t('bookings.login_required')}</p>
 	</div>
 {:else}
 	<div class="bookings-page">
-		<h1>My Bookings</h1>
+		<h1>{$t('bookings.title')}</h1>
 
 		{#if $offlineQueue.length > 0}
 			<div class="queued-section">
@@ -138,9 +139,9 @@
 						<path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
 						<line x1="12" y1="20" x2="12.01" y2="20"/>
 					</svg>
-					Pending offline requests
+					{$t('bookings.offline_pending')}
 				</h2>
-				<p class="queued-subtext">These will be sent automatically when you reconnect to the internet.</p>
+				<p class="queued-subtext">{$t('bookings.offline_hint')}</p>
 				{#each $offlineQueue as req (req.id)}
 					<div class="queued-row">
 						<div class="queued-info">
@@ -157,26 +158,26 @@
 
 		<div class="filter-bar">
 			<select bind:value={roleFilter}>
-				<option value="">All</option>
-				<option value="borrower">My Requests</option>
-				<option value="owner">Incoming Requests</option>
+				<option value="">{$t('common.all')}</option>
+				<option value="borrower">{$t('bookings.my_requests')}</option>
+				<option value="owner">{$t('bookings.incoming')}</option>
 			</select>
 			<select bind:value={statusFilter}>
-				<option value="">Any Status</option>
-				<option value="pending">Pending</option>
-				<option value="approved">Approved</option>
-				<option value="rejected">Rejected</option>
-				<option value="cancelled">Cancelled</option>
-				<option value="completed">Completed</option>
+				<option value="">{$t('bookings.any_status')}</option>
+				<option value="pending">{$t('bookings.status_pending')}</option>
+				<option value="approved">{$t('bookings.status_approved')}</option>
+				<option value="rejected">{$t('bookings.status_rejected')}</option>
+				<option value="cancelled">{$t('bookings.status_cancelled')}</option>
+				<option value="completed">{$t('bookings.status_completed')}</option>
 			</select>
 			<span class="result-count">{total} booking{total !== 1 ? 's' : ''}</span>
 		</div>
 
 		{#if loading}
-			<p class="loading">Loading...</p>
+			<p class="loading">{$t('common.loading')}</p>
 		{:else if bookings.length === 0}
 			<div class="empty-state">
-				<p>No bookings found.</p>
+				<p>{$t('bookings.no_bookings')}</p>
 			</div>
 		{:else}
 			<div class="booking-table">
@@ -189,9 +190,9 @@
 							<div class="booking-meta">
 								<span class="dates">{b.start_date} &rarr; {b.end_date}</span>
 								{#if isBorrowerOf(b)}
-									<span class="role-tag">You requested</span>
+									<span class="role-tag">{$t('bookings.you_requested')}</span>
 								{:else}
-									<span class="role-tag">{b.borrower.display_name} requested</span>
+									<span class="role-tag">{$t('bookings.requested_by', { values: { name: b.borrower.display_name } })}</span>
 								{/if}
 							</div>
 							{#if b.message}
@@ -201,16 +202,16 @@
 						<div class="booking-actions">
 							<span class="status" style="color: {statusColor(b.status)}">{b.status}</span>
 							{#if b.status === 'pending' && isOwnerOf(b)}
-								<button class="btn-approve" onclick={() => updateStatus(b.id, 'approved')}>Approve</button>
-								<button class="btn-reject" onclick={() => updateStatus(b.id, 'rejected')}>Reject</button>
+								<button class="btn-approve" onclick={() => updateStatus(b.id, 'approved')}>{$t('bookings.approve')}</button>
+								<button class="btn-reject" onclick={() => updateStatus(b.id, 'rejected')}>{$t('bookings.reject')}</button>
 							{/if}
 							{#if b.status === 'pending' && isBorrowerOf(b)}
-								<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>Cancel</button>
+								<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
 							{/if}
 							{#if b.status === 'approved'}
-								<button class="btn-complete" onclick={() => updateStatus(b.id, 'completed')}>Mark Done</button>
+								<button class="btn-complete" onclick={() => updateStatus(b.id, 'completed')}>{$t('bookings.mark_done')}</button>
 								{#if isBorrowerOf(b)}
-									<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>Cancel</button>
+									<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
 								{/if}
 							{/if}
 							{#if b.status === 'completed' && !reviewedBookings.has(b.id)}
@@ -218,11 +219,11 @@
 									class="btn-review"
 									onclick={() => { reviewingBookingId = reviewingBookingId === b.id ? null : b.id; }}
 								>
-									Leave Review
+									{$t('bookings.leave_review')}
 								</button>
 							{/if}
 							{#if b.status === 'completed' && reviewedBookings.has(b.id)}
-								<span class="reviewed-badge">Reviewed</span>
+								<span class="reviewed-badge">{$t('bookings.reviewed')}</span>
 							{/if}
 						</div>
 
@@ -239,14 +240,14 @@
 								</div>
 								<textarea
 									bind:value={reviewComment}
-									placeholder="Add a comment (optional)"
+									placeholder={$t('bookings.comment_optional')}
 									rows="2"
 								></textarea>
 								<div class="review-actions">
 									<button class="btn-approve" onclick={submitReview} disabled={submittingReview}>
-										{submittingReview ? 'Submitting...' : 'Submit Review'}
+										{submittingReview ? $t('bookings.submitting') : $t('bookings.submit_review')}
 									</button>
-									<button class="btn-complete" onclick={() => (reviewingBookingId = null)}>Cancel</button>
+									<button class="btn-complete" onclick={() => (reviewingBookingId = null)}>{$t('bookings.cancel')}</button>
 								</div>
 							</div>
 						{/if}

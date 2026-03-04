@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
+	import { t } from 'svelte-i18n';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { bandwidth } from '$lib/stores/theme';
@@ -100,7 +102,7 @@
 		e.preventDefault();
 		createError = '';
 		if (!newCommunityId) {
-			createError = 'Please select a community';
+			createError = get(t)('resources.please_select_community');
 			return;
 		}
 		try {
@@ -159,15 +161,15 @@
 				<line x1="12" y1="8" x2="12" y2="12"/>
 				<line x1="12" y1="16" x2="12.01" y2="16"/>
 			</svg>
-			Showing cached resources — connect to the internet to see the latest listings.
+			{$t('resources.showing_cached')}
 		</div>
 	{/if}
 
 	<div class="page-header">
-		<h1>Shared Resources</h1>
+		<h1>{$t('resources.title')}</h1>
 		{#if $isLoggedIn}
 			<button class="btn-primary" onclick={() => (showCreateForm = !showCreateForm)}>
-				{showCreateForm ? 'Cancel' : '+ Share Something'}
+				{showCreateForm ? $t('common.cancel') : $t('resources.add')}
 			</button>
 		{/if}
 	</div>
@@ -179,46 +181,46 @@
 
 	{#if showCreateForm}
 		<div class="create-form-card">
-			<h2>Share a Resource</h2>
+			<h2>{$t('resources.form_title')}</h2>
 			{#if createError}
 				<p class="error">{createError}</p>
 			{/if}
 			<form onsubmit={handleCreate}>
 				<label>
-					<span>Title</span>
+					<span>{$t('resources.title_label')}</span>
 					<input type="text" bind:value={newTitle} required placeholder="e.g. Bosch Drill" />
 				</label>
 				<label>
-					<span>Description</span>
+					<span>{$t('resources.description_label')}</span>
 					<textarea bind:value={newDescription} rows="3" placeholder="What are you sharing? Any conditions?"></textarea>
 				</label>
 				<div class="form-row">
 					<label>
-						<span>Category</span>
+						<span>{$t('resources.category')}</span>
 						<select bind:value={newCategory}>
-							<option value="tool">Tool</option>
-							<option value="vehicle">Vehicle</option>
-							<option value="electronics">Electronics</option>
-							<option value="furniture">Furniture</option>
-							<option value="food">Food</option>
-							<option value="clothing">Clothing</option>
-							<option value="skill">Skill</option>
-							<option value="other">Other</option>
+							<option value="tool">{$t('resources.categories.tool')}</option>
+							<option value="vehicle">{$t('resources.categories.vehicle')}</option>
+							<option value="electronics">{$t('resources.categories.electronics')}</option>
+							<option value="furniture">{$t('resources.categories.furniture')}</option>
+							<option value="food">{$t('resources.categories.food')}</option>
+							<option value="clothing">{$t('resources.categories.clothing')}</option>
+							<option value="skill">{$t('resources.categories.skill')}</option>
+							<option value="other">{$t('resources.categories.other')}</option>
 						</select>
 					</label>
 					<label>
-						<span>Condition</span>
+						<span>{$t('resources.condition')}</span>
 						<select bind:value={newCondition}>
-							<option value="new">New</option>
-							<option value="good">Good</option>
-							<option value="fair">Fair</option>
-							<option value="worn">Worn</option>
+							<option value="new">{$t('resources.conditions.new')}</option>
+							<option value="good">{$t('resources.conditions.good')}</option>
+							<option value="fair">{$t('resources.conditions.fair')}</option>
+							<option value="worn">{$t('resources.conditions.worn')}</option>
 						</select>
 					</label>
 				</div>
 				{#if myCommunities.length > 0}
 					<label>
-						<span>Community</span>
+						<span>{$t('resources.community_label')}</span>
 						<select bind:value={newCommunityId} required>
 							{#each myCommunities as c}
 								<option value={c.id}>{c.name} ({c.postal_code})</option>
@@ -226,9 +228,9 @@
 						</select>
 					</label>
 				{:else}
-					<p class="hint">You need to <a href="/communities">join a community</a> before sharing resources.</p>
+					<p class="hint">{$t('resources.need_community')}</p>
 				{/if}
-				<button type="submit" class="btn-primary" disabled={myCommunities.length === 0}>Share Resource</button>
+				<button type="submit" class="btn-primary" disabled={myCommunities.length === 0}>{$t('resources.share_btn')}</button>
 			</form>
 		</div>
 	{/if}
@@ -237,18 +239,20 @@
 		<input
 			type="search"
 			class="search-input"
-			placeholder="Search resources..."
+			placeholder={$t('resources.search_placeholder')}
 			bind:value={searchQuery}
 			oninput={handleSearchInput}
 		/>
 		<select bind:value={filterCategory}>
 			{#each CATEGORIES as cat}
-				<option value={cat.value}>{cat.label}</option>
+				<option value={cat.value}>
+					{cat.value === '' ? $t('resources.all_categories') : $t('resources.categories.' + cat.value)}
+				</option>
 			{/each}
 		</select>
 		{#if myCommunities.length > 0}
 			<select bind:value={filterCommunity}>
-				<option value="">All Communities</option>
+				<option value="">{$t('resources.all_communities')}</option>
 				{#each myCommunities as c}
 					<option value={c.id}>{c.name}</option>
 				{/each}
@@ -258,16 +262,16 @@
 	</div>
 
 	{#if loading}
-		<p class="loading">Loading resources...</p>
+		<p class="loading">{$t('common.loading')}</p>
 	{:else if resources.length === 0}
 		<div class="empty-state">
-			<p>No resources found.</p>
+			<p>{$t('resources.no_results')}</p>
 			{#if searchQuery || filterCategory}
-				<p>Try adjusting your search or filters.</p>
+				<p>{$t('resources.adjust_filters')}</p>
 			{:else if $isLoggedIn}
-				<p>Be the first to share something with your neighbourhood!</p>
+				<p>{$t('resources.first_share')}</p>
 			{:else}
-				<p><a href="/register">Sign up</a> to start sharing.</p>
+				<p>{$t('resources.sign_up_share')}</p>
 			{/if}
 		</div>
 	{:else}
@@ -287,7 +291,7 @@
 						<div class="card-header">
 							<span class="category-badge">{resource.category}</span>
 							{#if !resource.is_available}
-								<span class="unavailable-badge">Unavailable</span>
+								<span class="unavailable-badge">{$t('resources.unavailable')}</span>
 							{/if}
 						</div>
 						<h3>{resource.title}</h3>

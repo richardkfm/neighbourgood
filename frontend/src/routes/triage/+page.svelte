@@ -20,6 +20,7 @@
 	} from '$lib/stores/mesh';
 	import { isBluetoothSupported } from '$lib/bluetooth/connection';
 	import type { CommunityOut, NGMeshMessage, MeshSyncResult } from '$lib/types';
+	import { t } from 'svelte-i18n';
 
 	interface Ticket {
 		id: number;
@@ -304,22 +305,22 @@
 <div class="emergency-page">
 	<div class="page-header">
 		<div>
-			<h1>Emergency</h1>
-			<p class="subtitle">Community emergency tickets — requests, offers, and crisis coordination.</p>
+			<h1>{$t('crisis.title')}</h1>
+			<p class="subtitle">{$t('crisis.page_subtitle')}</p>
 		</div>
 	</div>
 
 	{#if loadingCommunities}
-		<p class="loading-text">Loading communities…</p>
+		<p class="loading-text">{$t('crisis.loading_communities')}</p>
 	{:else if communities.length === 0}
 		<div class="empty-state">
-			<p>You are not a member of any community yet.</p>
-			<a href="/communities" class="btn-primary">Find a community</a>
+			<p>{$t('crisis.no_member')}</p>
+			<a href="/communities" class="btn-primary">{$t('crisis.find_community_link')}</a>
 		</div>
 	{:else}
 		<div class="controls">
 			<div class="control-group">
-				<label for="community-select">Community</label>
+				<label for="community-select">{$t('crisis.filter_community')}</label>
 				<select id="community-select" bind:value={selectedCommunityId} onchange={onCommunityChange}>
 					{#each communities as c}
 						<option value={c.id}>{c.name}{c.mode === 'red' ? ' 🔴' : ''}</option>
@@ -328,9 +329,9 @@
 			</div>
 
 			<div class="control-group">
-				<label for="urgency-filter">Urgency</label>
+				<label for="urgency-filter">{$t('crisis.filter_urgency')}</label>
 				<select id="urgency-filter" bind:value={filterUrgency}>
-					<option value="">All</option>
+					<option value="">{$t('crisis.filter_all')}</option>
 					{#each URGENCY_ORDER as u}
 						<option value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
 					{/each}
@@ -338,17 +339,17 @@
 			</div>
 
 			<div class="control-group">
-				<label for="status-filter">Status</label>
+				<label for="status-filter">{$t('crisis.filter_status')}</label>
 				<select id="status-filter" bind:value={filterStatus}>
-					<option value="">Open (excl. resolved)</option>
-					<option value="open">Open</option>
-					<option value="in_progress">In progress</option>
-					<option value="resolved">Resolved</option>
+					<option value="">{$t('crisis.filter_open_excl')}</option>
+					<option value="open">{$t('crisis.filter_open')}</option>
+					<option value="in_progress">{$t('crisis.filter_in_progress')}</option>
+					<option value="resolved">{$t('crisis.filter_resolved')}</option>
 				</select>
 			</div>
 
 			<button class="btn-new-ticket" onclick={() => showNewTicketForm = !showNewTicketForm}>
-				{showNewTicketForm ? 'Cancel' : '+ New Ticket'}
+				{showNewTicketForm ? $t('common.cancel') : $t('crisis.new_ticket')}
 			</button>
 		</div>
 
@@ -359,11 +360,11 @@
 						<span class="mesh-dot" class:mesh-connected={$meshStatus === 'connected'} class:mesh-scanning={$meshStatus === 'scanning' || $meshStatus === 'connecting'}></span>
 						<span class="mesh-label">
 							{#if $meshStatus === 'connected'}
-								Mesh: connected{$meshDeviceName ? ` to ${$meshDeviceName}` : ''}
+								{$t('mesh.connected')}{$meshDeviceName ? ` to ${$meshDeviceName}` : ''}
 							{:else if $meshStatus === 'scanning' || $meshStatus === 'connecting'}
-								Mesh: {$meshStatus}...
+								{$t('mesh.scanning')}
 							{:else}
-								Mesh: offline
+								{$t('mesh.disconnected')}
 							{/if}
 						</span>
 						{#if $meshStatus === 'connected'}
@@ -373,14 +374,14 @@
 					<div class="mesh-actions">
 						{#if $meshStatus === 'disconnected'}
 							<button class="btn-mesh" onclick={handleMeshConnect} disabled={meshConnecting}>
-								{meshConnecting ? 'Connecting...' : 'Connect to Mesh'}
+								{meshConnecting ? $t('mesh.connecting') : $t('mesh.connect')}
 							</button>
 						{:else if $meshStatus === 'connected'}
-							<button class="btn-mesh btn-mesh-disconnect" onclick={handleMeshDisconnect}>Disconnect</button>
+							<button class="btn-mesh btn-mesh-disconnect" onclick={handleMeshDisconnect}>{$t('mesh.disconnect')}</button>
 						{/if}
 						{#if $isOnline && $meshMessages.length > 0}
 							<button class="btn-mesh btn-mesh-sync" onclick={syncMeshMessages} disabled={syncing}>
-								{syncing ? 'Syncing...' : `Sync ${$meshMessages.length} message${$meshMessages.length !== 1 ? 's' : ''}`}
+								{syncing ? $t('mesh.syncing') : $t('mesh.sync_messages', { values: { count: $meshMessages.length } })}
 							</button>
 						{/if}
 					</div>
@@ -393,7 +394,7 @@
 
 		{#if communityMeshTickets.length > 0}
 			<div class="mesh-tickets-section">
-				<h2>Mesh Tickets <span class="via-mesh-badge">via BLE mesh</span></h2>
+				<h2>{$t('mesh.mesh_tickets')} <span class="via-mesh-badge">{$t('mesh.via_mesh')}</span></h2>
 				<div class="ticket-list">
 					{#each communityMeshTickets as msg (msg.id)}
 						<div class="ticket-card mesh-ticket-card">
@@ -409,7 +410,7 @@
 								<p class="ticket-desc">{msg.data.description}</p>
 							{/if}
 							<div class="ticket-meta">
-								<span>By {msg.sender_name}</span>
+								<span>{$t('crisis.by_author', { values: { author: msg.sender_name } })}</span>
 								<span class="ticket-id">{new Date(msg.ts).toLocaleTimeString()}</span>
 							</div>
 						</div>
@@ -420,43 +421,43 @@
 
 		{#if showNewTicketForm}
 			<div class="new-ticket-form">
-				<h2>New Emergency Ticket</h2>
+				<h2>{$t('crisis.form_title')}</h2>
 				<div class="form-row">
 					<label>
-						<span>Type</span>
+						<span>{$t('crisis.form_type')}</span>
 						<select bind:value={newTicketType}>
-							<option value="request">Request</option>
-							<option value="offer">Offer</option>
+							<option value="request">{$t('crisis.ticket_types.request')}</option>
+							<option value="offer">{$t('crisis.ticket_types.offer')}</option>
 							{#if selectedCommunityMode === 'red'}
-								<option value="emergency_ping">Emergency Ping</option>
+								<option value="emergency_ping">{$t('crisis.ticket_types.ping')}</option>
 							{/if}
 						</select>
 					</label>
 					<label>
-						<span>Urgency</span>
+						<span>{$t('crisis.form_urgency')}</span>
 						<select bind:value={newTicketUrgency}>
-							<option value="low">Low</option>
-							<option value="medium">Medium</option>
-							<option value="high">High</option>
-							<option value="critical">Critical</option>
+							<option value="low">{$t('crisis.priority.low')}</option>
+							<option value="medium">{$t('crisis.priority.medium')}</option>
+							<option value="high">{$t('crisis.priority.high')}</option>
+							<option value="critical">{$t('crisis.priority.critical')}</option>
 						</select>
 					</label>
 				</div>
 				<label>
-					<span>Title</span>
+					<span>{$t('crisis.form_title_field')}</span>
 					<input type="text" bind:value={newTicketTitle} placeholder="Short description..." maxlength="300" />
 				</label>
 				<label>
-					<span>Description (optional)</span>
+					<span>{$t('crisis.form_description')}</span>
 					<textarea bind:value={newTicketDesc} rows="3" placeholder="More details..." maxlength="5000"></textarea>
 				</label>
 				{#if !$isOnline && $meshStatus === 'connected'}
 				<button class="btn-primary btn-mesh-send" onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
-					{creatingTicket ? 'Broadcasting...' : 'Broadcast via Mesh'}
+					{creatingTicket ? $t('mesh.syncing') : $t('mesh.broadcast_ticket')}
 				</button>
 			{:else}
 				<button class="btn-primary" onclick={createTicket} disabled={creatingTicket || !newTicketTitle.trim()}>
-					{creatingTicket ? 'Creating...' : 'Create Ticket'}
+					{creatingTicket ? $t('crisis.creating_ticket') : $t('crisis.create_ticket')}
 				</button>
 			{/if}
 			</div>
@@ -465,13 +466,13 @@
 		{#if error}
 			<div class="alert alert-error">{error}</div>
 		{:else if loading}
-			<p class="loading-text">Loading tickets…</p>
+			<p class="loading-text">{$t('crisis.loading_tickets')}</p>
 		{:else if filtered.length === 0}
 			<div class="empty-state">
-				<p>{tickets.length === 0 ? 'No tickets in this community yet.' : 'No tickets match the current filters.'}</p>
+				<p>{tickets.length === 0 ? $t('crisis.no_tickets_yet') : $t('crisis.no_tickets')}</p>
 			</div>
 		{:else}
-			<p class="count-label">{filtered.length} ticket{filtered.length !== 1 ? 's' : ''}</p>
+			<p class="count-label">{filtered.length !== 1 ? $t('common.results', { values: { count: filtered.length } }) : $t('common.result', { values: { count: filtered.length } })}</p>
 			<div class="ticket-list">
 				{#each filtered as ticket (ticket.id)}
 					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="ticket-card" class:overdue={isOverdue(ticket.due_at)}>
@@ -480,7 +481,7 @@
 								{ticket.urgency.toUpperCase()}
 							</span>
 							{#if isAdminOrLeader && ticket.triage_score !== undefined}
-								<span class="score-badge" title="Triage score">Score {ticket.triage_score}</span>
+								<span class="score-badge" title="Triage score">{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
 							{/if}
 							<span class="status-chip" style="color: {statusColor(ticket.status)}">
 								{ticket.status.replace('_', ' ')}
@@ -496,20 +497,20 @@
 
 						<div class="ticket-footer">
 							<div class="ticket-meta">
-								<span>By {ticket.author.display_name}</span>
+								<span>{$t('crisis.by_author', { values: { author: ticket.author.display_name } })}</span>
 								{#if ticket.assigned_to}
 									<span class="assigned">→ {ticket.assigned_to.display_name}</span>
 								{:else}
-									<span class="unassigned">Unassigned</span>
+									<span class="unassigned">{$t('crisis.unassigned')}</span>
 								{/if}
 								<span class="ticket-id">#{ticket.id}</span>
 							</div>
 							{#if ticket.status !== 'resolved' && (isAdminOrLeader || ticket.author.id === $user?.id)}
 								<div class="ticket-actions">
 									{#if ticket.status === 'open'}
-										<button class="btn-tiny" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'in_progress'); }}>Start</button>
+										<button class="btn-tiny" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'in_progress'); }}>{$t('crisis.start_ticket')}</button>
 									{/if}
-									<button class="btn-tiny btn-tiny-success" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'resolved'); }}>Resolve</button>
+									<button class="btn-tiny btn-tiny-success" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'resolved'); }}>{$t('crisis.resolve_ticket')}</button>
 								</div>
 							{/if}
 						</div>

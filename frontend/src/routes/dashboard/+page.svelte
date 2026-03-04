@@ -126,6 +126,15 @@
 		{ name: 'Pillar', min: 200, max: Infinity }
 	];
 
+	// Map API tier name → i18n key
+	const TIER_KEYS: Record<string, string> = {
+		Newcomer: 'dashboard.level_newcomer',
+		Neighbour: 'dashboard.level_neighbour',
+		Helper: 'dashboard.level_helper',
+		Trusted: 'dashboard.level_trusted',
+		Pillar: 'dashboard.level_pillar'
+	};
+
 	const repProgress = $derived((() => {
 		if (!dashboard) return null;
 		const score = dashboard.reputation_score;
@@ -158,24 +167,24 @@
 					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
 				</div>
 				<div class="nudge-text">
-					<strong>Join a community to get started</strong>
-					<span>Browse nearby communities or create your own to share resources and skills with neighbours.</span>
+					<strong>{$t('dashboard.join_title')}</strong>
+					<span>{$t('dashboard.join_desc')}</span>
 				</div>
-				<a href="/onboarding" class="nudge-btn">Find Community</a>
+				<a href="/onboarding" class="nudge-btn">{$t('dashboard.find_community')}</a>
 			</div>
 		{/if}
 
 		<!-- My community -->
 		{#if communities.length > 0}
 			<section>
-				<h2>Your community</h2>
+				<h2>{$t('dashboard.your_community')}</h2>
 				{#each communities.slice(0, 1) as c (c.id)}
 					<a href="/communities/{c.id}" class="community-card-link">
 						<div class="community-card-inner">
 							<div class="community-info">
 								<h3>{c.name}</h3>
 								{#if c.mode === 'red'}
-									<span class="community-crisis-badge">Crisis Active</span>
+									<span class="community-crisis-badge">{$t('dashboard.crisis_active')}</span>
 								{/if}
 							</div>
 							<span class="community-arrow">→</span>
@@ -188,7 +197,7 @@
 		<!-- Assigned emergency tickets (Red Sky only) -->
 		{#if assignedTickets.length > 0}
 			<section class="crisis-tickets-section">
-				<h2>Your assigned tickets</h2>
+				<h2>{$t('dashboard.assigned_tickets')}</h2>
 				<div class="assigned-tickets-list">
 					{#each assignedTickets as ticket}
 						<a href="/triage/{ticket.id}" class="assigned-ticket-item">
@@ -205,33 +214,33 @@
 		<!-- Needs your attention -->
 		{#if hasPendingActions}
 			<section class="attention-section">
-				<h2>Needs your attention</h2>
+				<h2>{$t('dashboard.needs_attention')}</h2>
 				<div class="attention-list">
 					{#each pendingIncoming as booking}
 						<a href="/bookings" class="attention-item">
 							<span class="attention-dot attention-dot-warning"></span>
 							<span class="attention-text">
-								<strong>{booking.borrower_name}</strong> wants to borrow <strong>{booking.resource_title}</strong>
+								{$t('dashboard.wants_to_borrow', { values: { name: booking.borrower_name, resource: booking.resource_title } })}
 							</span>
-							<span class="attention-action">Review</span>
+							<span class="attention-action">{$t('dashboard.review')}</span>
 						</a>
 					{/each}
 					{#each pendingOutgoing as booking}
 						<a href="/bookings" class="attention-item">
 							<span class="attention-dot attention-dot-info"></span>
 							<span class="attention-text">
-								Your request for <strong>{booking.resource_title}</strong> is waiting for approval
+								{$t('dashboard.request_waiting', { values: { resource: booking.resource_title } })}
 							</span>
-							<span class="attention-action">View</span>
+							<span class="attention-action">{$t('dashboard.view')}</span>
 						</a>
 					{/each}
 					{#if (dashboard?.messages_unread_count ?? 0) > 0}
 						<a href="/messages" class="attention-item">
 							<span class="attention-dot attention-dot-primary"></span>
 							<span class="attention-text">
-								You have <strong>{dashboard?.messages_unread_count}</strong> unread message{(dashboard?.messages_unread_count ?? 0) > 1 ? 's' : ''}
+								{$t('messages.unread', { values: { count: dashboard?.messages_unread_count } })}
 							</span>
-							<span class="attention-action">Read</span>
+							<span class="attention-action">{$t('dashboard.read')}</span>
 						</a>
 					{/if}
 				</div>
@@ -241,12 +250,12 @@
 		<!-- Quick stats -->
 		{#if dashboard}
 			<section>
-				<h2>Your activity</h2>
+				<h2>{$t('dashboard.your_activity')}</h2>
 				<div class="overview-grid">
 					<a href="/resources" class="overview-card">
 						<div class="card-icon">📦</div>
 						<div class="card-content">
-							<div class="card-label">Resources</div>
+							<div class="card-label">{$t('dashboard.stat_resources')}</div>
 							<div class="card-value">{dashboard.resources_count}</div>
 						</div>
 					</a>
@@ -254,7 +263,7 @@
 					<a href="/skills" class="overview-card">
 						<div class="card-icon">🎯</div>
 						<div class="card-content">
-							<div class="card-label">Skills</div>
+							<div class="card-label">{$t('dashboard.stat_skills')}</div>
 							<div class="card-value">{dashboard.skills_count}</div>
 						</div>
 					</a>
@@ -262,7 +271,7 @@
 					<a href="/bookings" class="overview-card">
 						<div class="card-icon">📋</div>
 						<div class="card-content">
-							<div class="card-label">Bookings</div>
+							<div class="card-label">{$t('dashboard.stat_bookings')}</div>
 							<div class="card-value">{dashboard.bookings_count}</div>
 						</div>
 					</a>
@@ -270,7 +279,7 @@
 					<a href="/messages" class="overview-card">
 						<div class="card-icon">💬</div>
 						<div class="card-content">
-							<div class="card-label">Unread Messages</div>
+							<div class="card-label">{$t('dashboard.stat_messages')}</div>
 							<div class="card-value">{dashboard.messages_unread_count}</div>
 						</div>
 					</a>
@@ -278,21 +287,21 @@
 			</section>
 
 			<section class="reputation-section">
-				<h2>Your Reputation</h2>
+				<h2>{$t('dashboard.reputation')}</h2>
 				<div class="reputation-card">
 					<div class="rep-top">
 						<div class="reputation-score">{dashboard.reputation_score}</div>
 						<div class="reputation-info">
 							<div class="rep-level-row">
-								<span class="reputation-level">{dashboard.reputation_level}</span>
+								<span class="reputation-level">{$t(TIER_KEYS[dashboard.reputation_level] ?? dashboard.reputation_level)}</span>
 								{#if $user?.role === 'admin'}
-									<span class="role-badge">Admin</span>
+									<span class="role-badge">{$t('dashboard.admin')}</span>
 								{/if}
 							</div>
 							{#if repProgress?.nextName}
-								<div class="reputation-subtitle">{repProgress.ptsToNext} pts to {repProgress.nextName}</div>
+								<div class="reputation-subtitle">{$t('dashboard.pts_to_level', { values: { pts: repProgress.ptsToNext, level: $t(TIER_KEYS[repProgress.nextName] ?? repProgress.nextName) } })}</div>
 							{:else}
-								<div class="reputation-subtitle">Top tier — keep it up!</div>
+								<div class="reputation-subtitle">{$t('dashboard.top_tier')}</div>
 							{/if}
 							{#if repProgress}
 								<div class="rep-progress-bar">
@@ -306,18 +315,18 @@
 						<div class="rep-tiers">
 							{#each TIERS as tier}
 								<span class="rep-tier" class:rep-tier-active={tier.name === dashboard.reputation_level}>
-									{tier.name} <span class="rep-tier-pts">{tier.min === 0 ? '0' : tier.min}+</span>
+									{$t(TIER_KEYS[tier.name])} <span class="rep-tier-pts">{tier.min === 0 ? '0' : tier.min}+</span>
 								</span>
 							{/each}
 						</div>
 						<div class="rep-breakdown">
-							<span class="rep-breakdown-title">How to earn points</span>
+							<span class="rep-breakdown-title">{$t('dashboard.how_to_earn')}</span>
 							<ul class="rep-breakdown-list">
-								<li><span class="rep-pts">+10</span> Complete a lend</li>
-								<li><span class="rep-pts">+5</span> Complete a borrow</li>
-								<li><span class="rep-pts">+2</span> Share a resource</li>
-								<li><span class="rep-pts">+2</span> Offer a skill</li>
-								<li><span class="rep-pts">+1</span> Request a skill</li>
+								<li>{$t('dashboard.earn_lend')}</li>
+								<li>{$t('dashboard.earn_borrow')}</li>
+								<li>{$t('dashboard.earn_share')}</li>
+								<li>{$t('dashboard.earn_skill_offer')}</li>
+								<li>{$t('dashboard.earn_skill_request')}</li>
 							</ul>
 						</div>
 					</div>

@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
+	import { t } from 'svelte-i18n';
 
 	interface RedeemResult {
 		community_id: number;
@@ -42,28 +43,28 @@
 <div class="redeem-page">
 	{#if !$isLoggedIn}
 		<div class="card">
-			<h1>Join a Community</h1>
-			<p>You've been invited to a NeighbourGood community. Log in or sign up to accept.</p>
+			<h1>{$t('invite.title')}</h1>
+			<p>{$t('invite.subtitle')}</p>
 			<div class="actions">
-				<a href="/login" class="btn-primary">Log In</a>
-				<a href="/register" class="btn-secondary">Sign Up</a>
+				<a href="/login" class="btn-primary">{$t('invite.login')}</a>
+				<a href="/register" class="btn-secondary">{$t('invite.sign_up')}</a>
 			</div>
 		</div>
 	{:else if loading}
 		<div class="card">
-			<p class="loading-text">Redeeming invite...</p>
+			<p class="loading-text">{$t('invite.redeeming')}</p>
 		</div>
 	{:else if error}
 		<div class="card">
-			<h1>Invite Error</h1>
+			<h1>{$t('invite.error_title')}</h1>
 			<p class="error-text">{error}</p>
-			<a href="/communities" class="btn-secondary">Browse Communities</a>
+			<a href="/communities" class="btn-secondary">{$t('invite.browse')}</a>
 		</div>
 	{:else if result}
 		<div class="card">
 			<h1>{result.message}</h1>
-			<p>You're now part of <strong>{result.community_name}</strong>.</p>
-			<a href="/communities/{result.community_id}" class="btn-primary">Go to Community</a>
+			<p>{$t('invite.joined_msg', { values: { name: result.community_name } })}</p>
+			<a href="/communities/{result.community_id}" class="btn-primary">{$t('invite.go_to_community')}</a>
 		</div>
 	{/if}
 </div>

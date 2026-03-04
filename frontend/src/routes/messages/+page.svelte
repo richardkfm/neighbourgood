@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { t } from 'svelte-i18n';
 	import { api } from '$lib/api';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 
@@ -212,15 +213,15 @@
 
 {#if !$isLoggedIn}
 	<div class="empty-state">
-		<p>Please <a href="/login">log in</a> to view your messages.</p>
+		<p>{$t('messages.login_required')}</p>
 	</div>
 {:else}
 	<div class="messages-page">
 		<div class="page-header">
-			<h1>Messages</h1>
+			<h1>{$t('messages.title')}</h1>
 			<button class="new-msg-btn" onclick={openNewMessage}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-				New Message
+				{$t('messages.new_message')}
 			</button>
 		</div>
 
@@ -228,9 +229,9 @@
 			<!-- Conversation list -->
 			<div class="conv-list">
 				{#if loading}
-					<p class="loading">Loading...</p>
+					<p class="loading">{$t('common.loading')}</p>
 				{:else if conversations.length === 0}
-					<p class="empty-text">No conversations yet.</p>
+					<p class="empty-text">{$t('messages.no_conversations')}</p>
 				{:else}
 					{#each conversations as conv}
 						<button
@@ -257,7 +258,7 @@
 			<div class="thread">
 				{#if !selectedPartner}
 					<div class="thread-empty">
-						<p>Select a conversation or start a new one.</p>
+						<p>{$t('messages.select_conversation')}</p>
 					</div>
 				{:else}
 					<div class="thread-header">
@@ -266,7 +267,7 @@
 					{#if skillContext}
 						<div class="skill-context-banner">
 							<span class="skill-context-label">
-								{skillContext.skill_type === 'offer' ? '🎓 Skill offered' : '🔍 Skill wanted'}:
+								{skillContext.skill_type === 'offer' ? $t('messages.skill_offered') : $t('messages.skill_wanted')}:
 							</span>
 							<a href="/skills/{skillContext.id}" class="skill-context-link">{skillContext.title}</a>
 						</div>
@@ -286,7 +287,7 @@
 					<div class="thread-input">
 						<textarea
 							bind:value={newMessage}
-							placeholder="Type a message..."
+							placeholder={$t("messages.type_message")}
 							rows="2"
 							onkeydown={handleKeydown}
 						></textarea>
@@ -295,7 +296,7 @@
 							onclick={sendMessage}
 							disabled={sending || !newMessage.trim()}
 						>
-							Send
+							{$t("messages.send")}
 						</button>
 					</div>
 				{/if}
@@ -308,22 +309,22 @@
 		<div class="modal-overlay" role="presentation" onclick={() => showNewMessage = false}>
 			<div class="modal" role="dialog" onclick={(e) => e.stopPropagation()}>
 				<div class="modal-header">
-					<h2>New Message</h2>
+					<h2>{$t("messages.new_message")}</h2>
 					<button class="modal-close" onclick={() => showNewMessage = false} aria-label="Close">&times;</button>
 				</div>
 				<div class="modal-body">
 					<input
 						type="text"
 						class="contact-search"
-						placeholder="Search community members..."
+						placeholder={$t("messages.search_contacts")}
 						bind:value={contactSearch}
 					/>
 					{#if loadingContacts}
-						<p class="loading">Loading contacts...</p>
+						<p class="loading">{$t("messages.loading_contacts")}</p>
 					{:else if contacts.length === 0}
-						<p class="empty-text">No contacts found. Join a community to message members.</p>
+						<p class="empty-text">{$t("messages.no_contacts")}</p>
 					{:else if filteredContacts.length === 0}
-						<p class="empty-text">No matching contacts.</p>
+						<p class="empty-text">{$t("messages.no_matching_contacts")}</p>
 					{:else}
 						<ul class="contact-list">
 							{#each filteredContacts as contact}

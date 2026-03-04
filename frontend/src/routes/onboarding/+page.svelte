@@ -3,6 +3,7 @@
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
+	import { t } from 'svelte-i18n';
 
 	// ── Types ──────────────────────────────────────────────────────────────
 	interface CommunityOut {
@@ -41,61 +42,61 @@
 	let creating = $state(false);
 
 	// ── Step 2 & 3: Skills and Items ────────────────────────────────────────
-	const skillSuggestions: Suggestion[] = [
-		{ label: 'Fixing bikes', category: 'repairs' },
-		{ label: 'Basic plumbing', category: 'repairs' },
-		{ label: 'Furniture repair', category: 'repairs' },
-		{ label: 'Sewing', category: 'crafts' },
-		{ label: 'Baking bread', category: 'cooking' },
-		{ label: 'Meal prep', category: 'cooking' },
-		{ label: 'Preserving food', category: 'cooking' },
-		{ label: 'Plant care', category: 'gardening' },
-		{ label: 'Composting', category: 'gardening' },
-		{ label: 'Growing vegetables', category: 'gardening' },
-		{ label: 'Computer help', category: 'tech' },
-		{ label: 'Phone setup', category: 'tech' },
-		{ label: 'WiFi troubleshooting', category: 'tech' },
-		{ label: 'Guitar', category: 'music' },
-		{ label: 'Piano', category: 'music' },
-		{ label: 'Singing', category: 'music' },
-		{ label: 'Yoga', category: 'fitness' },
-		{ label: 'Running buddy', category: 'fitness' },
-		{ label: 'Knitting', category: 'crafts' },
-		{ label: 'Woodworking', category: 'crafts' },
-		{ label: 'Painting', category: 'crafts' },
-		{ label: 'Math help', category: 'tutoring' },
-		{ label: 'Reading with kids', category: 'tutoring' },
-		{ label: 'Pet sitting', category: 'other' },
-		{ label: 'Dog walking', category: 'other' },
-		{ label: 'Moving help', category: 'other' },
-		{ label: 'Driving', category: 'other' },
-	];
+	const skillSuggestions: Suggestion[] = $derived([
+		{ label: $t('onboarding.skill_fixing_bikes'), category: 'repairs' },
+		{ label: $t('onboarding.skill_basic_plumbing'), category: 'repairs' },
+		{ label: $t('onboarding.skill_furniture_repair'), category: 'repairs' },
+		{ label: $t('onboarding.skill_sewing'), category: 'crafts' },
+		{ label: $t('onboarding.skill_baking_bread'), category: 'cooking' },
+		{ label: $t('onboarding.skill_meal_prep'), category: 'cooking' },
+		{ label: $t('onboarding.skill_preserving_food'), category: 'cooking' },
+		{ label: $t('onboarding.skill_plant_care'), category: 'gardening' },
+		{ label: $t('onboarding.skill_composting'), category: 'gardening' },
+		{ label: $t('onboarding.skill_growing_veg'), category: 'gardening' },
+		{ label: $t('onboarding.skill_computer_help'), category: 'tech' },
+		{ label: $t('onboarding.skill_phone_setup'), category: 'tech' },
+		{ label: $t('onboarding.skill_wifi'), category: 'tech' },
+		{ label: $t('onboarding.skill_guitar'), category: 'music' },
+		{ label: $t('onboarding.skill_piano'), category: 'music' },
+		{ label: $t('onboarding.skill_singing'), category: 'music' },
+		{ label: $t('onboarding.skill_yoga'), category: 'fitness' },
+		{ label: $t('onboarding.skill_running'), category: 'fitness' },
+		{ label: $t('onboarding.skill_knitting'), category: 'crafts' },
+		{ label: $t('onboarding.skill_woodworking'), category: 'crafts' },
+		{ label: $t('onboarding.skill_painting'), category: 'crafts' },
+		{ label: $t('onboarding.skill_math_help'), category: 'tutoring' },
+		{ label: $t('onboarding.skill_reading_kids'), category: 'tutoring' },
+		{ label: $t('onboarding.skill_pet_sitting'), category: 'other' },
+		{ label: $t('onboarding.skill_dog_walking'), category: 'other' },
+		{ label: $t('onboarding.skill_moving_help'), category: 'other' },
+		{ label: $t('onboarding.skill_driving'), category: 'other' },
+	]);
 
-	const itemSuggestions: Suggestion[] = [
-		{ label: 'Drill', category: 'tool' },
-		{ label: 'Hammer', category: 'tool' },
-		{ label: 'Screwdriver set', category: 'tool' },
-		{ label: 'Ladder', category: 'tool' },
-		{ label: 'Saw', category: 'tool' },
-		{ label: 'Projector', category: 'electronics' },
-		{ label: 'Portable speaker', category: 'electronics' },
-		{ label: 'Extension cord', category: 'electronics' },
-		{ label: 'Bicycle', category: 'vehicle' },
-		{ label: 'Cargo bike', category: 'vehicle' },
-		{ label: 'Folding table', category: 'furniture' },
-		{ label: 'Extra chairs', category: 'furniture' },
-		{ label: 'Moving dolly', category: 'furniture' },
-		{ label: 'Rain boots', category: 'clothing' },
-		{ label: 'Winter jacket', category: 'clothing' },
-		{ label: 'Bread maker', category: 'food' },
-		{ label: 'Slow cooker', category: 'food' },
-		{ label: 'Blender', category: 'food' },
-		{ label: 'Board games', category: 'other' },
-		{ label: 'Books', category: 'other' },
-		{ label: 'Camping gear', category: 'other' },
-		{ label: 'Tent', category: 'other' },
-		{ label: 'Sleeping bag', category: 'other' },
-	];
+	const itemSuggestions: Suggestion[] = $derived([
+		{ label: $t('onboarding.item_drill'), category: 'tool' },
+		{ label: $t('onboarding.item_hammer'), category: 'tool' },
+		{ label: $t('onboarding.item_screwdriver'), category: 'tool' },
+		{ label: $t('onboarding.item_ladder'), category: 'tool' },
+		{ label: $t('onboarding.item_saw'), category: 'tool' },
+		{ label: $t('onboarding.item_projector'), category: 'electronics' },
+		{ label: $t('onboarding.item_speaker'), category: 'electronics' },
+		{ label: $t('onboarding.item_extension_cord'), category: 'electronics' },
+		{ label: $t('onboarding.item_bicycle'), category: 'vehicle' },
+		{ label: $t('onboarding.item_cargo_bike'), category: 'vehicle' },
+		{ label: $t('onboarding.item_folding_table'), category: 'furniture' },
+		{ label: $t('onboarding.item_extra_chairs'), category: 'furniture' },
+		{ label: $t('onboarding.item_moving_dolly'), category: 'furniture' },
+		{ label: $t('onboarding.item_rain_boots'), category: 'clothing' },
+		{ label: $t('onboarding.item_winter_jacket'), category: 'clothing' },
+		{ label: $t('onboarding.item_bread_maker'), category: 'food' },
+		{ label: $t('onboarding.item_slow_cooker'), category: 'food' },
+		{ label: $t('onboarding.item_blender'), category: 'food' },
+		{ label: $t('onboarding.item_board_games'), category: 'other' },
+		{ label: $t('onboarding.item_books'), category: 'other' },
+		{ label: $t('onboarding.item_camping_gear'), category: 'other' },
+		{ label: $t('onboarding.item_tent'), category: 'other' },
+		{ label: $t('onboarding.item_sleeping_bag'), category: 'other' },
+	]);
 
 	// Track which chips are loading, added, or errored
 	let skillsAdded = $state<Set<string>>(new Set());
@@ -120,17 +121,17 @@
 
 	// ── Helpers: encouragement text ────────────────────────────────────────
 	function skillEncouragement(count: number): string {
-		if (count === 0) return 'Tap any skill you have — your neighbours will appreciate it';
-		if (count === 1) return 'Great start! 2 more to go';
-		if (count === 2) return 'Almost there! One more';
-		return 'Amazing! You can always add more later';
+		if (count === 0) return $t('onboarding.skills_encouragement_0');
+		if (count === 1) return $t('onboarding.skills_encouragement_1');
+		if (count === 2) return $t('onboarding.skills_encouragement_2');
+		return $t('onboarding.skills_encouragement_3');
 	}
 
 	function itemEncouragement(count: number): string {
-		if (count === 0) return 'Tap anything you have at home — no commitment to lend right now';
-		if (count === 1) return 'Nice! 2 more to go';
-		if (count === 2) return 'One more and you\'re set!';
-		return 'Your neighbours will love knowing this!';
+		if (count === 0) return $t('onboarding.items_encouragement_0');
+		if (count === 1) return $t('onboarding.items_encouragement_1');
+		if (count === 2) return $t('onboarding.items_encouragement_2');
+		return $t('onboarding.items_encouragement_3');
 	}
 
 	// ── Step 1: Community actions ──────────────────────────────────────────
@@ -299,7 +300,7 @@
 	<!-- ── Progress Steps indicator (steps 1–3) ──── -->
 	{#if step !== 'done'}
 		<div class="progress-steps">
-			{#each [['community', 'Community'], ['skills', 'Skills'], ['items', 'Items']] as [s, label] (s)}
+			{#each [['community', $t('onboarding.step_community')], ['skills', $t('onboarding.step_skills')], ['items', $t('onboarding.step_items')]] as [s, label] (s)}
 				{@const stepIndex = ['community', 'skills', 'items'].indexOf(s as string)}
 				{@const currentIndex = ['community', 'skills', 'items'].indexOf(step)}
 				{@const isDone = stepIndex < currentIndex}
@@ -327,9 +328,9 @@
 	{#if step === 'community'}
 		<div class="step-content fade-in">
 			<div class="onboarding-header">
-				<h1>Find your community</h1>
+				<h1>{$t('onboarding.title')}</h1>
 				<p class="subtitle">
-					Search by city, neighbourhood name, or postal code to find an existing group — or create a new one.
+					{$t('onboarding.find_subtitle')}
 				</p>
 			</div>
 
