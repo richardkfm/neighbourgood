@@ -5,91 +5,10 @@
 	import { api } from '$lib/api';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { bandwidth, setPlatformMode } from '$lib/stores/theme';
-	import type { ActivityOut, ActivityList } from '$lib/types';
-
-	interface UserProfile {
-		id: number;
-		display_name: string;
-		email: string;
-	}
-
-	interface CommunityOut {
-		id: number;
-		name: string;
-		description: string | null;
-		postal_code: string;
-		city: string;
-		country_code: string;
-		mode: string;
-		member_count: number;
-		is_active: boolean;
-		merged_into_id: number | null;
-		created_by: UserProfile;
-		created_at: string;
-	}
-
-	interface CrisisStatus {
-		community_id: number;
-		mode: string;
-		votes_to_activate: number;
-		votes_to_deactivate: number;
-		total_members: number;
-		threshold_pct: number;
-	}
-
-	interface TicketOut {
-		id: number;
-		community_id: number;
-		author: UserProfile;
-		ticket_type: string;
-		title: string;
-		description: string;
-		status: string;
-		urgency: string;
-		assigned_to: UserProfile | null;
-		created_at: string;
-		updated_at: string;
-	}
-
-	interface TicketList {
-		items: TicketOut[];
-		total: number;
-	}
-
-	interface MemberOut {
-		id: number;
-		user: UserProfile;
-		role: string;
-		joined_at: string;
-	}
-
-	interface MergeSuggestion {
-		source: CommunityOut;
-		target: CommunityOut;
-		reason: string;
-	}
-
-	interface InviteOut {
-		id: number;
-		code: string;
-		community_id: number;
-		created_by_id: number;
-		max_uses: number | null;
-		use_count: number;
-		is_active: boolean;
-		expires_at: string | null;
-		created_at: string;
-	}
-
-	interface ResourceItem {
-		id: number;
-		title: string;
-		description: string | null;
-		category: string;
-		image_url: string | null;
-		is_available: boolean;
-		owner: { display_name: string };
-	}
+	import type { ActivityOut, ActivityList, CommunityOut, CrisisStatus, EmergencyTicket as TicketOut, TicketList, CommunityMember as MemberOut, MergeSuggestion, InviteOut, Resource as ResourceItem } from '$lib/types';
+	import CrisisModePanel from '$lib/components/community/CrisisModePanel.svelte';
+	import MembersList from '$lib/components/community/MembersList.svelte';
+	import InviteLinks from '$lib/components/community/InviteLinks.svelte';
 
 	const CATEGORY_ICONS: Record<string, string> = {
 		tool: '🔧', vehicle: '🚗', electronics: '⚡', furniture: '🪑',
@@ -126,11 +45,6 @@
 
 	// Invite state
 	let invites = $state<InviteOut[]>([]);
-	let showInviteForm = $state(false);
-	let inviteMaxUses = $state('');
-	let inviteExpiresHours = $state('');
-	let creatingInvite = $state(false);
-	let copiedCode = $state('');
 	let activities = $state<ActivityOut[]>([]);
 
 	const communityId = $derived(Number($page.params.id));
@@ -264,48 +178,6 @@
 		} finally {
 			merging = null;
 		}
-	}
-
-	async function createInvite() {
-		creatingInvite = true;
-		error = '';
-		try {
-			const body: Record<string, unknown> = { community_id: communityId };
-			if (inviteMaxUses) body.max_uses = Number(inviteMaxUses);
-			if (inviteExpiresHours) body.expires_in_hours = Number(inviteExpiresHours);
-			await api('/invites', { method: 'POST', auth: true, body });
-			showInviteForm = false;
-			inviteMaxUses = '';
-			inviteExpiresHours = '';
-			invites = await api<InviteOut[]>(`/invites?community_id=${communityId}`, { auth: true });
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not create invite';
-		} finally {
-			creatingInvite = false;
-		}
-	}
-
-	async function revokeInvite(inviteId: number) {
-		try {
-			await api(`/invites/${inviteId}`, { method: 'DELETE', auth: true });
-			invites = invites.filter((i) => i.id !== inviteId);
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not revoke invite';
-		}
-	}
-
-	function copyInviteLink(code: string) {
-		const url = `${window.location.origin}/invites/${code}`;
-		navigator.clipboard.writeText(url);
-		copiedCode = code;
-		setTimeout(() => { copiedCode = ''; }, 2000);
-	}
-
-	function formatExpiry(expiresAt: string | null): string {
-		if (!expiresAt) return 'Never';
-		const d = new Date(expiresAt);
-		if (d < new Date()) return 'Expired';
-		return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 	}
 
 	// ── Crisis mode functions ──────────────────────────
@@ -498,36 +370,17 @@
 		<!-- Crisis Mode Status (overview tab) -->
 		{#if activeTab === 'overview'}
 		{#if crisisStatus}
-			<section class="crisis-section slide-up" style="animation-delay: 0.04s">
-				<div class="crisis-header">
-					<div class="crisis-indicator" class:crisis-red={crisisStatus.mode === 'red'}>
-						<span class="crisis-dot"></span>
-						<span class="crisis-label">
-							{crisisStatus.mode === 'red' ? 'Red Sky (Crisis)' : 'Blue Sky (Normal)'}
-						</span>
-					</div>
-				</div>
-
-				{#if isMember}
-					<div class="vote-section">
-						<div class="vote-bar">
-							<div class="vote-info">
-								<span>Activate votes: <strong>{crisisStatus.votes_to_activate}</strong></span>
-								<span>Deactivate votes: <strong>{crisisStatus.votes_to_deactivate}</strong></span>
-								<span class="vote-threshold">Threshold: {crisisStatus.threshold_pct}% of {crisisStatus.total_members} members</span>
-							</div>
-							<div class="vote-actions">
-								<button class="btn-vote btn-vote-red" onclick={() => castVote('activate')} disabled={votingCrisis}>
-									Vote to Activate
-								</button>
-								<button class="btn-vote btn-vote-blue" onclick={() => castVote('deactivate')} disabled={votingCrisis}>
-									Vote to Deactivate
-								</button>
-							</div>
-						</div>
-					</div>
-				{/if}
-			</section>
+			<CrisisModePanel
+				{communityId}
+				{crisisStatus}
+				{isMember}
+				{isAdmin}
+				{votingCrisis}
+				{togglingCrisis}
+				showToggle={false}
+				onvote={castVote}
+				ontoggle={toggleCrisisMode}
+			/>
 		{/if}
 
 		{#if activities.length > 0}
@@ -631,37 +484,14 @@
 		{/if}
 
 		{#if activeTab === 'members'}
-		<section class="members-section slide-up" style="animation-delay: 0.05s">
-			<h2>Members</h2>
-			<div class="members-list">
-				{#each members as m (m.id)}
-					<div class="member-row">
-						<div class="member-info">
-							<span class="member-name">{m.user.display_name}</span>
-							{#if m.role === 'admin'}
-								<span class="role-badge">Admin</span>
-							{:else if m.role === 'leader'}
-								<span class="role-badge role-badge-leader">Leader</span>
-							{/if}
-						</div>
-						<div class="member-right">
-							{#if isAdmin && m.user.id !== $user?.id && m.role !== 'admin'}
-								{#if m.role === 'leader'}
-									<button class="btn-tiny" onclick={() => demoteLeader(m.user.id)} disabled={promotingUser === m.user.id}>
-										Demote
-									</button>
-								{:else}
-									<button class="btn-tiny" onclick={() => promoteToLeader(m.user.id)} disabled={promotingUser === m.user.id}>
-										Make Leader
-									</button>
-								{/if}
-							{/if}
-							<span class="member-date">Joined {new Date(m.joined_at).toLocaleDateString()}</span>
-						</div>
-					</div>
-				{/each}
-			</div>
-		</section>
+		<MembersList
+			{members}
+			{isAdmin}
+			currentUserId={$user?.id ?? null}
+			{promotingUser}
+			onpromote={promoteToLeader}
+			ondemote={demoteLeader}
+		/>
 		{/if}
 
 		{#if activeTab === 'resources'}
@@ -702,78 +532,25 @@
 		{#if activeTab === 'admin' && isAdmin}
 			<!-- Crisis toggle (admin only) -->
 			{#if crisisStatus}
-				<section class="crisis-section slide-up" style="animation-delay: 0.04s">
-					<div class="crisis-header">
-						<div class="crisis-indicator" class:crisis-red={crisisStatus.mode === 'red'}>
-							<span class="crisis-dot"></span>
-							<span class="crisis-label">
-								{crisisStatus.mode === 'red' ? 'Red Sky (Crisis)' : 'Blue Sky (Normal)'}
-							</span>
-						</div>
-						{#if crisisStatus.mode === 'blue'}
-							<button class="btn-crisis-activate" onclick={() => toggleCrisisMode('red')} disabled={togglingCrisis}>
-								{togglingCrisis ? 'Activating...' : 'Activate Crisis Mode'}
-							</button>
-						{:else}
-							<button class="btn-crisis-deactivate" onclick={() => toggleCrisisMode('blue')} disabled={togglingCrisis}>
-								{togglingCrisis ? 'Deactivating...' : 'Deactivate Crisis Mode'}
-							</button>
-						{/if}
-					</div>
-				</section>
+				<CrisisModePanel
+					{communityId}
+					{crisisStatus}
+					{isMember}
+					{isAdmin}
+					{votingCrisis}
+					{togglingCrisis}
+					showToggle={true}
+					onvote={castVote}
+					ontoggle={toggleCrisisMode}
+				/>
 			{/if}
-			<section class="invites-section slide-up" style="animation-delay: 0.15s">
-				<div class="section-header">
-					<h2>Invite Links</h2>
-					<button class="btn-small" onclick={() => (showInviteForm = !showInviteForm)}>
-						{showInviteForm ? 'Cancel' : 'Create Invite'}
-					</button>
-				</div>
-
-				{#if showInviteForm}
-					<div class="invite-form fade-in">
-						<div class="invite-form-row">
-							<label>
-								<span>Max uses (optional)</span>
-								<input type="number" min="1" bind:value={inviteMaxUses} placeholder="Unlimited" />
-							</label>
-							<label>
-								<span>Expires in hours (optional)</span>
-								<input type="number" min="1" bind:value={inviteExpiresHours} placeholder="Never" />
-							</label>
-						</div>
-						<button class="btn-primary" onclick={createInvite} disabled={creatingInvite}>
-							{creatingInvite ? 'Creating...' : 'Generate Link'}
-						</button>
-					</div>
-				{/if}
-
-				{#if invites.length === 0}
-					<p class="section-hint">No active invite links. Create one to invite new members.</p>
-				{:else}
-					<div class="invites-list">
-						{#each invites as inv (inv.id)}
-							<div class="invite-row">
-								<div class="invite-info">
-									<code class="invite-code">{inv.code.slice(0, 12)}...</code>
-									<span class="invite-meta">
-										{inv.use_count}{inv.max_uses ? `/${inv.max_uses}` : ''} used
-										&middot; Expires: {formatExpiry(inv.expires_at)}
-									</span>
-								</div>
-								<div class="invite-actions">
-									<button class="btn-small" onclick={() => copyInviteLink(inv.code)}>
-										{copiedCode === inv.code ? 'Copied!' : 'Copy Link'}
-									</button>
-									<button class="btn-small btn-small-danger" onclick={() => revokeInvite(inv.id)}>
-										Revoke
-									</button>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
-			</section>
+			<InviteLinks
+				{communityId}
+				{invites}
+				onrefresh={async () => {
+					invites = await api<InviteOut[]>(`/invites?community_id=${communityId}`, { auth: true });
+				}}
+			/>
 
 			{#if suggestions.length > 0}
 			<section class="merge-section slide-up" style="animation-delay: 0.1s">
@@ -969,7 +746,7 @@
 	.members-section h2,
 	.merge-section h2 {
 		font-size: 1.15rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.75rem;
 	}
 
@@ -1052,7 +829,7 @@
 
 	.suggestion-info h3 {
 		font-size: 0.95rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.3rem;
 	}
 
@@ -1142,7 +919,7 @@
 
 	.resources-section h2 {
 		font-size: 1.15rem;
-		font-weight: 600;
+		font-weight: 500;
 	}
 
 	.section-header {
@@ -1243,7 +1020,7 @@
 
 	.invites-section h2 {
 		font-size: 1.15rem;
-		font-weight: 600;
+		font-weight: 500;
 	}
 
 	.invite-form {
@@ -1505,7 +1282,7 @@
 
 	.tickets-section h2 {
 		font-size: 1.15rem;
-		font-weight: 600;
+		font-weight: 500;
 	}
 
 	.ticket-form {
@@ -1602,7 +1379,7 @@
 
 	.ticket-card h3 {
 		font-size: 0.92rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.15rem;
 	}
 

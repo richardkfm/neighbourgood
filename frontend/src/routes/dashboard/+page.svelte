@@ -353,7 +353,7 @@
 
 	h2 {
 		font-size: 1.2rem;
-		font-weight: 600;
+		font-weight: 500;
 		color: var(--color-text);
 		margin: 0 0 0.75rem 0;
 	}
@@ -452,7 +452,7 @@
 
 	.community-info h3 {
 		font-size: 1.05rem;
-		font-weight: 600;
+		font-weight: 500;
 		color: var(--color-text);
 		margin: 0;
 	}

@@ -4,17 +4,7 @@
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
-
-	// ── Types ──────────────────────────────────────────────────────────────
-	interface CommunityOut {
-		id: number;
-		name: string;
-		description: string | null;
-		postal_code: string;
-		city: string;
-		member_count: number;
-		is_active: boolean;
-	}
+	import type { CommunityOut } from '$lib/types';
 
 	interface Suggestion {
 		label: string;
@@ -685,7 +675,7 @@
 
 	.onboarding-header h1 {
 		font-size: 2rem;
-		font-weight: 700;
+		font-weight: 400;
 		letter-spacing: -0.02em;
 		margin-bottom: 0.5rem;
 	}
@@ -868,7 +858,7 @@
 
 	.done-screen h1 {
 		font-size: 2.2rem;
-		font-weight: 700;
+		font-weight: 400;
 		letter-spacing: -0.02em;
 	}
 
@@ -978,7 +968,7 @@
 
 	.card-info h3 {
 		font-size: 1rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.35rem;
 	}
 
@@ -1096,7 +1086,7 @@
 
 	.create-form h2 {
 		font-size: 1.15rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 1rem;
 	}
 

@@ -295,7 +295,7 @@
 
 	.feature-card h3 {
 		font-size: 1rem;
-		font-weight: 700;
+		font-weight: 500;
 		margin-bottom: 0.4rem;
 		color: var(--color-text);
 	}

@@ -265,7 +265,7 @@
 
 	.explore-header h1 {
 		font-size: 1.75rem;
-		font-weight: 700;
+		font-weight: 400;
 		letter-spacing: -0.02em;
 	}
 
@@ -380,7 +380,7 @@
 
 	.community-list h2 {
 		font-size: 1.2rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.75rem;
 	}
 
@@ -427,7 +427,7 @@
 
 	.list-card-header h3 {
 		font-size: 0.95rem;
-		font-weight: 600;
+		font-weight: 500;
 	}
 
 	.badge-active {
@@ -504,7 +504,7 @@
 
 	.cta-section h2 {
 		font-size: 1.25rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.5rem;
 	}
 

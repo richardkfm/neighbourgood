@@ -12,6 +12,12 @@ from app.models.crisis import CrisisVote, EmergencyTicket, TicketComment
 from app.models.user import User
 from app.services.activity import record_activity
 from app.services.webhooks import dispatch_event
+from app.utils.authorization import (
+    require_admin,
+    require_admin_or_leader,
+    require_community,
+    require_membership,
+)
 from app.schemas.crisis import (
     CrisisModeStatus,
     CrisisModeToggle,
@@ -70,46 +76,7 @@ def _ticket_to_out(ticket: EmergencyTicket) -> EmergencyTicketOut:
     )
 
 
-# ── Helpers ───────────────────────────────────────────────────────
-
-
-def _require_membership(
-    db: Session, community_id: int, user_id: int
-) -> CommunityMember:
-    membership = (
-        db.query(CommunityMember)
-        .filter(
-            CommunityMember.community_id == community_id,
-            CommunityMember.user_id == user_id,
-        )
-        .first()
-    )
-    if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not a member"
-        )
-    return membership
-
-
-def _require_admin(db: Session, community_id: int, user_id: int) -> CommunityMember:
-    membership = _require_membership(db, community_id, user_id)
-    if membership.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
-    return membership
-
-
-def _require_admin_or_leader(
-    db: Session, community_id: int, user_id: int
-) -> CommunityMember:
-    membership = _require_membership(db, community_id, user_id)
-    if membership.role not in ("admin", "leader"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin or leader access required",
-        )
-    return membership
+# ── Local helpers ─────────────────────────────────────────────────
 
 
 def _get_community(db: Session, community_id: int) -> Community:
@@ -134,7 +101,7 @@ def toggle_crisis_mode(
 ):
     """Admin-only: force-toggle the community between blue (normal) and red (crisis) mode."""
     community = _get_community(db, community_id)
-    _require_admin(db, community_id, current_user.id)
+    require_admin(db, community_id, current_user.id)
 
     community.mode = body.mode
     # Clear existing votes when admin overrides
@@ -232,7 +199,7 @@ def cast_crisis_vote(
 ):
     """Cast a vote to activate or deactivate crisis mode. One vote per member."""
     community = _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     # Check for existing vote (replace if different)
     existing = (
@@ -347,7 +314,7 @@ def create_ticket(
 ):
     """Create an emergency ticket (request, offer, or emergency ping)."""
     community = _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     # Emergency pings require crisis mode to be active
     if body.ticket_type == "emergency_ping" and community.mode != "red":
@@ -410,7 +377,7 @@ def list_tickets(
 ):
     """List emergency tickets for a community."""
     _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     query = (
         db.query(EmergencyTicket)
@@ -455,7 +422,7 @@ def triage_tickets(
     Intended for neighbourhood leaders/admins to prioritise response work.
     """
     _get_community(db, community_id)
-    membership = _require_membership(db, community_id, current_user.id)
+    membership = require_membership(db, community_id, current_user.id)
 
     if membership.role not in ("admin", "leader"):
         raise HTTPException(
@@ -488,7 +455,7 @@ def get_ticket(
 ):
     """Get a single emergency ticket."""
     _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     ticket = (
         db.query(EmergencyTicket)
@@ -520,7 +487,7 @@ def update_ticket(
 ):
     """Update a ticket. Author, leaders, or admins can update."""
     _get_community(db, community_id)
-    membership = _require_membership(db, community_id, current_user.id)
+    membership = require_membership(db, community_id, current_user.id)
 
     ticket = (
         db.query(EmergencyTicket)
@@ -603,7 +570,7 @@ def list_ticket_comments(
 ):
     """List comments on an emergency ticket. Any community member can view."""
     _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     ticket = (
         db.query(EmergencyTicket)
@@ -642,7 +609,7 @@ def create_ticket_comment(
 ):
     """Add a comment to an emergency ticket. Any community member can comment."""
     _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     ticket = (
         db.query(EmergencyTicket)
@@ -680,7 +647,7 @@ def list_leaders(
 ):
     """List neighbourhood leaders for a community."""
     _get_community(db, community_id)
-    _require_membership(db, community_id, current_user.id)
+    require_membership(db, community_id, current_user.id)
 
     leaders = (
         db.query(CommunityMember)
@@ -706,7 +673,7 @@ def promote_to_leader(
 ):
     """Promote a member to neighbourhood leader. Admin only."""
     community = _get_community(db, community_id)
-    _require_admin(db, community_id, current_user.id)
+    require_admin(db, community_id, current_user.id)
 
     membership = (
         db.query(CommunityMember)
@@ -756,7 +723,7 @@ def demote_leader(
 ):
     """Demote a leader back to regular member. Admin only."""
     community = _get_community(db, community_id)
-    _require_admin(db, community_id, current_user.id)
+    require_admin(db, community_id, current_user.id)
 
     membership = (
         db.query(CommunityMember)

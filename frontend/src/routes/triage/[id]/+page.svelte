@@ -466,7 +466,7 @@
 
   .section-heading {
     font-size: 1.2rem;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--color-text);
     margin: 0 0 1rem;
   }

@@ -126,6 +126,32 @@ export interface ActivityList {
 	total: number;
 }
 
+export type ResourceItem = Resource;
+
+export interface CrisisStatus {
+	community_id: number;
+	mode: string;
+	votes_to_activate: number;
+	votes_to_deactivate: number;
+	total_members: number;
+	threshold_pct: number;
+}
+
+export interface InviteOut {
+	id: number;
+	community_id: number;
+	code: string;
+	max_uses: number | null;
+	use_count: number;
+	expires_at: string | null;
+	created_at: string;
+}
+
+export interface TicketList {
+	items: EmergencyTicket[];
+	total: number;
+}
+
 export interface Webhook {
 	id: number;
 	owner_type: string;

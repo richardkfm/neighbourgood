@@ -16,6 +16,7 @@ from app.models.community import CommunityMember
 from app.models.resource import Resource
 from app.models.user import User
 from app.services.activity import record_activity
+from app.services.file_upload import ALLOWED_EXTENSIONS, ALLOWED_IMAGE_TYPES, validate_image_magic
 from app.services.webhooks import dispatch_event
 from app.schemas.resource import (
     CATEGORY_META,
@@ -30,26 +31,6 @@ from app.schemas.resource import (
 )
 
 router = APIRouter(prefix="/resources", tags=["resources"])
-
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
-
-# Magic bytes for image validation
-_IMAGE_SIGNATURES = {
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG\r\n\x1a\n": "image/png",
-    b"RIFF": "image/webp",      # WebP starts with RIFF....WEBP
-    b"GIF87a": "image/gif",
-    b"GIF89a": "image/gif",
-}
-
-
-def _validate_image_magic(data: bytes) -> bool:
-    """Check that file contents start with a recognised image signature."""
-    for sig in _IMAGE_SIGNATURES:
-        if data[:len(sig)] == sig:
-            return True
-    return False
 
 
 def _resource_to_out(resource: Resource) -> dict:
@@ -352,7 +333,7 @@ async def upload_image(
         )
 
     # Validate magic bytes to prevent disguised file uploads
-    if not _validate_image_magic(contents):
+    if not validate_image_magic(contents):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="File content does not match a valid image format",

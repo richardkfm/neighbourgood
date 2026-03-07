@@ -394,7 +394,7 @@
 
 	.my-community-section h2 {
 		font-size: 1.2rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.75rem;
 	}
 
@@ -421,7 +421,7 @@
 
 	.my-card-left h3 {
 		font-size: 1.05rem;
-		font-weight: 600;
+		font-weight: 500;
 		margin-bottom: 0.35rem;
 	}
 
