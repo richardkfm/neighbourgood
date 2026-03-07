@@ -472,6 +472,7 @@ Current test files (21): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 1.4.0 | 2026-03-07 | Decentralized data sync between instances: public snapshot endpoint, pull-based sync from all known peers, incremental cursors, federated resource/skill browsing, 33 new tests |
 | 1.3.0 | 2026-03-07 | Frontend refactor: extract CrisisModePanel, MembersList, InviteLinks sub-components; shared ErrorMessage/LoadingSpinner; backend utils (authorization.py, db.py, file_upload.py); remove lifespan auto-migration; lighter desktop heading font weights |
 | 1.2.0 | 2026-03-02 | BitChat BLE mesh gateway integration: offline crisis communication via Bluetooth Low Energy, Web Bluetooth connection manager, mesh Svelte store, POST /mesh/sync endpoint, 260 tests |
 | 1.1.0 | 2026-03-01 | Phase 5 complete: offline item browsing, request queuing, background sync, data export; Phase 6 start: multi-language support (7 languages + RTL), image upload fixes |

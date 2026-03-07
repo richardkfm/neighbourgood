@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.4.0] - 2026-03-07
+
+### Added
+
+- **Decentralized data sync between instances** — pull-based federation sync so NeighbourGood instances can discover and cache each other's public resources and skills
+  - `GET /federation/sync/snapshot` — public endpoint exposing this instance's available resources and skills for remote peers to pull; supports `?since=` ISO-8601 timestamp for incremental sync
+  - `POST /federation/sync/pull` — admin endpoint that pulls snapshots from all reachable known instances, upserts `federated_resources` / `federated_skills` records, and records outcome in `instance_sync_logs`; automatically uses the last successful sync timestamp as a cursor to minimise transfer size
+  - `GET /federation/sync/status` — shows last sync result (status, item counts, error) per known instance
+  - `GET /federation/federated-resources` — browse resources synced from other instances; filterable by category, source instance, and availability
+  - `GET /federation/federated-skills` — browse skills synced from other instances; filterable by category, skill type, and source instance
+  - Three new SQLAlchemy models: `FederatedResource`, `FederatedSkill`, `InstanceSyncLog`
+  - 33 new backend tests covering snapshot filtering, pull upsert/error/cursor logic, sync status, and browse filtering
+
 ## [1.3.0] - 2026-03-07
 
 ### Changed
