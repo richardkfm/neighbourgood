@@ -17,6 +17,7 @@ from app.models.user import User
 from app.models.webhook import TelegramLinkToken
 from app.schemas.webhook import TelegramGroupLinkStart, TelegramLinkStart
 from app.services import telegram as tg
+from app.services.telegram_ai import get_primary_community, handle_nl_message
 
 router = APIRouter(tags=["telegram"])
 
@@ -184,7 +185,24 @@ async def telegram_webhook(
     text: str = message.get("text", "")
     chat_type = message.get("chat", {}).get("type", "private")
 
+    # ── Natural language messages (private chats from linked users) ──────────
     if not text.startswith("/"):
+        if chat_type == "private":
+            user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
+            if user:
+                community = get_primary_community(user, db)
+                reply = handle_nl_message(text, user, community, db)
+                tg.send_message(chat_id, reply)
+        elif chat_type in ("group", "supergroup"):
+            community = (
+                db.query(Community).filter(Community.telegram_group_id == chat_id).first()
+            )
+            if community:
+                # In group chats, only handle crisis summary queries for linked communities
+                lower = text.lower()
+                if any(kw in lower for kw in ("crisis", "emergency", "ticket", "what's happening", "whats happening")):
+                    from app.services.telegram_ai import _exec_summarize_crisis
+                    tg.send_message(chat_id, _exec_summarize_crisis(community, db))
         return {"ok": True}
 
     # Strip bot mention suffix (e.g. /start@BotName)
