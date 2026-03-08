@@ -167,7 +167,7 @@ If a security incident is discovered:
 ## Questions?
 
 For security questions or to discuss potential issues privately:
-- **Email:** security@neighbourgood.community
+- **Email:** security@neighbourgood.eu
 - **Response SLA:** 48 hours for all reports
 
 ---

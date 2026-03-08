@@ -44,7 +44,7 @@ Activated by an admin or community vote when an emergency occurs:
 ### With Docker (recommended)
 
 ```bash
-git clone https://github.com/alcoolio/neighbourgood.git
+git clone https://github.com/neighbourgood/neighbourgood.git
 cd neighbourgood
 cp .env.example .env
 

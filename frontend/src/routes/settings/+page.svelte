@@ -312,7 +312,7 @@
 			</div>
 
 			<button type="submit" class="btn btn-primary" disabled={passwordForm.loading}>
-				{$passwordForm.loading ? $t('settings.changing') : $t('settings.change_password')}
+				{passwordForm.loading ? $t('settings.changing') : $t('settings.change_password')}
 			</button>
 		</form>
 	</div>
@@ -352,7 +352,7 @@
 			</div>
 
 			<button type="submit" class="btn btn-primary" disabled={emailForm.loading}>
-				{$emailForm.loading ? $t('settings.changing') : $t('settings.change_email')}
+				{emailForm.loading ? $t('settings.changing') : $t('settings.change_email')}
 			</button>
 		</form>
 	</div>
@@ -379,7 +379,7 @@
 					onclick={unlinkTelegram}
 					disabled={telegramState.unlinking}
 				>
-					{$telegramState.unlinking ? $t('settings.changing') : $t('settings.telegram_unlink')}
+					{telegramState.unlinking ? $t('settings.changing') : $t('settings.telegram_unlink')}
 				</button>
 			</div>
 		{:else if telegramState.botUrl}
@@ -396,7 +396,7 @@
 				onclick={startTelegramLink}
 				disabled={telegramState.loading}
 			>
-				{$telegramState.loading ? $t('settings.changing') : $t('settings.telegram_link')}
+				{telegramState.loading ? $t('settings.changing') : $t('settings.telegram_link')}
 			</button>
 		{/if}
 	</div>
@@ -455,7 +455,7 @@
 				</div>
 			</div>
 			<button type="submit" class="btn btn-primary" disabled={webhookForm.loading || webhookForm.event_types.length === 0}>
-				{$webhookForm.loading ? $t('settings.adding') : $t('settings.add_webhook')}
+				{webhookForm.loading ? $t('settings.adding') : $t('settings.add_webhook')}
 			</button>
 		</form>
 	</div>
