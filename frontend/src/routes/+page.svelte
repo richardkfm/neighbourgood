@@ -43,7 +43,7 @@
 			{#if $isLoggedIn}
 				<a href="/resources" class="btn-hero">{$t('home.browse_resources')}</a>
 			{:else}
-				<a href="/register" class="btn-hero">{$t('home.get_started')}</a>
+				<a href="/explore" class="btn-hero">{$t('home.get_started')}</a>
 				<a href="/login" class="btn-hero-secondary">{$t('nav.login')}</a>
 			{/if}
 		</div>
