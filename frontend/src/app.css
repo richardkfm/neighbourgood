@@ -23,7 +23,7 @@
 	--color-success-bg: #f0fdf4;
 	--color-status-dot: #16a34a;
 
-	--font-heading: 'Abril Fatface', Georgia, 'Times New Roman', serif;
+	--font-heading: Georgia, 'Times New Roman', serif;
 	--font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
 	--radius-sm: 0.5rem;
@@ -406,7 +406,7 @@ input:focus, textarea:focus, select:focus {
 [dir='rtl'] h1,
 [dir='rtl'] h2,
 [dir='rtl'] h3 {
-	font-family: 'Segoe UI', 'Noto Sans Arabic', 'Arabic Typesetting', 'Amiri', serif;
+	font-family: Georgia, 'Segoe UI', 'Noto Sans Arabic', 'Arabic Typesetting', 'Amiri', serif;
 	letter-spacing: 0;
 }
 

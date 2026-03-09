@@ -172,7 +172,7 @@
 		letter-spacing: -0.01em;
 		color: var(--color-text);
 		margin-bottom: 1.25rem;
-		font-family: var(--font-heading, 'Abril Fatface', Georgia, serif);
+		font-family: Georgia, 'Times New Roman', serif;
 	}
 
 	.hero-accent {
