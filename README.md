@@ -105,7 +105,7 @@ The smart matching engine and Telegram AI assistant support an optional LLM back
 | CPU | 4+ cores | Inference is slow on < 4 cores |
 | RAM | 8 GB | 16 GB recommended for 7B models |
 | Disk | 10 GB extra | Per model (e.g. `llama3.2:3b` ≈ 2 GB, `mistral:7b` ≈ 4 GB) |
-| GPU (optional) | CUDA / ROCm / Apple Metal | Dramatically faster; not required |
+| GPU (optional) | CUDA / ROCm / Apple Silicon | Dramatically faster; not required |
 
 Recommended model for low-resource hosts: `llama3.2:3b` via [Ollama](https://ollama.com). See [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md) for configuration. Without a local LLM configured, all features remain available — AI re-ranking simply falls back to rule-based matching.
 
