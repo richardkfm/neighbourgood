@@ -229,17 +229,30 @@ def test_csrf_token_reject_expired():
 # ── CSRF middleware (production mode) ────────────────────────────────────────
 
 
-def test_csrf_middleware_blocks_unauthenticated_post_without_token(client, monkeypatch):
-    """In production mode, unauthenticated POST without CSRF token must be rejected."""
+def test_csrf_middleware_allows_json_post_without_token(client, monkeypatch):
+    """JSON requests are exempt — Content-Type: application/json triggers a CORS
+    preflight in real browsers, so CSRF is mitigated by CORS itself."""
     import app.config as cfg
 
     monkeypatch.setattr(cfg.settings, "debug", False)
     res = client.post(
         "/auth/register",
-        json={"email": "x@example.com", "password": "Abc12345", "display_name": "X"},
+        json={"email": "jsonok@example.com", "password": "Abc12345", "display_name": "X"},
+    )
+    # Should reach the handler, not be blocked by CSRF
+    assert res.status_code != 403
+
+
+def test_csrf_middleware_blocks_form_post_without_token(client, monkeypatch):
+    """Form-encoded POST without CSRF token must be rejected in production."""
+    import app.config as cfg
+
+    monkeypatch.setattr(cfg.settings, "debug", False)
+    res = client.post(
+        "/auth/login",
+        data={"email": "x@example.com", "password": "Abc12345"},
         headers={"Origin": "http://localhost:5173"},
     )
-    # No X-CSRF-Token → should be blocked
     assert res.status_code == 403
     assert "CSRF" in res.json()["detail"]
 
@@ -253,35 +266,35 @@ def test_csrf_middleware_allows_bearer_post_without_token(client, auth_headers, 
     assert res.status_code == 200
 
 
-def test_csrf_middleware_allows_unauthenticated_post_with_valid_token(client, monkeypatch):
-    """In production mode, CSRF token + matching Origin allows the request."""
+def test_csrf_middleware_allows_form_post_with_valid_token(client, monkeypatch):
+    """In production mode, CSRF token + matching Origin allows form submissions."""
     import app.config as cfg
     from app.middleware.csrf import generate_csrf_token
 
     monkeypatch.setattr(cfg.settings, "debug", False)
     token = generate_csrf_token()
     res = client.post(
-        "/auth/register",
-        json={"email": "valid@example.com", "password": "Valid123!", "display_name": "V"},
+        "/auth/login",
+        data={"email": "valid@example.com", "password": "Valid123!"},
         headers={
             "Origin": "http://localhost:5173",
             "X-CSRF-Token": token,
         },
     )
-    # Should reach the handler (201 or 409 depending on state, but not 403)
+    # Should reach the handler (401 for bad credentials, but not 403 CSRF)
     assert res.status_code != 403
 
 
 def test_csrf_middleware_blocks_wrong_origin(client, monkeypatch):
-    """In production mode, a non-allowed Origin is rejected."""
+    """In production mode, a non-allowed Origin is rejected for form submissions."""
     import app.config as cfg
     from app.middleware.csrf import generate_csrf_token
 
     monkeypatch.setattr(cfg.settings, "debug", False)
     token = generate_csrf_token()
     res = client.post(
-        "/auth/register",
-        json={"email": "evil@attacker.com", "password": "Evil123!", "display_name": "E"},
+        "/auth/login",
+        data={"email": "evil@attacker.com", "password": "Evil123!"},
         headers={
             "Origin": "http://evil.attacker.com",
             "X-CSRF-Token": token,

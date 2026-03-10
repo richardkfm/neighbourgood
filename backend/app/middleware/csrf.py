@@ -2,32 +2,36 @@
 
 Strategy
 --------
-NeighbourGood is a Bearer-token API, so classic cookie-based CSRF is not the
-primary threat — a browser cannot attach an ``Authorization: Bearer …`` header
-in a cross-origin form POST without triggering a CORS preflight that the server
-will reject.  However, defence-in-depth is valuable and the platform does serve
-browser clients, so we apply two complementary controls:
+NeighbourGood is a JSON API with Bearer-token auth, so three layers already
+mitigate CSRF for the vast majority of requests:
 
-1. **Origin / Referer validation** — for every state-changing request
-   (POST / PUT / PATCH / DELETE) that does NOT carry a ``Bearer`` token we
-   verify that the ``Origin`` (or, as a fallback, the ``Referer``) header
-   matches one of the configured CORS origins.  Requests without either header
-   are rejected unless ``NG_DEBUG=true``.
+1. **Bearer tokens** — the ``Authorization: Bearer …`` header cannot be
+   attached by a browser in a cross-origin request without triggering a CORS
+   preflight.  All authenticated endpoints are therefore inherently safe.
 
-2. **X-CSRF-Token header** — a CSRF double-submit token can be obtained via
-   ``GET /auth/csrf-token`` and must be sent back as the ``X-CSRF-Token``
-   request header for state-changing requests from browser sessions that do
-   not use a Bearer token.  Bearer-authenticated requests are exempt (the
-   token is required only when the endpoint is unauthenticated or
-   cookie-authenticated).
+2. **JSON Content-Type** — ``Content-Type: application/json`` is *not* a
+   `CORS-safelisted request-header value`_, so a cross-origin POST with a
+   JSON body also triggers a preflight.  Because the CORS middleware only
+   allows configured origins, the browser blocks the request before it
+   reaches the handler.
+
+3. **Origin / Referer validation** — as a defence-in-depth layer for any
+   remaining form-encoded (``application/x-www-form-urlencoded`` or
+   ``multipart/form-data``) requests that do *not* carry a Bearer token, we
+   verify the ``Origin`` (or ``Referer``) against the configured CORS origins
+   and require a valid ``X-CSRF-Token`` header.
 
 Exemptions
 ----------
 - ``GET``, ``HEAD``, ``OPTIONS`` — safe / idempotent; never checked.
-- Any request that carries ``Authorization: Bearer …`` — the browser cannot
-  attach that header in a cross-origin request without a CORS preflight, so
-  CSRF via form/img/script injection is not possible.
-- Requests from ``localhost`` in debug mode — eases local development.
+- ``Authorization: Bearer …`` — preflight-protected; exempt.
+- ``Content-Type: application/json`` — preflight-protected; exempt.
+- Machine-to-machine endpoints (federation, Telegram webhook, mesh sync) —
+  use their own auth mechanisms; exempt.
+- Debug mode — all checks skipped for local development.
+
+.. _CORS-safelisted request-header value:
+   https://fetch.spec.whatwg.org/#cors-safelisted-request-header
 """
 
 import hashlib
@@ -151,11 +155,18 @@ class CsrfMiddleware(BaseHTTPMiddleware):
         if auth_header.lower().startswith("bearer "):
             return await call_next(request)
 
+        # JSON requests are exempt — Content-Type: application/json is NOT a
+        # CORS-safelisted header value, so the browser MUST send a preflight.
+        # If CORS doesn't allow the origin, the request never reaches us.
+        content_type = (request.headers.get("content-type") or "").lower()
+        if "application/json" in content_type:
+            return await call_next(request)
+
         # Machine-to-machine endpoints use their own auth — exempt from CSRF.
         if request.url.path in _M2M_EXEMPT_PATHS:
             return await call_next(request)
 
-        # For unauthenticated state-changing requests, require:
+        # For form-encoded unauthenticated requests, require:
         #   (a) a matching Origin/Referer, AND
         #   (b) a valid X-CSRF-Token header
         csrf_token = request.headers.get("x-csrf-token", "")
