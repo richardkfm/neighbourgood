@@ -4,12 +4,14 @@
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
+<a id="vision"></a>
 ## 💡 Vision
 
 Modern neighbourhoods have everything they need — the problem is that resources sit idle in individual households. NeighbourGood makes it easy to share tools, vehicles, equipment, food, and skills within a community, reducing waste and building real connections between neighbours.
 
 But sharing goes beyond convenience. When a crisis hits — a flood, a power outage, a pandemic — the same network that shared a drill last Tuesday becomes a lifeline. NeighbourGood's **dual-state architecture** switches the platform from everyday comfort mode into emergency coordination mode with a single action.
 
+<a id="dual-state-architecture"></a>
 ## 🔄 Dual-State Architecture
 
 ### 🔵 Blue Sky Mode (Normal Operation)
@@ -32,6 +34,7 @@ Activated by an admin or community vote when an emergency occurs:
 - **Neighbourhood Leaders** – Pre-defined coordinators who can triage and assign
 - **Offline-First** – PWA with local caching, BLE mesh networking for internet-free crisis coordination
 
+<a id="tech-stack"></a>
 ## 🛠️ Tech Stack
 
 | Layer      | Technology                     | Why                                              |
@@ -41,6 +44,7 @@ Activated by an admin or community vote when an emergency occurs:
 | Database   | PostgreSQL (prod) / SQLite (dev) | PostgreSQL in Docker for production, SQLite for quick local dev |
 | Deployment | Docker Compose                 | Single `docker-compose up` to run everything      |
 
+<a id="quick-start"></a>
 ## 🚀 Quick Start
 
 ### With Docker (recommended)
@@ -82,6 +86,7 @@ npm install
 npm run dev
 ```
 
+<a id="system-requirements"></a>
 ## 🖥️ System Requirements
 
 ### Minimum (VPS / Self-hosting)
@@ -113,6 +118,7 @@ Recommended model for low-resource hosts: `llama3.2:3b` via [Ollama](https://oll
 
 ---
 
+<a id="project-structure"></a>
 ## 📁 Project Structure
 
 ```
@@ -145,6 +151,7 @@ neighbourgood/
 └── README.md
 ```
 
+<a id="offline-first-mesh-networking"></a>
 ## 📡 Offline-First Mesh Networking
 
 When the internet goes down, NeighbourGood keeps working. In Red Sky mode the web app can connect to a nearby native [BitChat](https://github.com/permissionlesstech/bitchat) node over Bluetooth Low Energy (BLE) and relay crisis data — emergency tickets, votes, pings — through the mesh without any internet connectivity at all.
@@ -234,10 +241,12 @@ Native BitChat apps relay this message through the mesh without needing to under
 | UUID deduplication on server | Safe to replay mesh sync multiple times; idempotent regardless of network partitions |
 | Chrome/Edge only | Web Bluetooth standard; Firefox/Safari do not support it as of 2026 |
 
+<a id="api"></a>
 ## 📡 API
 
 See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Interactive docs at `/docs` when the backend is running.
 
+<a id="roadmap"></a>
 ## 🗺️ Roadmap
 
 ### Phase 1 — Foundation (MVP)
@@ -348,6 +357,7 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [ ] Signal integration
 - [ ] Matrix integration
 
+<a id="telegram-bot--ai-assistant"></a>
 ## 🤖 Telegram Bot & AI Assistant
 
 NeighbourGood includes a Telegram bot with an AI-powered natural language interface — members can search resources, find skills, and coordinate during crises directly from Telegram without opening the app.
@@ -361,10 +371,12 @@ See **[TELEGRAM_SETUP.md](TELEGRAM_SETUP.md)** for the full setup guide, includi
 
 To customise the agent's behaviour, tone, or available intents, see **[TELEGRAM_AGENT.md](TELEGRAM_AGENT.md)**.
 
+<a id="contributing"></a>
 ## 🤝 Contributing
 
 This project is in its early stages. Contributions, ideas, and feedback are welcome.
 
+<a id="license"></a>
 ## 📄 License
 
 See [LICENSE](LICENSE) for details.
