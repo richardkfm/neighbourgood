@@ -2,6 +2,8 @@
 
 **v1.7.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
+[Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
+
 ## 💡 Vision
 
 Modern neighbourhoods have everything they need — the problem is that resources sit idle in individual households. NeighbourGood makes it easy to share tools, vehicles, equipment, food, and skills within a community, reducing waste and building real connections between neighbours.
