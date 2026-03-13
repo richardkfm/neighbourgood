@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "Enable low-bandwidth mode",
     "disable_low_bandwidth": "Disable low-bandwidth mode (currently ON)",
     "toggle_low_bandwidth": "Toggle low-bandwidth mode",
-    "install_app": "Install NeighbourGood as an app"
+    "install_app": "Install NeighbourGood as an app",
+    "events": "Events"
   },
   "banner": {
     "update_available": "A new version of NeighbourGood is available.",
@@ -605,5 +606,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "Events",
+    "subtitle": "Hyperlocal happenings in your neighbourhood",
+    "search_placeholder": "Search events…",
+    "create_btn": "+ Create Event",
+    "no_events": "No events yet — be the first to organise one!",
+    "no_events_guest": "Log in to see events in your community.",
+    "upcoming_only": "Upcoming only",
+    "attend": "Attend",
+    "unattend": "Cancel RSVP",
+    "attendees": "attending",
+    "categories": {
+      "meetup": "Meetup",
+      "workshop": "Workshop",
+      "repair_cafe": "Repair Café",
+      "swap": "Swap",
+      "gardening": "Gardening",
+      "food": "Food",
+      "sport": "Sport",
+      "cultural": "Cultural",
+      "other": "Other"
+    }
   }
 }

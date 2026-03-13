@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "Aktifkeun modeu bandwidth handap",
     "disable_low_bandwidth": "Nonaktifkeun modeu bandwidth handap (keur ON)",
     "toggle_low_bandwidth": "Ganti modeu bandwidth handap",
-    "install_app": "Pasang NeighbourGood salaku aplikasi"
+    "install_app": "Pasang NeighbourGood salaku aplikasi",
+    "events": "Acara"
   },
   "banner": {
     "update_available": "Vérsi anyar NeighbourGood geus sadia.",
@@ -605,5 +606,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "Acara",
+    "subtitle": "Kagiatan lokal di lingkungan anjeun",
+    "search_placeholder": "Pilarian acara…",
+    "create_btn": "+ Jieun Acara",
+    "no_events": "Henteu aya acara — jadi anu kahiji ngatur hiji!",
+    "no_events_guest": "Asup pikeun ningali acara di komunitas anjeun.",
+    "upcoming_only": "Anu bakal datang waé",
+    "attend": "Hadir",
+    "unattend": "Batalkeun",
+    "attendees": "pamilon",
+    "categories": {
+      "meetup": "Patepung",
+      "workshop": "Lokakarya",
+      "repair_cafe": "Kafe Perbaikan",
+      "swap": "Tukeur",
+      "gardening": "Berkebun",
+      "food": "Tuangeun",
+      "sport": "Olahraga",
+      "cultural": "Budaya",
+      "other": "Séjén"
+    }
   }
 }

@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "Lage bandbreedte modus inschakelen",
     "disable_low_bandwidth": "Lage bandbreedte modus uitschakelen (momenteel AAN)",
     "toggle_low_bandwidth": "Lage bandbreedte modus wisselen",
-    "install_app": "NeighbourGood als app installeren"
+    "install_app": "NeighbourGood als app installeren",
+    "events": "Evenementen"
   },
   "banner": {
     "update_available": "Een nieuwe versie van NeighbourGood is beschikbaar.",
@@ -300,5 +301,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "Evenementen",
+    "subtitle": "Lokale evenementen in jouw buurt",
+    "search_placeholder": "Zoek evenementen…",
+    "create_btn": "+ Evenement aanmaken",
+    "no_events": "Nog geen evenementen — wees de eerste om er een te organiseren!",
+    "no_events_guest": "Log in om evenementen in je community te zien.",
+    "upcoming_only": "Alleen aankomende",
+    "attend": "Deelnemen",
+    "unattend": "Annuleren",
+    "attendees": "deelnemers",
+    "categories": {
+      "meetup": "Bijeenkomst",
+      "workshop": "Workshop",
+      "repair_cafe": "Repair Café",
+      "swap": "Ruil",
+      "gardening": "Tuinieren",
+      "food": "Eten",
+      "sport": "Sport",
+      "cultural": "Cultureel",
+      "other": "Anders"
+    }
   }
 }

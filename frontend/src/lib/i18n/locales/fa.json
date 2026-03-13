@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "فعال‌سازی حالت کم‌پهنای باند",
     "disable_low_bandwidth": "غیرفعال‌سازی حالت کم‌پهنای باند (اکنون روشن)",
     "toggle_low_bandwidth": "تغییر حالت کم‌پهنای باند",
-    "install_app": "نصب NeighbourGood به عنوان برنامه"
+    "install_app": "نصب NeighbourGood به عنوان برنامه",
+    "events": "رویدادها"
   },
   "banner": {
     "update_available": "نسخه جدیدی از NeighbourGood در دسترس است.",
@@ -605,5 +606,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "رویدادها",
+    "subtitle": "رویدادهای محلی در محله شما",
+    "search_placeholder": "جستجوی رویدادها…",
+    "create_btn": "+ ایجاد رویداد",
+    "no_events": "هنوز رویدادی نیست — اولین نفری باشید که یکی برگزار می‌کنید!",
+    "no_events_guest": "وارد شوید تا رویدادهای جامعه‌تان را ببینید.",
+    "upcoming_only": "فقط آینده",
+    "attend": "شرکت",
+    "unattend": "انصراف",
+    "attendees": "شرکت‌کننده",
+    "categories": {
+      "meetup": "نشست",
+      "workshop": "کارگاه",
+      "repair_cafe": "کافه تعمیر",
+      "swap": "تبادل",
+      "gardening": "باغبانی",
+      "food": "غذا",
+      "sport": "ورزش",
+      "cultural": "فرهنگی",
+      "other": "سایر"
+    }
   }
 }

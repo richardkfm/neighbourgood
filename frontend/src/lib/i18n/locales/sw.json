@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "Washa hali ya bandwidth ndogo",
     "disable_low_bandwidth": "Zima hali ya bandwidth ndogo (imewashwa)",
     "toggle_low_bandwidth": "Badilisha hali ya bandwidth ndogo",
-    "install_app": "Sakinisha NeighbourGood kama programu"
+    "install_app": "Sakinisha NeighbourGood kama programu",
+    "events": "Matukio"
   },
   "banner": {
     "update_available": "Toleo jipya la NeighbourGood linapatikana.",
@@ -300,5 +301,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "Matukio",
+    "subtitle": "Matukio ya mtaa katika jirani yako",
+    "search_placeholder": "Tafuta matukio…",
+    "create_btn": "+ Unda Tukio",
+    "no_events": "Hakuna matukio bado — kuwa wa kwanza kupanga moja!",
+    "no_events_guest": "Ingia ili kuona matukio katika jumuiya yako.",
+    "upcoming_only": "Yanayokuja tu",
+    "attend": "Hudhuria",
+    "unattend": "Ghairi RSVP",
+    "attendees": "wanaohudhuria",
+    "categories": {
+      "meetup": "Mkutano",
+      "workshop": "Warsha",
+      "repair_cafe": "Kafereteni ya Marekebisho",
+      "swap": "Kubadilishana",
+      "gardening": "Bustani",
+      "food": "Chakula",
+      "sport": "Michezo",
+      "cultural": "Utamaduni",
+      "other": "Nyingine"
+    }
   }
 }

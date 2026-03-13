@@ -12,6 +12,7 @@ from app.models.crisis import CrisisVote, EmergencyTicket, TicketComment
 from app.models.webhook import Webhook, TelegramLinkToken
 from app.models.mesh import MeshSyncedMessage
 from app.models.sync import FederatedResource, FederatedSkill, InstanceSyncLog
+from app.models.event import Event, EventAttendee
 
 __all__ = [
     "User", "Resource", "Booking", "Message", "Community", "CommunityMember",
@@ -20,4 +21,5 @@ __all__ = [
     "Webhook", "TelegramLinkToken",
     "MeshSyncedMessage",
     "InstanceSyncLog", "FederatedResource", "FederatedSkill",
+    "Event", "EventAttendee",
 ]

@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "تفعيل وضع البيانات المنخفضة",
     "disable_low_bandwidth": "إيقاف وضع البيانات المنخفضة (مفعّل)",
     "toggle_low_bandwidth": "تبديل وضع البيانات المنخفضة",
-    "install_app": "تثبيت تطبيق NeighbourGood"
+    "install_app": "تثبيت تطبيق NeighbourGood",
+    "events": "الفعاليات"
   },
   "banner": {
     "update_available": "يتوفر إصدار جديد من NeighbourGood.",
@@ -300,5 +301,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "الفعاليات",
+    "subtitle": "أحداث محلية في حيّك",
+    "search_placeholder": "ابحث عن فعاليات…",
+    "create_btn": "+ إنشاء فعالية",
+    "no_events": "لا توجد فعاليات بعد — كن أول من ينظّم واحدة!",
+    "no_events_guest": "سجّل الدخول لرؤية الفعاليات في مجتمعك.",
+    "upcoming_only": "القادمة فقط",
+    "attend": "حضور",
+    "unattend": "إلغاء الحضور",
+    "attendees": "حاضر",
+    "categories": {
+      "meetup": "لقاء",
+      "workshop": "ورشة عمل",
+      "repair_cafe": "مقهى الإصلاح",
+      "swap": "تبادل",
+      "gardening": "بستنة",
+      "food": "طعام",
+      "sport": "رياضة",
+      "cultural": "ثقافي",
+      "other": "أخرى"
+    }
   }
 }

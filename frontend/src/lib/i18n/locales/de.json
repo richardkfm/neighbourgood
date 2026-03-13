@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "Geringen Datenmodus aktivieren",
     "disable_low_bandwidth": "Geringen Datenmodus deaktivieren (derzeit EIN)",
     "toggle_low_bandwidth": "Geringen Datenmodus umschalten",
-    "install_app": "NeighbourGood als App installieren"
+    "install_app": "NeighbourGood als App installieren",
+    "events": "Veranstaltungen"
   },
   "banner": {
     "update_available": "Eine neue Version von NeighbourGood ist verfügbar.",
@@ -605,5 +606,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "Veranstaltungen",
+    "subtitle": "Lokale Ereignisse in deiner Nachbarschaft",
+    "search_placeholder": "Veranstaltungen suchen…",
+    "create_btn": "+ Veranstaltung erstellen",
+    "no_events": "Noch keine Veranstaltungen — sei der Erste, der eine organisiert!",
+    "no_events_guest": "Melde dich an, um Veranstaltungen in deiner Gemeinschaft zu sehen.",
+    "upcoming_only": "Nur bevorstehende",
+    "attend": "Teilnehmen",
+    "unattend": "Absagen",
+    "attendees": "Teilnehmer",
+    "categories": {
+      "meetup": "Treffen",
+      "workshop": "Workshop",
+      "repair_cafe": "Repair Café",
+      "swap": "Tausch",
+      "gardening": "Gärtnern",
+      "food": "Essen",
+      "sport": "Sport",
+      "cultural": "Kulturell",
+      "other": "Sonstiges"
+    }
   }
 }

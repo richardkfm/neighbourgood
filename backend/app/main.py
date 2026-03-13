@@ -10,8 +10,8 @@ from app.config import settings
 from app.database import Base, engine
 from app.middleware.csrf import CsrfMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
-from app.models import Activity, Booking, Community, CommunityMember, CrisisVote, EmergencyTicket, FederatedResource, FederatedSkill, InstanceSyncLog, Invite, KnownInstance, MeshSyncedMessage, Message, RedSkyAlert, Resource, Review, Skill, TelegramLinkToken, User, Webhook  # noqa: F401 – ensure models are registered
-from app.routers import activity, auth, bookings, communities, crisis, federation, federation_sync, instance, invites, matching, mesh_sync, messages, resources, reviews, skills, status, users, webhooks
+from app.models import Activity, Booking, Community, CommunityMember, CrisisVote, EmergencyTicket, Event, EventAttendee, FederatedResource, FederatedSkill, InstanceSyncLog, Invite, KnownInstance, MeshSyncedMessage, Message, RedSkyAlert, Resource, Review, Skill, TelegramLinkToken, User, Webhook  # noqa: F401 – ensure models are registered
+from app.routers import activity, auth, bookings, communities, crisis, events, federation, federation_sync, instance, invites, matching, mesh_sync, messages, resources, reviews, skills, status, users, webhooks
 from app.routers import telegram as telegram_router
 
 
@@ -73,6 +73,7 @@ app.include_router(messages.router)
 app.include_router(communities.router)
 app.include_router(crisis.router)
 app.include_router(skills.router)
+app.include_router(events.router)
 app.include_router(activity.router)
 app.include_router(invites.router)
 app.include_router(reviews.router)

@@ -20,7 +20,8 @@
     "enable_low_bandwidth": "Увімкнути режим низької пропускної здатності",
     "disable_low_bandwidth": "Вимкнути режим низької пропускної здатності (увімкнено)",
     "toggle_low_bandwidth": "Перемкнути режим низької пропускної здатності",
-    "install_app": "Встановити NeighbourGood як додаток"
+    "install_app": "Встановити NeighbourGood як додаток",
+    "events": "Події"
   },
   "banner": {
     "update_available": "Доступна нова версія NeighbourGood.",
@@ -605,5 +606,28 @@
     "tr": "Türkçe",
     "uk": "Українська",
     "ur": "اردو"
+  },
+  "events": {
+    "title": "Події",
+    "subtitle": "Місцеві заходи у вашому районі",
+    "search_placeholder": "Пошук подій…",
+    "create_btn": "+ Створити подію",
+    "no_events": "Подій поки немає — будьте першим, хто організує!",
+    "no_events_guest": "Увійдіть, щоб бачити події у вашій спільноті.",
+    "upcoming_only": "Лише майбутні",
+    "attend": "Відвідати",
+    "unattend": "Скасувати",
+    "attendees": "учасників",
+    "categories": {
+      "meetup": "Зустріч",
+      "workshop": "Майстерня",
+      "repair_cafe": "Ремонтне кафе",
+      "swap": "Обмін",
+      "gardening": "Садівництво",
+      "food": "Їжа",
+      "sport": "Спорт",
+      "cultural": "Культурний",
+      "other": "Інше"
+    }
   }
 }

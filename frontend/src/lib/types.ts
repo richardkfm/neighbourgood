@@ -199,6 +199,29 @@ export interface MeshSyncResult {
 	errors: number;
 }
 
+export interface CommunityEvent {
+	id: number;
+	title: string;
+	description: string | null;
+	category: string;
+	start_at: string;
+	end_at: string | null;
+	location: string | null;
+	max_attendees: number | null;
+	organizer_id: number;
+	community_id: number;
+	organizer: UserInfo;
+	attendee_count: number;
+	is_attending: boolean;
+	created_at: string;
+}
+
+export interface EventCategoryInfo {
+	value: string;
+	label: string;
+	icon: string;
+}
+
 /**
  * Status color utility – maps booking/resource status to CSS variable names.
  */
