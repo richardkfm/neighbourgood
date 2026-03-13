@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.8.0] - 2026-03-13
+
+### Added
+
+- **Community Events** — hyperlocal event scheduling with RSVP, category filtering, and an upcoming-events toggle
+  - `Event` model: title, description, category, start/end datetime, location, optional max-attendee cap, organizer, community
+  - `EventAttendee` model with unique constraint on (event_id, user_id) — prevents duplicate RSVPs
+  - 9 event categories: meetup, workshop, repair\_café, swap, gardening, food, sport, cultural, other
+  - Full CRUD at `/events` — create (community members only), get, update and delete (organizer only)
+  - `POST /events/{id}/attend` / `DELETE /events/{id}/attend` — RSVP with automatic full-event guard (HTTP 409)
+  - `GET /events/categories` — category metadata (label + icon) for frontends
+  - List endpoint with filters: `community_id`, `category`, `upcoming=true`, full-text `q` search
+  - Auto-scoped to the authenticated user's joined communities when no `community_id` is given
+  - Activity feed entry on event creation (`event_created`)
+  - Webhook dispatch for `event.created` event type
+  - Alembic migrations: `d1e2f3a4b5c6` (merge heads) → `f1a2b3c4d5e6` (create tables)
+  - 22 new tests in `test_events.py` covering CRUD, auth guards, RSVP flow, capacity enforcement, and all filters (371 tests total, 0 regressions)
+- **Events frontend page** (`/events`)
+  - Filter bar: community selector, category dropdown, upcoming-only toggle, free-text search (300 ms debounce)
+  - Inline create form with datetime pickers, location, max-attendee input, community selector, and description
+  - Event cards showing category emoji, date/time range, location, organizer name, attendee count, and RSVP button
+  - RSVP button disabled when the event is at capacity for non-attending users
+- **`CommunityEvent` and `EventCategoryInfo` TypeScript interfaces** added to `src/lib/types.ts`
+- **Nav link** "Events" added to the main navigation in `+layout.svelte`
+- **i18n** — `nav.events` key and full `events.*` namespace (title, subtitle, search, create, filters, RSVP, categories) added to all 12 locale files
+
+### Changed
+
+- Backend version bumped to 1.8.0
+- Frontend version bumped to 1.8.0
+
 ## [1.7.0] - 2026-03-10
 
 ### Added

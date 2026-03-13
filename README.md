@@ -1,6 +1,6 @@
 # 🏘️ NeighbourGood
 
-**v1.7.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v1.8.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -21,6 +21,7 @@ The default mode focuses on community building and resource sharing:
 - **Resource Library** – List and browse items available for borrowing (tools, vehicles, electronics, furniture)
 - **Skill Exchange** – Offer and request skills (tutoring, repairs, cooking, languages)
 - **Calendar Booking** – Reserve items with date/time slots
+- **Community Events** – Organise and RSVP to local events (repair cafés, workshops, seed swaps, meetups)
 - **Gamification** – Earn reputation points for sharing, build trust scores
 - **Community Feed** – Updates, requests, offers in a neighbourhood timeline
 
@@ -275,6 +276,7 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [x] Skill exchange listings (offer/request with 10 categories)
 - [x] Reputation/trust score system (computed from activity, 5 levels)
 - [x] Community feed / activity timeline (auto-generated from events)
+- [x] Community events — create, browse, RSVP; 9 categories, upcoming filter, max-attendee cap (v1.8.0)
 - [x] Neighbourhood groups (Hybrid: PLZ-based with custom names)
 - [x] Community merge function with auto-suggestions
 - [x] Onboarding flow (search/join/create community)
