@@ -353,6 +353,7 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [x] Mesh networking (BitChat BLE gateway) (v1.2.0) — offline crisis comms via Bluetooth mesh
 - [x] Decentralized data sync between instances (v1.4.0) — pull-based federation sync with public snapshot endpoint, incremental cursors, and federated resource/skill browsing
 - [x] Multi-language support (i18n) (v1.1.0) — 7 languages with RTL support
+- [x] Community events (v1.8.0) — create, browse and RSVP to local events (repair cafés, workshops, seed swaps, meetups); 9 categories, max-attendee cap, upcoming filter, full-text search
 - [ ] Admin dashboard with analytics
 - [x] Outbound webhook system with HMAC-SHA256 signing (generic integrations)
 - [x] Telegram bot integration (personal notifications, community group alerts, bot commands) + AI natural language interface (v1.6.0)
