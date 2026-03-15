@@ -229,7 +229,6 @@
 				<a href="/resources" class="nav-link" class:active={$page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills')} onclick={closeMobileMenu}>{$t('nav.browse')}</a>
 				<a href="/communities" class="nav-link" class:active={$page.url.pathname.startsWith('/communities') || $page.url.pathname === '/explore'} onclick={closeMobileMenu}>{$t('nav.communities')}</a>
 				<a href="/events" class="nav-link" class:active={$page.url.pathname.startsWith('/events')} onclick={closeMobileMenu}>{$t('nav.events')}</a>
-				<a href="/federation" class="nav-link" class:active={$page.url.pathname.startsWith('/federation')} onclick={closeMobileMenu}>{$t('nav.federation')}</a>
 				<a href="/messages" class="nav-link" class:active={$page.url.pathname === '/messages'} onclick={closeMobileMenu}>
 					{$t('nav.messages')}
 					{#if unreadCount > 0}
@@ -390,7 +389,7 @@
 				? `${$t('banner.fed_alert')}: ${fedAlerts[0].title} (${fedAlerts[0].source_instance_name})`
 				: `${fedAlerts.length} ${$t('banner.fed_alerts_plural')}`}
 		</span>
-		<a href="/federation" class="fed-alert-link">{$t('banner.view_alerts')}</a>
+		<a href="/communities#federation" class="fed-alert-link">{$t('banner.view_alerts')}</a>
 		<button class="fed-alert-dismiss" onclick={dismissFedAlerts} aria-label={$t('banner.dismiss')}>&times;</button>
 	</div>
 {/if}
