@@ -26,7 +26,7 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["federation"])
+router = APIRouter(prefix="/federation", tags=["federation"])
 
 
 # ── Schemas ─────────────────────────────────────────────────────────
@@ -43,6 +43,10 @@ class InstanceDirectoryEntry(BaseModel):
     admin_contact: str
     community_count: int
     user_count: int
+    resource_count: int
+    skill_count: int
+    event_count: int
+    active_user_count: int
     is_reachable: bool
     last_seen_at: datetime.datetime
     created_at: datetime.datetime
@@ -146,6 +150,10 @@ def add_instance(
         admin_contact=info.get("admin_contact", ""),
         community_count=info.get("community_count", 0),
         user_count=info.get("user_count", 0),
+        resource_count=info.get("resource_count", 0),
+        skill_count=info.get("skill_count", 0),
+        event_count=info.get("event_count", 0),
+        active_user_count=info.get("active_user_count", 0),
         is_reachable=True,
         last_seen_at=datetime.datetime.utcnow(),
     )
@@ -190,6 +198,10 @@ def refresh_directory(
             inst.admin_contact = info.get("admin_contact", inst.admin_contact)
             inst.community_count = info.get("community_count", inst.community_count)
             inst.user_count = info.get("user_count", inst.user_count)
+            inst.resource_count = info.get("resource_count", inst.resource_count)
+            inst.skill_count = info.get("skill_count", inst.skill_count)
+            inst.event_count = info.get("event_count", inst.event_count)
+            inst.active_user_count = info.get("active_user_count", inst.active_user_count)
             inst.is_reachable = True
             inst.last_seen_at = datetime.datetime.utcnow()
         else:
@@ -269,7 +281,7 @@ def broadcast_alert(
     failed = 0
     for inst in instances:
         try:
-            resp = httpx.post(f"{inst.url}/alerts/receive", json=payload, timeout=10)
+            resp = httpx.post(f"{inst.url}/federation/alerts/receive", json=payload, timeout=10)
             if resp.status_code in (200, 201):
                 sent += 1
             else:

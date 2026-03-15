@@ -222,6 +222,70 @@ export interface EventCategoryInfo {
 	icon: string;
 }
 
+// ── Federation types ──────────────────────────────────────────────────────
+
+export interface KnownInstance {
+	id: number;
+	url: string;
+	name: string;
+	description: string;
+	region: string;
+	version: string;
+	platform_mode: string;
+	admin_contact: string;
+	community_count: number;
+	user_count: number;
+	resource_count: number;
+	skill_count: number;
+	event_count: number;
+	active_user_count: number;
+	is_reachable: boolean;
+	last_seen_at: string;
+	created_at: string;
+}
+
+export interface FederatedResource {
+	id: number;
+	source_instance_id: number;
+	remote_id: number;
+	title: string;
+	description: string | null;
+	category: string;
+	condition: string | null;
+	community_name: string | null;
+	owner_display_name: string;
+	is_available: boolean;
+	instance_url: string;
+	instance_name: string;
+	synced_at: string;
+}
+
+export interface FederatedSkill {
+	id: number;
+	source_instance_id: number;
+	remote_id: number;
+	title: string;
+	description: string | null;
+	category: string;
+	skill_type: string;
+	community_name: string | null;
+	owner_display_name: string;
+	instance_url: string;
+	instance_name: string;
+	synced_at: string;
+}
+
+export interface RedSkyAlertInfo {
+	id: number;
+	source_instance_url: string;
+	source_instance_name: string;
+	title: string;
+	description: string;
+	severity: string;
+	is_active: boolean;
+	created_at: string;
+}
+
 /**
  * Status color utility – maps booking/resource status to CSS variable names.
  */

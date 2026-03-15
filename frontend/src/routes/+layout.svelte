@@ -16,6 +16,14 @@
 	setupI18n(detectInitialLocale());
 
 	let { children } = $props();
+	interface FedAlert {
+		id: number;
+		source_instance_name: string;
+		title: string;
+		severity: string;
+		is_active: boolean;
+	}
+
 	let mobileMenuOpen = $state(false);
 	let unreadCount = $state(0);
 	let crisisBannerDismissed = $state(false);
@@ -23,6 +31,8 @@
 	let installPrompt = $state<Event | null>(null);
 	let langMenuOpen = $state(false);
 	let syncMessage = $state('');
+	let fedAlerts = $state<FedAlert[]>([]);
+	let fedAlertsDismissed = $state(false);
 
 	function closeMobileMenu() {
 		mobileMenuOpen = false;
@@ -122,13 +132,28 @@
 			}
 		}
 
-		// Restore crisis banner dismissal from session
+		// Fetch active cross-instance alerts
+		if (t) {
+			try {
+				fedAlerts = await api<FedAlert[]>('/federation/alerts?active_only=true', { auth: true });
+			} catch {
+				// ignore — alerts just won't show
+			}
+		}
+
+		// Restore banner dismissals from session
 		crisisBannerDismissed = sessionStorage.getItem('ng_crisis_banner_dismissed') === 'true';
+		fedAlertsDismissed = sessionStorage.getItem('ng_fed_alerts_dismissed') === 'true';
 	});
 
 	function dismissCrisisBanner() {
 		crisisBannerDismissed = true;
 		sessionStorage.setItem('ng_crisis_banner_dismissed', 'true');
+	}
+
+	function dismissFedAlerts() {
+		fedAlertsDismissed = true;
+		sessionStorage.setItem('ng_fed_alerts_dismissed', 'true');
 	}
 
 	// Register online/offline listeners and auto-flush the request queue when
@@ -204,6 +229,7 @@
 				<a href="/resources" class="nav-link" class:active={$page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills')} onclick={closeMobileMenu}>{$t('nav.browse')}</a>
 				<a href="/communities" class="nav-link" class:active={$page.url.pathname.startsWith('/communities') || $page.url.pathname === '/explore'} onclick={closeMobileMenu}>{$t('nav.communities')}</a>
 				<a href="/events" class="nav-link" class:active={$page.url.pathname.startsWith('/events')} onclick={closeMobileMenu}>{$t('nav.events')}</a>
+				<a href="/federation" class="nav-link" class:active={$page.url.pathname.startsWith('/federation')} onclick={closeMobileMenu}>{$t('nav.federation')}</a>
 				<a href="/messages" class="nav-link" class:active={$page.url.pathname === '/messages'} onclick={closeMobileMenu}>
 					{$t('nav.messages')}
 					{#if unreadCount > 0}
@@ -349,6 +375,23 @@
 		<span>{$t('banner.crisis_active')}</span>
 		<a href="/triage" class="crisis-banner-link">{$t('banner.go_to_emergency')}</a>
 		<button class="crisis-banner-dismiss" onclick={dismissCrisisBanner} aria-label={$t('banner.dismiss')}>&times;</button>
+	</div>
+{/if}
+
+{#if fedAlerts.length > 0 && !fedAlertsDismissed}
+	<div class="fed-alert-banner">
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<circle cx="12" cy="12" r="10"/>
+			<line x1="2" y1="12" x2="22" y2="12"/>
+			<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+		</svg>
+		<span>
+			{fedAlerts.length === 1
+				? `${$t('banner.fed_alert')}: ${fedAlerts[0].title} (${fedAlerts[0].source_instance_name})`
+				: `${fedAlerts.length} ${$t('banner.fed_alerts_plural')}`}
+		</span>
+		<a href="/federation" class="fed-alert-link">{$t('banner.view_alerts')}</a>
+		<button class="fed-alert-dismiss" onclick={dismissFedAlerts} aria-label={$t('banner.dismiss')}>&times;</button>
 	</div>
 {/if}
 
@@ -906,6 +949,46 @@
 	}
 
 	.crisis-banner-dismiss:hover {
+		opacity: 1;
+	}
+
+	/* ── Federation alert banner ────────────────────────────────── */
+
+	.fed-alert-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.55rem 1.5rem;
+		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
+		border-bottom: 1px solid var(--color-warning, #f59e0b);
+		font-size: 0.85rem;
+		color: var(--color-warning, #92400e);
+	}
+
+	.fed-alert-link {
+		margin-left: auto;
+		font-weight: 600;
+		color: var(--color-warning, #92400e);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+
+	.fed-alert-link:hover {
+		text-decoration: underline;
+	}
+
+	.fed-alert-dismiss {
+		background: none;
+		border: none;
+		font-size: 1.2rem;
+		color: var(--color-warning, #f59e0b);
+		cursor: pointer;
+		padding: 0 0.25rem;
+		opacity: 0.7;
+		line-height: 1;
+	}
+
+	.fed-alert-dismiss:hover {
 		opacity: 1;
 	}
 

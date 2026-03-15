@@ -21,6 +21,10 @@ class KnownInstance(Base):
     admin_contact: Mapped[str] = mapped_column(String(200), default="", nullable=False)
     community_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     user_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    resource_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    skill_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    event_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    active_user_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     is_reachable: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_seen_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
