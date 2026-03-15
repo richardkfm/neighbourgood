@@ -1,6 +1,6 @@
 # 🏘️ NeighbourGood
 
-**v1.8.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v1.9.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -352,7 +352,8 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [x] Smart matching with AI enhancement (v1.5.0) — rule-based skill/resource matching + optional Ollama/OpenAI re-ranking
 - [x] Mesh networking (BitChat BLE gateway) (v1.2.0) — offline crisis comms via Bluetooth mesh
 - [x] Decentralized data sync between instances (v1.4.0) — pull-based federation sync with public snapshot endpoint, incremental cursors, and federated resource/skill browsing
-- [x] Multi-language support (i18n) (v1.1.0) — 7 languages with RTL support
+- [x] Federation explorer UI (v1.9.0) — instance directory browser, federated resource/skill pages, cross-instance alert banners, enriched instance stats
+- [x] Multi-language support (i18n) (v1.1.0) — 12 languages with RTL support
 - [x] Community events (v1.8.0) — create, browse and RSVP to local events (repair cafés, workshops, seed swaps, meetups); 9 categories, max-attendee cap, upcoming filter, full-text search
 - [ ] Admin dashboard with analytics
 - [x] Outbound webhook system with HMAC-SHA256 signing (generic integrations)

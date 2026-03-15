@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] - 2026-03-15
+
+### Added
+
+- **Federation Explorer UI** — new `/federation` page making the decentralized federation system visible and usable
+  - **Instance Directory** — browse known NeighbourGood instances as cards showing name, region, platform mode (blue/red), reachability status, and live stats
+  - **Enriched instance stats** — `/instance/info` now exposes `resource_count`, `skill_count`, `event_count`, `active_user_count` (users active in last 30 days)
+  - **Add Instance form** — authenticated users can add a peer instance by URL; the system fetches and validates its `/instance/info`
+  - **Admin controls** — refresh all instances, trigger sync, remove instances (admin-only)
+  - **Federated Resources browser** (`/federation/resources`) — browse resources synced from peer instances with category and source-instance filters
+  - **Federated Skills browser** (`/federation/skills`) — browse skills from peers with type (offer/request), category, and source-instance filters
+  - **Cross-instance alert banner** — active Red Sky alerts from other instances are shown as a dismissible, severity-colored banner in the global layout (info=blue, warning=yellow, critical=red)
+  - **"Network" nav link** added to the main navigation for logged-in users
+- **KnownInstance model** — 4 new columns: `resource_count`, `skill_count`, `event_count`, `active_user_count` with Alembic migration
+- **`KnownInstance`, `FederatedResource`, `FederatedSkill`, `RedSkyAlertInfo` TypeScript interfaces** added to `src/lib/types.ts`
+- **i18n** — `nav.federation` and full `federation.*` namespace (36 keys) added to all 12 locale files
+- **27 new tests** in `test_federation.py` covering instance directory CRUD, Red Sky alert lifecycle, data export/import, and enriched instance info (398 tests total, 0 regressions)
+
+### Fixed
+
+- **Federation router prefix** — `federation.py` router was missing its `/federation` prefix, causing endpoints to be mounted at `/directory` instead of `/federation/directory`; all federation endpoints now correctly prefixed
+- **Alert broadcast URL** — outbound Red Sky alert broadcast now posts to `/federation/alerts/receive` (was `/alerts/receive` before the prefix fix)
+
+### Changed
+
+- Backend version bumped to 1.9.0
+- Frontend version bumped to 1.9.0
+
 ## [1.8.0] - 2026-03-13
 
 ### Added
