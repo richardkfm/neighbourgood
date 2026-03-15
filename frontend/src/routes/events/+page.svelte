@@ -51,8 +51,10 @@
 	let newTitle = $state('');
 	let newDescription = $state('');
 	let newCategory = $state('meetup');
-	let newStartAt = $state('');
-	let newEndAt = $state('');
+	let newStartDate = $state('');
+	let newStartTime = $state('');
+	let newEndDate = $state('');
+	let newEndTime = $state('');
 	let newLocation = $state('');
 	let newMaxAttendees = $state('');
 	let newCommunityId = $state('');
@@ -86,14 +88,29 @@
 
 	async function loadMyCommunities() {
 		try {
-			const data = await api<{ items: MyCommunity[] }>('/communities?member=true', { auth: true });
-			myCommunities = data.items ?? [];
-			if (myCommunities.length > 0 && !newCommunityId) {
-				newCommunityId = String(myCommunities[0].id);
-			}
+			const data = await api<MyCommunity[]>('/communities/my/memberships', { auth: true });
+			myCommunities = Array.isArray(data) ? data : [];
+			if (myCommunities.length > 0) newCommunityId = String(myCommunities[0].id);
 		} catch {
 			myCommunities = [];
 		}
+	}
+
+	function pad(n: number) { return String(n).padStart(2, '0'); }
+
+	function openCreateForm() {
+		if (showCreateForm) {
+			showCreateForm = false;
+			return;
+		}
+		const now = new Date();
+		now.setMinutes(now.getMinutes() < 30 ? 30 : 60, 0, 0);
+		newStartDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+		newStartTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+		const end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+		newEndDate = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+		newEndTime = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+		showCreateForm = true;
 	}
 
 	function onSearchInput() {
@@ -107,15 +124,19 @@
 			createError = 'Title is required.';
 			return;
 		}
-		if (!newStartAt) {
-			createError = 'Start date/time is required.';
+		if (!newStartDate || !newStartTime) {
+			createError = 'Start date and time are required.';
 			return;
 		}
 		if (!newCommunityId) {
-			createError = 'Please select a community.';
+			createError = 'No community found. Please join a community first.';
 			return;
 		}
 		try {
+			const startIso = new Date(`${newStartDate}T${newStartTime}`).toISOString();
+			const endIso = newEndDate && newEndTime
+				? new Date(`${newEndDate}T${newEndTime}`).toISOString()
+				: null;
 			await api('/events', {
 				method: 'POST',
 				auth: true,
@@ -123,8 +144,8 @@
 					title: newTitle.trim(),
 					description: newDescription.trim() || null,
 					category: newCategory,
-					start_at: new Date(newStartAt).toISOString(),
-					end_at: newEndAt ? new Date(newEndAt).toISOString() : null,
+					start_at: startIso,
+					end_at: endIso,
 					location: newLocation.trim() || null,
 					max_attendees: newMaxAttendees ? parseInt(newMaxAttendees) : null,
 					community_id: parseInt(newCommunityId)
@@ -133,8 +154,10 @@
 			newTitle = '';
 			newDescription = '';
 			newCategory = 'meetup';
-			newStartAt = '';
-			newEndAt = '';
+			newStartDate = '';
+			newStartTime = '';
+			newEndDate = '';
+			newEndTime = '';
 			newLocation = '';
 			newMaxAttendees = '';
 			showCreateForm = false;
@@ -196,7 +219,7 @@
 			<p class="subtitle">{$t('events.subtitle')}</p>
 		</div>
 		{#if $isLoggedIn}
-			<button class="btn btn-primary" onclick={() => (showCreateForm = !showCreateForm)}>
+			<button class="btn btn-primary" onclick={openCreateForm}>
 				{showCreateForm ? '✕ Cancel' : $t('events.create_btn')}
 			</button>
 		{/if}
@@ -222,12 +245,20 @@
 					</select>
 				</label>
 				<label>
-					Start *
-					<input type="datetime-local" bind:value={newStartAt} />
+					Start date *
+					<input type="date" bind:value={newStartDate} />
 				</label>
 				<label>
-					End (optional)
-					<input type="datetime-local" bind:value={newEndAt} />
+					Start time *
+					<input type="time" bind:value={newStartTime} step="900" />
+				</label>
+				<label>
+					End date
+					<input type="date" bind:value={newEndDate} min={newStartDate} />
+				</label>
+				<label>
+					End time
+					<input type="time" bind:value={newEndTime} step="900" />
 				</label>
 				<label>
 					Location
@@ -237,14 +268,9 @@
 					Max attendees
 					<input type="number" bind:value={newMaxAttendees} min="1" max="10000" placeholder="Unlimited" />
 				</label>
-				<label class="full-width">
-					Community
-					<select bind:value={newCommunityId}>
-						{#each myCommunities as c}
-							<option value={String(c.id)}>{c.name}</option>
-						{/each}
-					</select>
-				</label>
+				{#if myCommunities.length > 0}
+				<p class="community-info full-width">Community: <strong>{myCommunities[0].name}</strong></p>
+			{/if}
 				<label class="full-width">
 					Description
 					<textarea bind:value={newDescription} maxlength="5000" rows="3" placeholder="Optional details…"></textarea>
@@ -363,6 +389,12 @@
 
 	.create-form h2 {
 		margin-top: 0;
+	}
+
+	.community-info {
+		margin: 0;
+		font-size: 0.875rem;
+		color: var(--color-text-muted);
 	}
 
 	.form-grid {
