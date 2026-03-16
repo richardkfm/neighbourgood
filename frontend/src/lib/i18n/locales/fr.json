@@ -244,6 +244,10 @@
     "telegram": "Notifications Telegram",
     "save_profile": "Enregistrer le profil",
     "profile_saved": "Profil enregistré.",
+    "mesh_networking": "Réseau Mesh",
+    "mesh_desc": "Activer le réseau maillé BLE pour la communication de crise hors ligne via Bluetooth. Lorsque désactivé, les contrôles mesh sont masqués partout.",
+    "mesh_enable": "Activer le réseau mesh",
+    "mesh_open_dashboard": "Ouvrir le tableau de bord mesh",
     "danger_zone": "Zone dangereuse"
   },
   "explore": {

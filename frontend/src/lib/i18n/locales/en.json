@@ -437,6 +437,10 @@
     "adding": "Adding…",
     "save_profile": "Save profile",
     "profile_saved": "Profile saved.",
+    "mesh_networking": "Mesh Networking",
+    "mesh_desc": "Enable BLE mesh networking for offline crisis communication via Bluetooth. When disabled, mesh controls are hidden everywhere.",
+    "mesh_enable": "Enable mesh networking",
+    "mesh_open_dashboard": "Open mesh dashboard",
     "danger_zone": "Danger zone"
   },
   "explore": {

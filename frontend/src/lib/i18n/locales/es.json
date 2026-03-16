@@ -244,6 +244,10 @@
     "telegram": "Notificaciones de Telegram",
     "save_profile": "Guardar perfil",
     "profile_saved": "Perfil guardado.",
+    "mesh_networking": "Red Mesh",
+    "mesh_desc": "Habilitar red BLE mesh para comunicación de crisis sin conexión vía Bluetooth. Cuando está desactivado, los controles mesh se ocultan.",
+    "mesh_enable": "Habilitar red mesh",
+    "mesh_open_dashboard": "Abrir panel de red mesh",
     "danger_zone": "Zona de peligro"
   },
   "explore": {

@@ -437,6 +437,10 @@
     "adding": "Додавання…",
     "save_profile": "Зберегти профіль",
     "profile_saved": "Профіль збережено.",
+    "mesh_networking": "Mesh-мережа",
+    "mesh_desc": "Увімкнути BLE mesh-мережу для офлайн-зв'язку під час кризи через Bluetooth. Коли вимкнено, елементи керування mesh приховані.",
+    "mesh_enable": "Увімкнути mesh-мережу",
+    "mesh_open_dashboard": "Відкрити панель mesh",
     "danger_zone": "Небезпечна зона"
   },
   "explore": {

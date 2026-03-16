@@ -436,6 +436,10 @@
     "adding": "در حال افزودن…",
     "save_profile": "ذخیره پروفایل",
     "profile_saved": "پروفایل ذخیره شد.",
+    "mesh_networking": "شبکه Mesh",
+    "mesh_desc": "فعال‌سازی شبکه BLE mesh برای ارتباط بحرانی آفلاین از طریق بلوتوث. هنگام غیرفعال بودن، کنترل‌های mesh پنهان می‌شوند.",
+    "mesh_enable": "فعال‌سازی شبکه mesh",
+    "mesh_open_dashboard": "باز کردن داشبورد mesh",
     "danger_zone": "منطقه خطر"
   },
   "explore": {

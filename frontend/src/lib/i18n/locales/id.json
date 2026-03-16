@@ -244,6 +244,10 @@
     "telegram": "Notifikasi Telegram",
     "save_profile": "Simpan profil",
     "profile_saved": "Profil tersimpan.",
+    "mesh_networking": "Jaringan Mesh",
+    "mesh_desc": "Aktifkan jaringan BLE mesh untuk komunikasi krisis offline melalui Bluetooth. Saat dinonaktifkan, kontrol mesh disembunyikan.",
+    "mesh_enable": "Aktifkan jaringan mesh",
+    "mesh_open_dashboard": "Buka dasbor mesh",
     "danger_zone": "Zona berbahaya"
   },
   "explore": {

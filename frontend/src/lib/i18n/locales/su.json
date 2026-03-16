@@ -436,6 +436,10 @@
     "adding": "Keur ditambah…",
     "save_profile": "Simpen profil",
     "profile_saved": "Profil disimpen.",
+    "mesh_networking": "Jaringan Mesh",
+    "mesh_desc": "Aktipkeun jaringan BLE mesh pikeun komunikasi krisis offline ngaliwatan Bluetooth. Lamun dipareum, kontrol mesh disumputkeun.",
+    "mesh_enable": "Aktipkeun jaringan mesh",
+    "mesh_open_dashboard": "Buka dasbor mesh",
     "danger_zone": "Zona bahaya"
   },
   "explore": {

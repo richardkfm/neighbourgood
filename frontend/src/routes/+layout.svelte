@@ -286,7 +286,6 @@
 				<a href="/resources" class="nav-link" class:active={$page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills')} onclick={closeMobileMenu}>{$t('nav.browse')}</a>
 				<a href="/communities" class="nav-link" class:active={$page.url.pathname.startsWith('/communities') || $page.url.pathname === '/explore'} onclick={closeMobileMenu}>{$t('nav.communities')}</a>
 				<a href="/events" class="nav-link" class:active={$page.url.pathname.startsWith('/events')} onclick={closeMobileMenu}>{$t('nav.events')}</a>
-				<a href="/mesh" class="nav-link" class:active={$page.url.pathname.startsWith('/mesh')} onclick={closeMobileMenu}>{$t('nav.mesh')}</a>
 				<a href="/messages" class="nav-link" class:active={$page.url.pathname === '/messages'} onclick={closeMobileMenu}>
 					{$t('nav.messages')}
 					{#if unreadCount > 0}
