@@ -4,6 +4,7 @@
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { api } from '$lib/api';
 	import type { Webhook } from '$lib/types';
+	import { meshEnabled } from '$lib/stores/mesh-settings';
 	import { t } from 'svelte-i18n';
 
 	let passwordForm = $state({
@@ -404,6 +405,23 @@
 	<hr class="section-divider" />
 
 	<div class="settings-section">
+		<h2>{$t('settings.mesh_networking')}</h2>
+		<p class="section-desc">{$t('settings.mesh_desc')}</p>
+
+		<label class="toggle-row">
+			<input type="checkbox" bind:checked={$meshEnabled} class="toggle-checkbox" />
+			<span class="toggle-label">{$t('settings.mesh_enable')}</span>
+		</label>
+		{#if $meshEnabled}
+			<p class="info-hint">
+				<a href="/mesh">{$t('settings.mesh_open_dashboard')}</a>
+			</p>
+		{/if}
+	</div>
+
+	<hr class="section-divider" />
+
+	<div class="settings-section">
 		<h2>{$t('settings.webhooks')}</h2>
 		<p class="section-desc">
 			Register URLs to receive signed HTTP POST callbacks when events happen — for Slack, Discord, or any custom integration.
@@ -781,6 +799,25 @@
 		width: 14px;
 		height: 14px;
 		cursor: pointer;
+	}
+
+	.toggle-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		cursor: pointer;
+	}
+
+	.toggle-checkbox {
+		width: 18px;
+		height: 18px;
+		cursor: pointer;
+		accent-color: var(--color-primary);
+	}
+
+	.toggle-label {
+		font-size: 0.95rem;
+		color: var(--color-text);
 	}
 
 	@media (max-width: 600px) {

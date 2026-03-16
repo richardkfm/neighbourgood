@@ -19,6 +19,7 @@
 		getMeshMessages
 	} from '$lib/stores/mesh';
 	import { isBluetoothSupported } from '$lib/bluetooth/connection';
+	import { meshEnabled } from '$lib/stores/mesh-settings';
 	import type { CommunityOut, NGMeshMessage, MeshSyncResult } from '$lib/types';
 	import { t } from 'svelte-i18n';
 
@@ -356,7 +357,7 @@
 			</button>
 		</div>
 
-		{#if isBluetoothSupported() && selectedCommunityMode === 'red'}
+		{#if $meshEnabled && isBluetoothSupported() && selectedCommunityMode === 'red'}
 			<div class="mesh-panel">
 				<div class="mesh-header">
 					<div class="mesh-status-row">
@@ -399,7 +400,7 @@
 			</div>
 		{/if}
 
-		{#if communityMeshTickets.length > 0}
+		{#if $meshEnabled && communityMeshTickets.length > 0}
 			<div class="mesh-tickets-section">
 				<h2>{$t('mesh.mesh_tickets')} <span class="via-mesh-badge">{$t('mesh.via_mesh')}</span></h2>
 				<div class="ticket-list">
@@ -458,7 +459,7 @@
 					<span>{$t('crisis.form_description')}</span>
 					<textarea bind:value={newTicketDesc} rows="3" placeholder="More details..." maxlength="5000"></textarea>
 				</label>
-				{#if !$isOnline && $meshStatus === 'connected'}
+				{#if $meshEnabled && !$isOnline && $meshStatus === 'connected'}
 				<button class="btn-primary btn-mesh-send" onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
 					{creatingTicket ? $t('mesh.syncing') : $t('mesh.broadcast_ticket')}
 				</button>

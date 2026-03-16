@@ -243,6 +243,10 @@
     "telegram": "Ειδοποιήσεις Telegram",
     "save_profile": "Αποθήκευση προφίλ",
     "profile_saved": "Το προφίλ αποθηκεύτηκε.",
+    "mesh_networking": "Δίκτυο Mesh",
+    "mesh_desc": "Ενεργοποίηση δικτύου BLE mesh για επικοινωνία κρίσης εκτός σύνδεσης μέσω Bluetooth. Όταν απενεργοποιηθεί, τα στοιχεία ελέγχου mesh αποκρύπτονται.",
+    "mesh_enable": "Ενεργοποίηση δικτύου mesh",
+    "mesh_open_dashboard": "Άνοιγμα πίνακα ελέγχου mesh",
     "danger_zone": "Επικίνδυνη ζώνη"
   },
   "explore": {

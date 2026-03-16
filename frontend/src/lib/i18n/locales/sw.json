@@ -244,6 +244,10 @@
     "telegram": "Arifa za Telegram",
     "save_profile": "Hifadhi wasifu",
     "profile_saved": "Wasifu umehifadhiwa.",
+    "mesh_networking": "Mtandao wa Mesh",
+    "mesh_desc": "Wezesha mtandao wa BLE mesh kwa mawasiliano ya dharura kupitia Bluetooth bila mtandao. Ukizimwa, vidhibiti vya mesh vinafichwa.",
+    "mesh_enable": "Wezesha mtandao wa mesh",
+    "mesh_open_dashboard": "Fungua dashibodi ya mesh",
     "danger_zone": "Eneo hatari"
   },
   "explore": {

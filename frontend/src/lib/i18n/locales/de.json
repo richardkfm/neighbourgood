@@ -436,6 +436,10 @@
     "adding": "Wird hinzugefügt…",
     "save_profile": "Profil speichern",
     "profile_saved": "Profil gespeichert.",
+    "mesh_networking": "Mesh-Netzwerk",
+    "mesh_desc": "BLE-Mesh-Netzwerk für Offline-Krisenkommunikation über Bluetooth aktivieren. Bei Deaktivierung werden Mesh-Steuerelemente überall ausgeblendet.",
+    "mesh_enable": "Mesh-Netzwerk aktivieren",
+    "mesh_open_dashboard": "Mesh-Dashboard öffnen",
     "danger_zone": "Gefahrenzone"
   },
   "explore": {

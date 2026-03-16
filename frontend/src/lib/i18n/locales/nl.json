@@ -243,6 +243,10 @@
     "telegram": "Telegram-meldingen",
     "save_profile": "Profiel opslaan",
     "profile_saved": "Profiel opgeslagen.",
+    "mesh_networking": "Mesh-netwerk",
+    "mesh_desc": "BLE mesh-netwerk inschakelen voor offline crisiscommunicatie via Bluetooth. Wanneer uitgeschakeld worden mesh-bedieningen overal verborgen.",
+    "mesh_enable": "Mesh-netwerk inschakelen",
+    "mesh_open_dashboard": "Mesh-dashboard openen",
     "danger_zone": "Gevarenzone"
   },
   "explore": {

@@ -244,6 +244,10 @@
     "telegram": "إشعارات تيليغرام",
     "save_profile": "حفظ الملف الشخصي",
     "profile_saved": "تم حفظ الملف الشخصي.",
+    "mesh_networking": "شبكة Mesh",
+    "mesh_desc": "تفعيل شبكة BLE mesh للتواصل في الأزمات عبر البلوتوث بدون إنترنت. عند التعطيل، تُخفى عناصر التحكم في الشبكة.",
+    "mesh_enable": "تفعيل شبكة Mesh",
+    "mesh_open_dashboard": "فتح لوحة تحكم الشبكة",
     "danger_zone": "منطقة الخطر"
   },
   "explore": {
