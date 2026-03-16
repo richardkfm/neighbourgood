@@ -25,7 +25,8 @@ import {
 	type NGMeshMessageType,
 	type MeshTicketData,
 	type MeshVoteData,
-	type MeshResourceData
+	type MeshResourceData,
+	type MeshCheckinData
 } from '$lib/bluetooth/protocol';
 import { persistMessages, loadMessages, clearMessages } from '$lib/mesh-db';
 
@@ -148,6 +149,17 @@ export async function broadcastResourceOffer(
 	resource: MeshResourceData
 ): Promise<NGMeshMessage> {
 	const msg = createNGMessage('resource_offer', communityId, senderName, resource as unknown as Record<string, unknown>);
+	await sendViaMesh(msg);
+	return msg;
+}
+
+/** Broadcast a location check-in through the mesh. */
+export async function broadcastCheckin(
+	communityId: number,
+	senderName: string,
+	checkin: MeshCheckinData
+): Promise<NGMeshMessage> {
+	const msg = createNGMessage('location_checkin', communityId, senderName, checkin as unknown as Record<string, unknown>);
 	await sendViaMesh(msg);
 	return msg;
 }

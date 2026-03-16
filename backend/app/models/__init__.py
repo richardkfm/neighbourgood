@@ -11,6 +11,7 @@ from app.models.federation import KnownInstance, RedSkyAlert
 from app.models.crisis import CrisisVote, EmergencyTicket, TicketComment
 from app.models.webhook import Webhook, TelegramLinkToken
 from app.models.mesh import MeshSyncedMessage
+from app.models.mesh_checkin import MeshCheckin
 from app.models.sync import FederatedResource, FederatedSkill, InstanceSyncLog
 from app.models.event import Event, EventAttendee
 
@@ -19,7 +20,7 @@ __all__ = [
     "Skill", "Activity", "Invite", "Review", "KnownInstance", "RedSkyAlert",
     "CrisisVote", "EmergencyTicket", "TicketComment",
     "Webhook", "TelegramLinkToken",
-    "MeshSyncedMessage",
+    "MeshSyncedMessage", "MeshCheckin",
     "InstanceSyncLog", "FederatedResource", "FederatedSkill",
     "Event", "EventAttendee",
 ]

@@ -9,9 +9,10 @@ from app.models.community import Community, CommunityMember
 from app.models.crisis import CrisisVote, EmergencyTicket, TicketComment
 from app.models.message import Message
 from app.models.mesh import MeshSyncedMessage
+from app.models.mesh_checkin import MeshCheckin
 from app.models.resource import Resource
 from app.models.user import User
-from app.schemas.mesh import MeshMessageIn, MeshSyncRequest, MeshSyncResponse
+from app.schemas.mesh import MeshCheckinOut, MeshMessageIn, MeshSyncRequest, MeshSyncResponse
 from app.services.activity import record_activity
 
 router = APIRouter(prefix="/mesh", tags=["mesh"])
@@ -108,6 +109,8 @@ def _process_mesh_message(
         return None
     elif msg.type in ("resource_request", "resource_offer"):
         return _sync_resource(db, msg, current_user, community)
+    elif msg.type == "location_checkin":
+        return _sync_location_checkin(db, msg, current_user)
     # heartbeat: acknowledged but not persisted
     return None
 
@@ -364,6 +367,111 @@ def _sync_resource(
     )
 
     return resource.id
+
+
+def _sync_location_checkin(
+    db: Session, msg: MeshMessageIn, user: User
+) -> int:
+    """Persist a location check-in from a mesh message. Returns the checkin ID."""
+    data = msg.data
+    lat = data.get("lat")
+    lng = data.get("lng")
+    checkin_status = data.get("status", "")
+
+    if lat is None or lng is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="lat and lng required",
+        )
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="lat and lng must be numbers",
+        )
+
+    if checkin_status not in ("safe", "need_help", "evacuating"):
+        checkin_status = "safe"
+
+    note = data.get("note")
+
+    checkin = MeshCheckin(
+        community_id=msg.community_id,
+        user_id=user.id,
+        lat=lat,
+        lng=lng,
+        status=checkin_status,
+        note=str(note)[:5000] if note else None,
+    )
+    db.add(checkin)
+    db.flush()
+
+    record_activity(
+        db,
+        event_type="checkin_created",
+        summary=f'checked in as "{checkin_status}" (via mesh sync)',
+        actor_id=user.id,
+        community_id=msg.community_id,
+    )
+
+    return checkin.id
+
+
+@router.get("/checkins/{community_id}", response_model=list[MeshCheckinOut])
+def get_community_checkins(
+    community_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get recent location check-ins for a community (last 2 hours)."""
+    import datetime as dt
+
+    # Verify membership
+    membership = (
+        db.query(CommunityMember)
+        .filter(
+            CommunityMember.community_id == community_id,
+            CommunityMember.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not a member"
+        )
+
+    cutoff = dt.datetime.utcnow() - dt.timedelta(hours=2)
+    checkins = (
+        db.query(MeshCheckin)
+        .filter(
+            MeshCheckin.community_id == community_id,
+            MeshCheckin.checked_in_at >= cutoff,
+        )
+        .order_by(MeshCheckin.checked_in_at.desc())
+        .all()
+    )
+
+    # Build response with display names
+    user_ids = {c.user_id for c in checkins}
+    users = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+
+    return [
+        MeshCheckinOut(
+            id=c.id,
+            community_id=c.community_id,
+            user_id=c.user_id,
+            display_name=users.get(c.user_id, User()).display_name or "Unknown",
+            lat=c.lat,
+            lng=c.lng,
+            status=c.status,
+            note=c.note,
+            checked_in_at=c.checked_in_at.isoformat() if c.checked_in_at else "",
+        )
+        for c in checkins
+    ]
 
 
 def _sync_crisis_vote(

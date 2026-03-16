@@ -38,7 +38,8 @@ export type NGMeshMessageType =
 	| 'direct_message'
 	| 'heartbeat'
 	| 'resource_request'
-	| 'resource_offer';
+	| 'resource_offer'
+	| 'location_checkin';
 
 export interface NGMeshMessage {
 	ng: 1;
@@ -80,6 +81,13 @@ export interface MeshResourceData {
 	description: string;
 	category: string;
 	quantity?: number;
+}
+
+export interface MeshCheckinData {
+	lat: number;
+	lng: number;
+	status: 'safe' | 'need_help' | 'evacuating';
+	note?: string;
 }
 
 const encoder = new TextEncoder();
