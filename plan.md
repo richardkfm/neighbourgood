@@ -1,268 +1,187 @@
-# Plan: Full PWA with Service Worker Caching
+# Plan: Improve BLE Mesh Networking
 
 ## Overview
 
-Transform the NeighbourGood SvelteKit frontend into a fully installable Progressive Web App with offline support via service worker caching. Uses SvelteKit's built-in `src/service-worker.ts` convention (no external libraries like Workbox or vite-plugin-pwa needed).
+Improve the BitChat BLE mesh gateway across 4 phases: finish the 3 unimplemented backend message type stubs, add auto-reconnect on BLE disconnect, persist mesh messages to IndexedDB so they survive tab close, and add BLE MTU-aware message fragmentation.
 
-**Key design decisions:**
-- Keep `adapter-node` — the app needs server-side API proxy (`hooks.server.ts`). SvelteKit's service worker works with any adapter.
-- Use SvelteKit's `$service-worker` module (`build`, `files`, `version`) for cache management — zero new dependencies.
-- No Workbox — the caching logic is simple enough to implement directly, keeping the dependency footprint small.
-- SVG icons for the manifest (supported in Chrome 107+, Edge, Firefox) plus a PNG apple-touch-icon for Safari.
+---
 
-## Caching Strategy
+## Phase 1: Finish unimplemented backend message type stubs
 
-| Resource Type | Strategy | Rationale |
-|--------------|----------|-----------|
-| Build assets (JS/CSS bundles) | **Precache** on install, cache-first on fetch | Immutable hashed filenames; safe to cache forever per version |
-| Static files (icons, fonts, manifest) | **Precache** on install, cache-first on fetch | Rarely change; invalidated when SW version changes |
-| Page navigations (HTML) | **Network-first** with offline fallback | Always show latest content; fall back to offline page when disconnected |
-| API GET requests (`/api/*`) | **Network-first** with stale cache fallback | Show fresh data when possible; serve cached data when offline |
-| API mutations (POST/PUT/DELETE) | **Network-only** | Mutations must reach the server; no caching |
+### 1a. Add `server_object_id` to `MeshSyncedMessage` model
+**File:** `backend/app/models/mesh.py`
 
-## Steps
+Add a nullable `server_object_id: Mapped[int | None]` column. This lets us map a mesh message UUID back to the server-side object it created (e.g., an `EmergencyTicket.id`). Needed for ticket comment sync.
 
-### Step 1: Create PWA icon assets in `frontend/static/`
+**File:** New Alembic migration
 
-Create SVG and PNG icon files based on the existing brand icon (the house+heart SVG already in `+layout.svelte`):
+### 1b. Store `server_object_id` when syncing emergency tickets
+**File:** `backend/app/routers/mesh_sync.py` — `_sync_emergency_ticket()`
 
-- `static/icon.svg` — scalable vector icon for manifest (any size)
-- `static/icon-192.png` — 192×192 PNG (generated via a tiny Node script using SVG → canvas → PNG, or hand-crafted)
-- `static/icon-512.png` — 512×512 PNG
-- `static/favicon.png` — 32×32 PNG (already referenced in app.html but missing)
-- `static/apple-touch-icon.png` — 180×180 PNG for iOS home screen
+After `db.flush()` (which assigns `ticket.id`), return the ticket ID so the caller can set `server_object_id` on the `MeshSyncedMessage` record.
 
-> **Pragmatic approach**: Since we can't run image generation tools in this environment, we'll create the SVGs directly and use a simple build-time script (`scripts/generate-icons.js`) that can be run with `node` to convert SVGs to PNGs. For now the manifest will reference SVGs which work in all modern PWA-capable browsers.
+Refactor `sync_mesh_messages()` loop to pass back and store `server_object_id` from each processor.
 
-### Step 2: Update `static/manifest.json`
+### 1c. Implement `_sync_ticket_comment()`
+**File:** `backend/app/routers/mesh_sync.py`
 
-```json
-{
-  "name": "NeighbourGood",
-  "short_name": "NeighbourGood",
-  "description": "Community resource sharing platform with crisis-mode support",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "background_color": "#fdf8f3",
-  "theme_color": "#c95d1b",
-  "orientation": "any",
-  "categories": ["social", "lifestyle"],
-  "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ],
-  "shortcuts": [
-    { "name": "Messages", "url": "/messages", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Resources", "url": "/resources", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Communities", "url": "/communities", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
-  ]
-}
+Currently a `pass` stub. Implementation:
+1. Validate `body` (non-empty, max 5000 chars) and `ticket_mesh_id` (non-empty).
+2. Look up `MeshSyncedMessage` where `mesh_message_id == ticket_mesh_id` and `message_type == 'emergency_ticket'`.
+3. If not found, raise 422 ("Referenced ticket not yet synced").
+4. Use `server_object_id` to get the `EmergencyTicket`.
+5. Create `TicketComment(ticket_id=ticket.id, author_id=user.id, body=body[:5000])`.
+6. `record_activity()`.
+
+### 1d. Implement `_sync_direct_message()`
+**File:** `backend/app/routers/mesh_sync.py`
+
+New function. `data` fields: `recipient_id: int`, `body: str`.
+1. Validate body non-empty, max 5000 chars.
+2. Validate `recipient_id` refers to a real user who shares at least one community with the sender.
+3. Create `Message(sender_id=user.id, recipient_id=..., body=body[:5000])`.
+
+### 1e. Implement `_sync_crisis_status()`
+**File:** `backend/app/routers/mesh_sync.py`
+
+New function. `data` fields: `new_mode: str` ("blue" | "red").
+1. Validate `new_mode` is "blue" or "red".
+2. Verify user is a leader or admin of the community.
+3. Update `community.mode = new_mode`.
+4. `record_activity()`.
+
+### 1f. Wire new handlers in `_process_mesh_message()`
+**File:** `backend/app/routers/mesh_sync.py`
+
+Replace the pass-through comment on line 100 with actual dispatch:
+```python
+elif msg.type == "direct_message":
+    _sync_direct_message(db, msg, current_user)
+elif msg.type == "crisis_status":
+    _sync_crisis_status(db, msg, current_user, community)
 ```
 
-Fix `theme_color` to `#c95d1b` (current terracotta primary) and `background_color` to `#fdf8f3` (current cream bg).
+### 1g. Add tests
+**File:** `backend/tests/test_mesh_sync.py`
 
-### Step 3: Create offline fallback page — `static/offline.html`
+New tests (~7):
+- `test_sync_ticket_comment` — create ticket via mesh first, then comment referencing its mesh ID
+- `test_sync_ticket_comment_missing_ticket` — references unknown mesh ID → error
+- `test_sync_ticket_comment_empty_body` — 422
+- `test_sync_direct_message` — happy path (create second user who shares community)
+- `test_sync_direct_message_invalid_recipient` — non-existent or non-community user → error
+- `test_sync_crisis_status_as_leader` — toggles mode
+- `test_sync_crisis_status_as_member` — non-leader → error
 
-A lightweight, self-contained HTML page with inline styles (no external dependencies) that displays:
-- NeighbourGood branding
-- "You're offline" message
-- "Try again" button that calls `location.reload()`
-- Uses the same warm terracotta/cream palette
+---
 
-This page gets precached by the service worker and served for failed navigation requests.
+## Phase 2: Auto-reconnect on BLE disconnect
 
-### Step 4: Create the service worker — `src/service-worker.ts`
+### 2a. Add reconnect capability to connection manager
+**File:** `frontend/src/lib/bluetooth/connection.ts`
 
-SvelteKit automatically picks up `src/service-worker.ts` and compiles it. Available imports:
+- Keep `device` reference alive after disconnect (don't null it in `handleDisconnect`)
+- Export `reconnectToLastDevice(): Promise<boolean>`:
+  - If `device` is set and `device.gatt` exists but not connected, call `device.gatt.connect()`
+  - Re-acquire service + characteristic, re-subscribe to notifications
+  - Return true on success, false on failure
+- Export `hasLastDevice(): boolean` — checks if a reconnectable device reference exists
+- Export `forgetDevice(): void` — explicitly nulls the device (used on manual disconnect)
 
+### 2b. Wire auto-reconnect into mesh store
+**File:** `frontend/src/lib/stores/mesh.ts`
+
+- Add `'reconnecting'` to `MeshStatus` type
+- In the `onDisconnect` handler:
+  1. Set `meshStatus` to `'reconnecting'`
+  2. Attempt `reconnectToLastDevice()` up to 3 times with exponential backoff (1s, 2s, 4s)
+  3. On success: re-subscribe message/disconnect listeners, set `'connected'`
+  4. On failure: set `'disconnected'`, call `forgetDevice()`
+- In `disconnectFromMesh()` (manual): call `forgetDevice()` to prevent auto-reconnect
+
+### 2c. Update triage UI + i18n
+**File:** `frontend/src/routes/triage/+page.svelte`
+
+- Handle `reconnecting` status: pulsing amber dot + "Reconnecting..." text
+- Disable Connect/Disconnect buttons during reconnect
+
+**Files:** All 7 locale JSON files
+- Add `mesh.reconnecting`: "Reconnecting..." (and translations)
+
+---
+
+## Phase 3: Persist mesh messages to IndexedDB
+
+### 3a. Create IndexedDB helper
+**File:** `frontend/src/lib/mesh-db.ts` (new)
+
+Minimal IndexedDB wrapper (no dependencies):
+- `openMeshDB(): Promise<IDBDatabase>` — opens/creates DB `ng-mesh`, object store `messages`
+- `persistMessages(msgs: NGMeshMessage[]): Promise<void>` — replaces all stored messages
+- `loadMessages(): Promise<NGMeshMessage[]>` — reads all stored messages
+- `clearMessages(): Promise<void>` — deletes all
+
+### 3b. Integrate with mesh store
+**File:** `frontend/src/lib/stores/mesh.ts`
+
+- On each `meshMessages.update()`, call `persistMessages()` (fire-and-forget, don't block UI)
+- On `connectToMesh()`, call `loadMessages()` and merge into store (recover unsent messages from previous session)
+- On `clearMeshMessages()`, also call `clearMessages()`
+
+### 3c. Add Background Sync via service worker
+**File:** `frontend/src/service-worker.ts`
+
+- Listen for `message` event with `type: 'mesh-queue-updated'`
+- Register a Background Sync with tag `'mesh-sync'`
+- Handle `sync` event: read messages from IndexedDB, POST to `/api/mesh/sync`, clear on success
+- Requires the auth token — read from `ng_token` in the SW's `caches` (already cached by offline store) or accept it in the postMessage payload
+
+### 3d. Trigger Background Sync registration from mesh store
+**File:** `frontend/src/lib/stores/mesh.ts`
+
+After persisting messages, post to the SW:
 ```typescript
-import { build, files, version } from '$service-worker';
-// build = hashed JS/CSS chunks from the build
-// files = everything in /static
-// version = deterministic build hash (changes each build)
-```
-
-Implementation:
-
-```typescript
-/// <reference types="@sveltejs/kit" />
-/// <reference no-default-lib="true"/>
-/// <reference lib="esnext" />
-/// <reference lib="webworker" />
-
-import { build, files, version } from '$service-worker';
-
-const CACHE_NAME = `ng-cache-${version}`;
-const ASSETS = [...build, ...files];
-
-// ── Install: precache all static + build assets ──
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
-      .then(() => self.skipWaiting())
-  );
-});
-
-// ── Activate: delete old caches ──
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      ))
-      .then(() => self.clients.claim())
-  );
-});
-
-// ── Fetch: route-based caching strategies ──
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Skip non-GET and cross-origin
-  if (request.method !== 'GET') return;
-  if (url.origin !== self.location.origin) return;
-
-  // API requests: network-first with cache fallback
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // Build/static assets: cache-first
-  if (ASSETS.includes(url.pathname)) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  // Navigation: network-first with offline fallback
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .catch(() => caches.match('/offline.html'))
-    );
-    return;
-  }
-});
-
-async function cacheFirst(request) {
-  const cached = await caches.match(request);
-  return cached ?? fetch(request);
-}
-
-async function networkFirst(request) {
-  const cache = await caches.open(`ng-api-${version}`);
-  try {
-    const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
-    return response;
-  } catch {
-    return cache.match(request) ?? new Response('Offline', { status: 503 });
-  }
-}
-```
-
-Key behaviors:
-- `skipWaiting()` + `clients.claim()` so updates activate immediately
-- Separate API cache (`ng-api-*`) from static asset cache
-- Old caches cleaned up on activate
-- Navigation failures show the branded offline page
-
-### Step 5: Update `src/app.html`
-
-Add `apple-touch-icon` and ensure all PWA meta tags are present:
-
-```html
-<link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="NeighbourGood" />
-```
-
-### Step 6: Add SW registration + update notification in `+layout.svelte`
-
-In the `onMount`, register the service worker and listen for updates:
-
-```typescript
-if ('serviceWorker' in navigator) {
-  const reg = await navigator.serviceWorker.register('/service-worker.js');
-  reg.addEventListener('updatefound', () => {
-    const newWorker = reg.installing;
-    newWorker?.addEventListener('statechange', () => {
-      if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-        showUpdateBanner = true;  // reactive state
-      }
-    });
-  });
-}
-```
-
-Add a small update banner at the top of the page:
-```svelte
-{#if showUpdateBanner}
-  <div class="update-banner">
-    New version available.
-    <button onclick={() => location.reload()}>Refresh</button>
-  </div>
-{/if}
-```
-
-### Step 7: Add install prompt handling in `+layout.svelte`
-
-Capture the `beforeinstallprompt` event and show an install button in the nav for mobile users:
-
-```typescript
-let installPrompt = $state(null);
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  installPrompt = e;
-});
-
-function installApp() {
-  installPrompt?.prompt();
-  installPrompt = null;
-}
-```
-
-Show a subtle install button in the nav (only when `installPrompt` is non-null):
-```svelte
-{#if installPrompt}
-  <button class="nav-install-btn" onclick={installApp}>Install App</button>
-{/if}
+navigator.serviceWorker?.controller?.postMessage({ type: 'mesh-queue-updated' });
 ```
 
 ---
 
-## Files Changed
+## Phase 4: BLE MTU-aware message fragmentation
 
-| File | Action | Description |
-|------|--------|-------------|
-| `frontend/static/icon.svg` | **Create** | SVG app icon (house+heart brand) |
-| `frontend/static/icon-192.png` | **Create** | 192×192 PNG icon placeholder |
-| `frontend/static/icon-512.png` | **Create** | 512×512 PNG icon placeholder |
-| `frontend/static/favicon.png` | **Create** | 32×32 favicon (currently missing) |
-| `frontend/static/apple-touch-icon.png` | **Create** | 180×180 iOS icon |
-| `frontend/static/manifest.json` | **Edit** | Add icons, shortcuts, fix theme_color |
-| `frontend/static/offline.html` | **Create** | Branded offline fallback page |
-| `frontend/src/service-worker.ts` | **Create** | Service worker with caching strategies |
-| `frontend/src/app.html` | **Edit** | Add apple-touch-icon + iOS meta tags |
-| `frontend/src/routes/+layout.svelte` | **Edit** | SW registration, update banner, install prompt |
+### 4a. Add fragmentation to protocol codec
+**File:** `frontend/src/lib/bluetooth/protocol.ts`
 
-## No New Dependencies
+- Define `DEFAULT_MTU = 185` (conservative; most BLE 4.2+ devices support at least this)
+- Max payload per fragment = MTU - 3 (ATT header) - 8 (BitChat header) = 174 bytes
+- Fragment packet type: `0x02`
+- Fragment header inside payload: `originalMsgId(4) + fragmentIndex(1) + totalFragments(1)` = 6 bytes overhead
+- So effective data per fragment: 168 bytes
 
-This implementation uses zero new npm packages. Everything is built on:
-- SvelteKit's built-in `$service-worker` module
-- Standard Web APIs (Cache API, Service Worker API, `beforeinstallprompt`)
+Exports:
+- `fragmentPacket(packet: Uint8Array, maxPayload?: number): Uint8Array[]` — splits if needed, returns array of 1+ packets
+- `defragmentPacket(fragment: Uint8Array): Uint8Array | null` — accumulates fragments, returns complete packet when all received, null otherwise
+- Internal reassembly buffer with 10-second timeout for stale fragments
 
-## Testing
+### 4b. Wire fragmentation into connection manager
+**File:** `frontend/src/lib/bluetooth/connection.ts`
 
-- Build the frontend (`npm run build`) to verify the service worker compiles
-- Run `npm run check` to verify TypeScript correctness
-- Manual testing: open DevTools → Application → Service Workers to verify registration
-- Manual testing: go offline in DevTools → Network → Offline and verify cached pages/API responses work
-- Lighthouse PWA audit should pass all core criteria after implementation
+- In `sendMessage()`: call `fragmentPacket()`, write each fragment sequentially with a small delay (5ms) between writes
+- In `handleNotification()`: pass through `defragmentPacket()`, only dispatch to callbacks when a complete message is reassembled
+
+---
+
+## Files Changed Summary
+
+| File | Action |
+|------|--------|
+| `backend/app/models/mesh.py` | Edit — add `server_object_id` column |
+| `backend/app/routers/mesh_sync.py` | Edit — implement 3 stubs, refactor sync loop |
+| `backend/tests/test_mesh_sync.py` | Edit — add ~7 new tests |
+| `backend/alembic/versions/xxx_add_server_object_id.py` | Create — migration |
+| `frontend/src/lib/bluetooth/connection.ts` | Edit — add reconnect + fragmentation |
+| `frontend/src/lib/bluetooth/protocol.ts` | Edit — add fragmentation/defragmentation |
+| `frontend/src/lib/stores/mesh.ts` | Edit — auto-reconnect, IndexedDB integration |
+| `frontend/src/lib/mesh-db.ts` | Create — IndexedDB helper |
+| `frontend/src/service-worker.ts` | Edit — Background Sync for mesh |
+| `frontend/src/routes/triage/+page.svelte` | Edit — reconnecting UI state |
+| `frontend/src/lib/i18n/locales/*.json` (×7) | Edit — add `mesh.reconnecting` key |
