@@ -118,8 +118,19 @@ export function encodeNGMessage(msg: NGMeshMessage): Uint8Array {
 	return createBitchatPacket(payloadBytes, DEFAULT_TTL);
 }
 
+export interface DecodedNGMessage {
+	message: NGMeshMessage;
+	ttl: number;
+}
+
 /** Decode incoming BLE data into an NG message, or null if not NG format. */
 export function decodeNGMessage(raw: DataView): NGMeshMessage | null {
+	const result = decodeNGMessageWithTTL(raw);
+	return result?.message ?? null;
+}
+
+/** Decode incoming BLE data into an NG message with TTL info for relay. */
+export function decodeNGMessageWithTTL(raw: DataView): DecodedNGMessage | null {
 	const parsed = parseBitchatPacket(raw);
 	if (!parsed) return null;
 
@@ -129,7 +140,7 @@ export function decodeNGMessage(raw: DataView): NGMeshMessage | null {
 	try {
 		const obj = JSON.parse(text.slice(NG_PREFIX.length));
 		if (obj.ng !== 1 || !obj.type || !obj.id) return null;
-		return obj as NGMeshMessage;
+		return { message: obj as NGMeshMessage, ttl: parsed.ttl };
 	} catch {
 		return null;
 	}

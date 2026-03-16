@@ -19,8 +19,9 @@ import {
 } from '$lib/bluetooth/connection';
 import {
 	encodeNGMessage,
-	decodeNGMessage,
+	decodeNGMessageWithTTL,
 	createNGMessage,
+	createBitchatPacket,
 	type NGMeshMessage,
 	type NGMeshMessageType,
 	type MeshTicketData,
@@ -41,6 +42,11 @@ export const meshPeers = writable<Set<string>>(new Set());
 
 export const meshIsSupported = derived(meshStatus, () => isBluetoothSupported());
 export const meshPeerCount = derived(meshPeers, (peers) => peers.size);
+
+/** Whether to relay received messages to expand mesh range. Opt-in to save battery. */
+export const meshRelayEnabled = writable<boolean>(false);
+/** Count of messages relayed in this session. */
+export const meshRelayCount = writable<number>(0);
 
 // Deduplication: track seen message IDs (sliding window of last 500)
 const seenIds = new Set<string>();
@@ -186,13 +192,25 @@ export function getMeshMessages(): NGMeshMessage[] {
 	return get(meshMessages);
 }
 
+/** Toggle relay mode on/off. */
+export function toggleRelay(): void {
+	meshRelayEnabled.update((v) => !v);
+}
+
+/** Get relay stats. */
+export function getRelayCount(): number {
+	return get(meshRelayCount);
+}
+
 // ── Internals ─────────────────────────────────────────────────────────────────
 
 function subscribeToEvents(): void {
 	// Subscribe to incoming BLE messages
 	unsubMessage = onMessage((data: DataView) => {
-		const msg = decodeNGMessage(data);
-		if (!msg) return; // Not an NG message, ignore
+		const decoded = decodeNGMessageWithTTL(data);
+		if (!decoded) return; // Not an NG message, ignore
+
+		const { message: msg, ttl } = decoded;
 
 		// Deduplicate
 		if (seenIds.has(msg.id)) return;
@@ -212,6 +230,11 @@ function subscribeToEvents(): void {
 				notifyServiceWorker();
 				return updated;
 			});
+		}
+
+		// Multi-hop relay: re-broadcast with decremented TTL if enabled
+		if (get(meshRelayEnabled) && ttl > 1) {
+			relayMessage(msg, ttl - 1);
 		}
 	});
 
@@ -274,6 +297,19 @@ function cleanup(): void {
 	if (unsubDisconnect) {
 		unsubDisconnect();
 		unsubDisconnect = null;
+	}
+}
+
+/** Re-broadcast a received message with decremented TTL for multi-hop relay. */
+async function relayMessage(msg: NGMeshMessage, newTtl: number): Promise<void> {
+	try {
+		const json = 'ng:' + JSON.stringify(msg);
+		const payloadBytes = new TextEncoder().encode(json);
+		const packet = createBitchatPacket(payloadBytes, newTtl);
+		await sendMessage(packet);
+		meshRelayCount.update((n) => n + 1);
+	} catch {
+		// Relay failed silently — not critical
 	}
 }
 

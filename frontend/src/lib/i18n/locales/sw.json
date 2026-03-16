@@ -300,7 +300,9 @@
     "step_1": "Connect to a nearby BitChat device via Bluetooth.",
     "step_2": "Send and receive emergency messages, tickets, and votes over the mesh.",
     "step_3": "Messages are stored locally until you reconnect to the internet.",
-    "step_4": "Hit Sync to upload mesh messages to the server."
+    "step_4": "Hit Sync to upload mesh messages to the server.",
+    "relay_mode": "Relay messages (extend range)",
+    "relayed": "{count} relayed"
   },
   "language_names": {
     "am": "አማርኛ",

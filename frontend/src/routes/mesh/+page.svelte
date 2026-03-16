@@ -15,7 +15,10 @@
 		disconnectFromMesh,
 		clearMeshMessages,
 		getMeshMessages,
-		broadcastHeartbeat
+		broadcastHeartbeat,
+		meshRelayEnabled,
+		meshRelayCount,
+		toggleRelay
 	} from '$lib/stores/mesh';
 	import { api } from '$lib/api';
 	import type { MeshStatus } from '$lib/stores/mesh';
@@ -34,6 +37,8 @@
 	let peerCount: number = $derived($meshPeerCount);
 	let supported: boolean = $derived($meshIsSupported);
 	let peers: Set<string> = $derived($meshPeers);
+	let relayEnabled: boolean = $derived($meshRelayEnabled);
+	let relayCount: number = $derived($meshRelayCount);
 
 	onMount(() => {
 		if (!$isLoggedIn) {
@@ -206,6 +211,15 @@
 							{/if}
 						</span>
 					</div>
+				</div>
+				<div class="relay-row">
+					<label class="relay-toggle">
+						<input type="checkbox" checked={relayEnabled} onchange={toggleRelay} />
+						<span>{$t('mesh.relay_mode')}</span>
+					</label>
+					{#if relayCount > 0}
+						<span class="relay-count">{$t('mesh.relayed', { values: { count: relayCount } })}</span>
+					{/if}
 				</div>
 				<button class="btn btn-outline btn-danger" onclick={handleDisconnect}>
 					{$t('mesh.disconnect')}
@@ -505,6 +519,36 @@
 		color: var(--color-text-muted);
 		font-size: 0.82rem;
 		font-weight: 400;
+	}
+
+	.relay-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem 0;
+		margin-bottom: 0.5rem;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.relay-toggle {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.88rem;
+		color: var(--color-text);
+		cursor: pointer;
+	}
+
+	.relay-toggle input {
+		accent-color: var(--color-primary);
+	}
+
+	.relay-count {
+		font-size: 0.78rem;
+		color: var(--color-text-muted);
+		background: var(--color-primary-light);
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
 	}
 
 	.error-message {
