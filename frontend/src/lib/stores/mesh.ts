@@ -19,14 +19,18 @@ import {
 } from '$lib/bluetooth/connection';
 import {
 	encodeNGMessage,
-	decodeNGMessage,
+	decodeNGMessageWithTTL,
 	createNGMessage,
+	createBitchatPacket,
 	type NGMeshMessage,
 	type NGMeshMessageType,
 	type MeshTicketData,
-	type MeshVoteData
+	type MeshVoteData,
+	type MeshResourceData,
+	type MeshCheckinData
 } from '$lib/bluetooth/protocol';
 import { persistMessages, loadMessages, clearMessages } from '$lib/mesh-db';
+import { saveOfflineTicket, addCommentToTicket, type OfflineTicket, type OfflineTicketComment } from '$lib/mesh-triage-db';
 
 export type MeshStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -39,6 +43,16 @@ export const meshPeers = writable<Set<string>>(new Set());
 
 export const meshIsSupported = derived(meshStatus, () => isBluetoothSupported());
 export const meshPeerCount = derived(meshPeers, (peers) => peers.size);
+
+/** Whether to relay received messages to expand mesh range. Opt-in to save battery. */
+export const meshRelayEnabled = writable<boolean>(false);
+/** Count of messages relayed in this session. */
+export const meshRelayCount = writable<number>(0);
+
+/** Ack status for sent messages: message ID → 'pending' | 'acked' */
+export const meshAckStatus = writable<Map<string, 'pending' | 'acked'>>(new Map());
+
+const ACK_TIMEOUT_MS = 30_000;
 
 // Deduplication: track seen message IDs (sliding window of last 500)
 const seenIds = new Set<string>();
@@ -105,6 +119,24 @@ export async function sendViaMesh(msg: NGMeshMessage): Promise<void> {
 	await sendMessage(packet);
 	// Track our own message to avoid processing it as incoming
 	addSeenId(msg.id);
+
+	// Track ack status for non-heartbeat, non-ack messages
+	if (msg.type !== 'heartbeat' && msg.type !== 'ack') {
+		meshAckStatus.update((m) => {
+			const next = new Map(m);
+			next.set(msg.id, 'pending');
+			return next;
+		});
+		// Timeout: mark as unacknowledged after 30s
+		setTimeout(() => {
+			meshAckStatus.update((m) => {
+				if (m.get(msg.id) === 'pending') {
+					// Leave as pending — UI can show it
+				}
+				return m;
+			});
+		}, ACK_TIMEOUT_MS);
+	}
 }
 
 /** Broadcast an emergency ticket through the mesh. */
@@ -125,6 +157,39 @@ export async function broadcastCrisisVote(
 	vote: MeshVoteData
 ): Promise<NGMeshMessage> {
 	const msg = createNGMessage('crisis_vote', communityId, senderName, vote as unknown as Record<string, unknown>);
+	await sendViaMesh(msg);
+	return msg;
+}
+
+/** Broadcast a resource request through the mesh. */
+export async function broadcastResourceRequest(
+	communityId: number,
+	senderName: string,
+	resource: MeshResourceData
+): Promise<NGMeshMessage> {
+	const msg = createNGMessage('resource_request', communityId, senderName, resource as unknown as Record<string, unknown>);
+	await sendViaMesh(msg);
+	return msg;
+}
+
+/** Broadcast a resource offer through the mesh. */
+export async function broadcastResourceOffer(
+	communityId: number,
+	senderName: string,
+	resource: MeshResourceData
+): Promise<NGMeshMessage> {
+	const msg = createNGMessage('resource_offer', communityId, senderName, resource as unknown as Record<string, unknown>);
+	await sendViaMesh(msg);
+	return msg;
+}
+
+/** Broadcast a location check-in through the mesh. */
+export async function broadcastCheckin(
+	communityId: number,
+	senderName: string,
+	checkin: MeshCheckinData
+): Promise<NGMeshMessage> {
+	const msg = createNGMessage('location_checkin', communityId, senderName, checkin as unknown as Record<string, unknown>);
 	await sendViaMesh(msg);
 	return msg;
 }
@@ -151,19 +216,44 @@ export function getMeshMessages(): NGMeshMessage[] {
 	return get(meshMessages);
 }
 
+/** Toggle relay mode on/off. */
+export function toggleRelay(): void {
+	meshRelayEnabled.update((v) => !v);
+}
+
+/** Get relay stats. */
+export function getRelayCount(): number {
+	return get(meshRelayCount);
+}
+
 // ── Internals ─────────────────────────────────────────────────────────────────
 
 function subscribeToEvents(): void {
 	// Subscribe to incoming BLE messages
 	unsubMessage = onMessage((data: DataView) => {
-		const msg = decodeNGMessage(data);
-		if (!msg) return; // Not an NG message, ignore
+		const decoded = decodeNGMessageWithTTL(data);
+		if (!decoded) return; // Not an NG message, ignore
+
+		const { message: msg, ttl } = decoded;
 
 		// Deduplicate
 		if (seenIds.has(msg.id)) return;
 		addSeenId(msg.id);
 
-		if (msg.type === 'heartbeat') {
+		if (msg.type === 'ack') {
+			// Process incoming ack — mark our sent message as acknowledged
+			const ackFor = msg.data?.ack_for as string;
+			if (ackFor) {
+				meshAckStatus.update((m) => {
+					if (m.has(ackFor)) {
+						const next = new Map(m);
+						next.set(ackFor, 'acked');
+						return next;
+					}
+					return m;
+				});
+			}
+		} else if (msg.type === 'heartbeat') {
 			meshPeers.update((peers) => {
 				const next = new Set(peers);
 				next.add(msg.sender_name);
@@ -177,6 +267,43 @@ function subscribeToEvents(): void {
 				notifyServiceWorker();
 				return updated;
 			});
+
+			// Persist emergency tickets/comments to offline triage DB
+			if (msg.type === 'emergency_ticket') {
+				const data = msg.data;
+				const ticket: OfflineTicket = {
+					id: msg.id,
+					community_id: msg.community_id,
+					sender_name: msg.sender_name,
+					title: String(data.title || ''),
+					description: String(data.description || ''),
+					ticket_type: (data.ticket_type as OfflineTicket['ticket_type']) || 'request',
+					urgency: (data.urgency as OfflineTicket['urgency']) || 'medium',
+					ts: msg.ts,
+					comments: [],
+				};
+				saveOfflineTicket(ticket).catch(() => {});
+			} else if (msg.type === 'ticket_comment') {
+				const data = msg.data;
+				const comment: OfflineTicketComment = {
+					id: msg.id,
+					sender_name: msg.sender_name,
+					body: String(data.body || ''),
+					ts: msg.ts,
+				};
+				const ticketId = data.ticket_mesh_id as string;
+				if (ticketId) {
+					addCommentToTicket(ticketId, comment).catch(() => {});
+				}
+			}
+
+			// Auto-send ack for non-heartbeat messages
+			sendAck(msg.community_id, msg.id);
+		}
+
+		// Multi-hop relay: re-broadcast with decremented TTL if enabled (skip acks)
+		if (get(meshRelayEnabled) && ttl > 1 && msg.type !== 'ack') {
+			relayMessage(msg, ttl - 1);
 		}
 	});
 
@@ -239,6 +366,31 @@ function cleanup(): void {
 	if (unsubDisconnect) {
 		unsubDisconnect();
 		unsubDisconnect = null;
+	}
+}
+
+/** Send an acknowledgment for a received message. */
+async function sendAck(communityId: number, ackForId: string): Promise<void> {
+	try {
+		const ackMsg = createNGMessage('ack', communityId, 'system', { ack_for: ackForId });
+		const packet = encodeNGMessage(ackMsg);
+		await sendMessage(packet);
+		addSeenId(ackMsg.id);
+	} catch {
+		// Ack send failed — not critical
+	}
+}
+
+/** Re-broadcast a received message with decremented TTL for multi-hop relay. */
+async function relayMessage(msg: NGMeshMessage, newTtl: number): Promise<void> {
+	try {
+		const json = 'ng:' + JSON.stringify(msg);
+		const payloadBytes = new TextEncoder().encode(json);
+		const packet = createBitchatPacket(payloadBytes, newTtl);
+		await sendMessage(packet);
+		meshRelayCount.update((n) => n + 1);
+	} catch {
+		// Relay failed silently — not critical
 	}
 }
 

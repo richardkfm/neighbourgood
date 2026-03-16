@@ -347,3 +347,239 @@ def test_sync_crisis_status_as_member(client, auth_headers, community_id, regist
     assert res.status_code == 200
     assert res.json()["errors"] == 1
     assert res.json()["synced"] == 0
+
+
+# ── Resource offer/request sync ──────────────────────────────────
+
+
+def test_sync_resource_offer(client, auth_headers, community_id):
+    """Sync a resource offer creates a resource listing."""
+    msg = _mesh_msg(
+        msg_type="resource_offer",
+        community_id=community_id,
+        data={
+            "title": "Portable generator",
+            "description": "Can power small devices",
+            "category": "electronics",
+        },
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["synced"] == 1
+    assert res.json()["errors"] == 0
+
+    # Verify resource was created
+    resources_res = client.get("/resources", headers=auth_headers)
+    assert resources_res.status_code == 200
+    items = resources_res.json()["items"]
+    assert any(r["title"] == "Portable generator" for r in items)
+
+
+def test_sync_resource_request(client, auth_headers, community_id):
+    """Sync a resource request creates a resource listing."""
+    msg = _mesh_msg(
+        msg_type="resource_request",
+        community_id=community_id,
+        data={
+            "title": "Water filters",
+            "description": "Urgently need water purification",
+            "category": "other",
+        },
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["synced"] == 1
+    assert res.json()["errors"] == 0
+
+
+def test_sync_resource_missing_title(client, auth_headers, community_id):
+    """Resource with no title should error."""
+    msg = _mesh_msg(
+        msg_type="resource_offer",
+        community_id=community_id,
+        data={"description": "No title here", "category": "tools"},
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["errors"] == 1
+    assert res.json()["synced"] == 0
+
+
+def test_sync_resource_invalid_category_defaults_to_other(client, auth_headers, community_id):
+    """Invalid category falls back to 'other'."""
+    msg = _mesh_msg(
+        msg_type="resource_offer",
+        community_id=community_id,
+        data={
+            "title": "Mystery item",
+            "category": "invalid_cat",
+        },
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["synced"] == 1
+
+
+# ── Location check-in sync ──────────────────────────────────
+
+
+def test_sync_location_checkin(client, auth_headers, community_id):
+    """Sync a location check-in creates a checkin record."""
+    msg = _mesh_msg(
+        msg_type="location_checkin",
+        community_id=community_id,
+        data={
+            "lat": 51.5074,
+            "lng": -0.1278,
+            "status": "safe",
+            "note": "All good here",
+        },
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["synced"] == 1
+    assert res.json()["errors"] == 0
+
+
+def test_sync_location_checkin_need_help(client, auth_headers, community_id):
+    """Check-in with need_help status."""
+    msg = _mesh_msg(
+        msg_type="location_checkin",
+        community_id=community_id,
+        data={
+            "lat": 51.51,
+            "lng": -0.13,
+            "status": "need_help",
+        },
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["synced"] == 1
+
+
+def test_sync_location_checkin_missing_coords(client, auth_headers, community_id):
+    """Check-in without coordinates should error."""
+    msg = _mesh_msg(
+        msg_type="location_checkin",
+        community_id=community_id,
+        data={"status": "safe"},
+    )
+    res = client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+    assert res.status_code == 200
+    assert res.json()["errors"] == 1
+    assert res.json()["synced"] == 0
+
+
+def test_get_community_checkins(client, auth_headers, community_id):
+    """GET checkins returns recently synced check-ins."""
+    # Sync a check-in first
+    msg = _mesh_msg(
+        msg_type="location_checkin",
+        community_id=community_id,
+        data={
+            "lat": 51.5074,
+            "lng": -0.1278,
+            "status": "evacuating",
+            "note": "Heading north",
+        },
+    )
+    client.post(
+        "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
+    )
+
+    # Fetch check-ins
+    res = client.get(
+        f"/mesh/checkins/{community_id}", headers=auth_headers
+    )
+    assert res.status_code == 200
+    checkins = res.json()
+    assert len(checkins) >= 1
+    assert checkins[0]["status"] == "evacuating"
+    assert checkins[0]["lat"] == 51.5074
+    assert checkins[0]["display_name"] == "Test User"
+
+
+def test_get_checkins_requires_membership(client, auth_headers, register_user):
+    """Non-members cannot view community check-ins."""
+    user2_headers = register_user(4)
+    res = client.get(
+        "/mesh/checkins/1", headers=user2_headers
+    )
+    assert res.status_code == 403
+
+
+# ── Mesh key exchange ────────────────────────────────────────
+
+
+def test_set_and_get_mesh_key(client, auth_headers):
+    """Set and retrieve mesh encryption public key."""
+    key_data = "eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6InRlc3QiLCJ5IjoidGVzdCJ9"
+    res = client.put(
+        "/mesh/keys/me",
+        json={"public_key": key_data},
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+
+    # Get own key via user ID
+    me_res = client.get("/users/me", headers=auth_headers)
+    user_id = me_res.json()["id"]
+
+    get_res = client.get(f"/mesh/keys/{user_id}", headers=auth_headers)
+    assert get_res.status_code == 200
+    assert get_res.json()["public_key"] == key_data
+
+
+def test_get_mesh_key_not_set(client, auth_headers, register_user):
+    """Getting key for user without one returns 404."""
+    user2_headers = register_user(5)
+    me_res = client.get("/users/me", headers=user2_headers)
+    user2_id = me_res.json()["id"]
+
+    res = client.get(f"/mesh/keys/{user2_id}", headers=auth_headers)
+    assert res.status_code == 404
+
+
+# ── Mesh metrics ─────────────────────────────────────────────
+
+
+def test_submit_mesh_metrics(client, auth_headers):
+    """Submit mesh session metrics."""
+    res = client.post(
+        "/mesh/metrics",
+        json={
+            "messages_sent": 10,
+            "messages_received": 15,
+            "messages_relayed": 5,
+            "reconnect_attempts": 2,
+            "reconnect_successes": 1,
+            "peak_peer_count": 3,
+            "acks_sent": 8,
+            "acks_received": 6,
+            "errors": 1,
+            "session_duration_ms": 300000,
+        },
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "ok"
+
+
+def test_submit_mesh_metrics_requires_auth(client):
+    """Metrics endpoint requires authentication."""
+    res = client.post("/mesh/metrics", json={})
+    assert res.status_code == 403

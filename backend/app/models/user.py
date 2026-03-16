@@ -20,6 +20,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     telegram_chat_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
     language_code: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
+    mesh_public_key: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
