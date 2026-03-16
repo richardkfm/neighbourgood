@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.5.1] - 2026-03-16
+
+### Fixed
+
+- **Login 500 error** — restored additive column auto-migration in the lifespan handler so existing databases missing new columns (e.g. `mesh_public_key`) no longer crash on queries
+- **Nav clutter** — moved BLE mesh networking link out of the main navigation into a toggle in Settings; mesh UI is hidden by default and can be enabled per-user
+
+### Added
+
+- **Mesh settings store** — new `mesh-settings.ts` store persists the mesh-networking toggle in localStorage
+- **Settings mesh toggle** — "Mesh Networking" on/off switch in the Settings page with i18n keys across all 12 locale files
+
+### Changed
+
+- Backend version bumped to 1.9.5.1
+- Frontend version bumped to 1.9.5.1
+- Triage page mesh panel and broadcast button gated behind the mesh-networking setting
+
+---
+
 ## [1.9.5] - 2026-03-16
 
 ### Added

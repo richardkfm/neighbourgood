@@ -20,7 +20,7 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v1.9.5** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v1.9.5.1** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
@@ -473,6 +473,7 @@ Current test files (26): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 1.9.5.1 | 2026-03-16 | Fix login 500 (restore additive column auto-migration), move mesh networking to settings toggle (hidden by default), mesh settings store + i18n |
 | 1.9.5 | 2026-03-16 | Enhanced BLE mesh networking: 10-phase overhaul (mesh dashboard, auto-sync, resource sharing, check-ins, multi-hop relay, message ACKs, offline triage, E2E encryption, multi-device manager, analytics/diagnostics), improved offline functionality, i18n for offline UI, 20 new tests (418 total) |
 | 1.9.0 | 2026-03-15 | Federation explorer UI: instance directory browser, federated resource/skill pages, cross-instance alert banners, enriched instance stats (resource/skill/event/active-user counts), federation router prefix fix, 27 new tests (398 total) |
 | 1.8.0 | 2026-03-13 | Hyperlocal community events: create/browse/RSVP events (9 categories, max-attendee cap, upcoming filter, full-text search), activity feed + webhook integration, /events frontend page, nav link, 12-locale i18n, 22 new tests (371 total) |
