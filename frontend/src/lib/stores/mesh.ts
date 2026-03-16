@@ -30,6 +30,7 @@ import {
 	type MeshCheckinData
 } from '$lib/bluetooth/protocol';
 import { persistMessages, loadMessages, clearMessages } from '$lib/mesh-db';
+import { saveOfflineTicket, addCommentToTicket, type OfflineTicket, type OfflineTicketComment } from '$lib/mesh-triage-db';
 
 export type MeshStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -266,6 +267,35 @@ function subscribeToEvents(): void {
 				notifyServiceWorker();
 				return updated;
 			});
+
+			// Persist emergency tickets/comments to offline triage DB
+			if (msg.type === 'emergency_ticket') {
+				const data = msg.data;
+				const ticket: OfflineTicket = {
+					id: msg.id,
+					community_id: msg.community_id,
+					sender_name: msg.sender_name,
+					title: String(data.title || ''),
+					description: String(data.description || ''),
+					ticket_type: (data.ticket_type as OfflineTicket['ticket_type']) || 'request',
+					urgency: (data.urgency as OfflineTicket['urgency']) || 'medium',
+					ts: msg.ts,
+					comments: [],
+				};
+				saveOfflineTicket(ticket).catch(() => {});
+			} else if (msg.type === 'ticket_comment') {
+				const data = msg.data;
+				const comment: OfflineTicketComment = {
+					id: msg.id,
+					sender_name: msg.sender_name,
+					body: String(data.body || ''),
+					ts: msg.ts,
+				};
+				const ticketId = data.ticket_mesh_id as string;
+				if (ticketId) {
+					addCommentToTicket(ticketId, comment).catch(() => {});
+				}
+			}
 
 			// Auto-send ack for non-heartbeat messages
 			sendAck(msg.community_id, msg.id);

@@ -302,7 +302,14 @@
     "step_3": "Messages are stored locally until you reconnect to the internet.",
     "step_4": "Hit Sync to upload mesh messages to the server.",
     "relay_mode": "Relay messages (extend range)",
-    "relayed": "{count} relayed"
+    "relayed": "{count} relayed",
+    "offline_triage": "Offline Triage",
+    "offline_triage_subtitle": "Emergency tickets received via BLE mesh, viewable without internet.",
+    "offline_triage_hint": "View emergency tickets received over mesh — works offline.",
+    "viewing_offline": "Viewing offline data",
+    "no_offline_tickets": "No emergency tickets received via mesh yet.",
+    "synced_to_server": "Synced",
+    "comments": "Comments"
   },
   "language_names": {
     "am": "አማርኛ",
