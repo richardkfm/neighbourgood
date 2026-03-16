@@ -9,6 +9,7 @@ from app.models.community import Community, CommunityMember
 from app.models.crisis import CrisisVote, EmergencyTicket, TicketComment
 from app.models.message import Message
 from app.models.mesh import MeshSyncedMessage
+from app.models.resource import Resource
 from app.models.user import User
 from app.schemas.mesh import MeshMessageIn, MeshSyncRequest, MeshSyncResponse
 from app.services.activity import record_activity
@@ -105,6 +106,8 @@ def _process_mesh_message(
     elif msg.type == "crisis_status":
         _sync_crisis_status(db, msg, current_user, community, membership)
         return None
+    elif msg.type in ("resource_request", "resource_offer"):
+        return _sync_resource(db, msg, current_user, community)
     # heartbeat: acknowledged but not persisted
     return None
 
@@ -314,6 +317,53 @@ def _sync_crisis_status(
         actor_id=user.id,
         community_id=msg.community_id,
     )
+
+
+def _sync_resource(
+    db: Session, msg: MeshMessageIn, user: User, community: Community
+) -> int:
+    """Create a resource listing from a mesh message. Returns the resource ID."""
+    data = msg.data
+    title = data.get("title", "")
+    description = data.get("description", "")
+    category = data.get("category", "other")
+
+    if not title:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Resource title required",
+        )
+
+    valid_categories = {
+        "tools", "vehicle", "electronics", "furniture", "food",
+        "clothing", "sports", "kitchen", "garden", "books",
+        "toys", "other",
+    }
+    if category not in valid_categories:
+        category = "other"
+
+    resource = Resource(
+        title=str(title)[:200],
+        description=str(description)[:5000] if description else None,
+        category=category,
+        condition="good",
+        is_available=True,
+        owner_id=user.id,
+        community_id=msg.community_id,
+    )
+    db.add(resource)
+    db.flush()
+
+    action = "shared" if msg.type == "resource_offer" else "requested"
+    record_activity(
+        db,
+        event_type="resource_created",
+        summary=f'{action} resource "{title}" (via mesh sync)',
+        actor_id=user.id,
+        community_id=msg.community_id,
+    )
+
+    return resource.id
 
 
 def _sync_crisis_vote(

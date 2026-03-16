@@ -36,7 +36,9 @@ export type NGMeshMessageType =
 	| 'crisis_vote'
 	| 'crisis_status'
 	| 'direct_message'
-	| 'heartbeat';
+	| 'heartbeat'
+	| 'resource_request'
+	| 'resource_offer';
 
 export interface NGMeshMessage {
 	ng: 1;
@@ -71,6 +73,13 @@ export interface MeshCrisisStatusData {
 export interface MeshDirectMessageData {
 	recipient_id: number;
 	body: string;
+}
+
+export interface MeshResourceData {
+	title: string;
+	description: string;
+	category: string;
+	quantity?: number;
 }
 
 const encoder = new TextEncoder();

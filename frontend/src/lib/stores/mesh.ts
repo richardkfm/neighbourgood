@@ -24,7 +24,8 @@ import {
 	type NGMeshMessage,
 	type NGMeshMessageType,
 	type MeshTicketData,
-	type MeshVoteData
+	type MeshVoteData,
+	type MeshResourceData
 } from '$lib/bluetooth/protocol';
 import { persistMessages, loadMessages, clearMessages } from '$lib/mesh-db';
 
@@ -125,6 +126,28 @@ export async function broadcastCrisisVote(
 	vote: MeshVoteData
 ): Promise<NGMeshMessage> {
 	const msg = createNGMessage('crisis_vote', communityId, senderName, vote as unknown as Record<string, unknown>);
+	await sendViaMesh(msg);
+	return msg;
+}
+
+/** Broadcast a resource request through the mesh. */
+export async function broadcastResourceRequest(
+	communityId: number,
+	senderName: string,
+	resource: MeshResourceData
+): Promise<NGMeshMessage> {
+	const msg = createNGMessage('resource_request', communityId, senderName, resource as unknown as Record<string, unknown>);
+	await sendViaMesh(msg);
+	return msg;
+}
+
+/** Broadcast a resource offer through the mesh. */
+export async function broadcastResourceOffer(
+	communityId: number,
+	senderName: string,
+	resource: MeshResourceData
+): Promise<NGMeshMessage> {
+	const msg = createNGMessage('resource_offer', communityId, senderName, resource as unknown as Record<string, unknown>);
 	await sendViaMesh(msg);
 	return msg;
 }
