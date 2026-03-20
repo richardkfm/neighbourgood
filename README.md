@@ -50,42 +50,106 @@ Activated by an admin or community vote when an emergency occurs:
 
 ### With Docker (recommended)
 
+Docker Compose starts three containers: PostgreSQL database, Python/FastAPI backend, and SvelteKit frontend. Everything is wired together automatically.
+
+**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) 24+ and the Compose v2 plugin (`docker compose` — note: no hyphen).
+
 ```bash
+# 1. Clone the repository
 git clone https://github.com/neighbourgood/neighbourgood.git
 cd neighbourgood
+
+# 2. Create your config file from the template
 cp .env.example .env
 
-# Generate a secret key (required — the app won't start without it)
+# 3. Generate a secret key — the app refuses to start without one
 echo "NG_SECRET_KEY=$(openssl rand -hex 32)" >> .env
 
+# 4. Build images and start all services (first run takes ~2–3 min)
 docker compose up --build
 ```
 
-- Frontend: http://localhost:3800
-- Backend API: http://localhost:8300
-- API docs: http://localhost:8300/docs
+Once you see `Application startup complete` in the backend logs, the stack is ready:
 
-### Local Development
+| Service | URL | What it is |
+|---------|-----|-----------|
+| **Web app** | http://localhost:3800 | Main SvelteKit frontend — open this in your browser |
+| **API** | http://localhost:8300 | FastAPI backend (JSON responses) |
+| **Interactive API docs** | http://localhost:8300/docs | Swagger UI — explore and test every endpoint |
+| **Alternative API docs** | http://localhost:8300/redoc | ReDoc-style reference |
 
-**Backend:**
+> **First time?** Navigate to http://localhost:3800, click **Sign Up**, create an account, then go through the onboarding flow to create or join a community.
+
+#### Useful Docker commands
+
+```bash
+# Start in the background (detached mode)
+docker compose up --build -d
+
+# Stream logs while running in the background
+docker compose logs -f
+
+# Stream only backend or frontend logs
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Stop everything (data is preserved in the postgres volume)
+docker compose down
+
+# Stop and wipe ALL data (fresh start)
+docker compose down -v
+
+# Rebuild a single service after a code change
+docker compose up --build backend
+```
+
+#### Running database migrations inside Docker
+
+```bash
+# Apply Alembic migrations on a running stack
+docker compose exec backend alembic upgrade head
+```
+
+#### Updating to a new version
+
+```bash
+git pull
+docker compose up --build -d
+```
+
+---
+
+### Local Development (without Docker)
+
+Use this when you want fast hot-reload and don't need a full Postgres instance. The backend defaults to SQLite.
+
+**Backend** — runs on http://localhost:8300
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# For local dev, enable debug mode (allows default secret key + SQLite)
-NG_DEBUG=true uvicorn app.main:app --reload
+# NG_DEBUG=true allows the default secret key and uses SQLite
+NG_DEBUG=true uvicorn app.main:app --reload --port 8300
 ```
 
-**Frontend:**
+**Frontend** — runs on http://localhost:5173
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+The Vite dev server automatically proxies `/api/*` requests to the backend at `:8300`, so you only need to open http://localhost:5173 in your browser.
+
+| Service | URL |
+|---------|-----|
+| Web app (dev) | http://localhost:5173 |
+| Backend API | http://localhost:8300 |
+| API docs | http://localhost:8300/docs |
 
 <a id="system-requirements"></a>
 ## 🖥️ System Requirements
