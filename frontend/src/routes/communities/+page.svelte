@@ -169,6 +169,48 @@
 		return mode === 'red' ? 'mode-red' : 'mode-blue';
 	}
 
+	function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+		const R = 6371;
+		const dLat = ((lat2 - lat1) * Math.PI) / 180;
+		const dLng = ((lng2 - lng1) * Math.PI) / 180;
+		const a =
+			Math.sin(dLat / 2) ** 2 +
+			Math.cos((lat1 * Math.PI) / 180) *
+				Math.cos((lat2 * Math.PI) / 180) *
+				Math.sin(dLng / 2) ** 2;
+		return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+	}
+
+	const PAGE_SIZE = 10;
+	let currentPage = $state(0);
+
+	const sortedCommunities = $derived(
+		[...allCommunities].sort((a, b) => {
+			const aHasCoords = a.latitude != null && a.longitude != null;
+			const bHasCoords = b.latitude != null && b.longitude != null;
+			if (aHasCoords && bHasCoords) {
+				return (
+					haversineKm(userLat, userLng, a.latitude!, a.longitude!) -
+					haversineKm(userLat, userLng, b.latitude!, b.longitude!)
+				);
+			}
+			if (!aHasCoords && bHasCoords) return 1;
+			if (aHasCoords && !bHasCoords) return -1;
+			return a.name.localeCompare(b.name);
+		})
+	);
+
+	const totalPages = $derived(Math.ceil(sortedCommunities.length / PAGE_SIZE));
+	const pagedCommunities = $derived(
+		sortedCommunities.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE)
+	);
+
+	$effect(() => {
+		// Reset to first page whenever the community list changes
+		void allCommunities;
+		currentPage = 0;
+	});
+
 	onMount(async () => {
 		if (!$isLoggedIn) {
 			goto('/login');
@@ -329,6 +371,44 @@
 			<p>{$t('communities.join_prompt')}</p>
 			<a href="/onboarding" class="btn-primary">{$t('communities.find_or_create')}</a>
 		</div>
+	{/if}
+
+	{#if !loading && allCommunities.length > 0}
+		<section class="all-communities-section">
+			<h2>{$t('communities.all_communities')}</h2>
+			<div class="community-list">
+				{#each pagedCommunities as c (c.id)}
+					<a href="/communities/{c.id}" class="community-list-card {myIds.has(c.id) ? 'is-mine' : ''}">
+						<div class="list-card-info">
+							<h3>{c.name}</h3>
+							<div class="list-card-meta">
+								<span class="tag">{c.postal_code}</span>
+								<span class="tag">{c.city}</span>
+								{#if c.mode === 'red'}
+									<span class="tag tag-crisis">{$t('communities.crisis_badge')}</span>
+								{/if}
+								{#if myIds.has(c.id)}
+									<span class="tag tag-mine">{$t('communities.your_community_badge')}</span>
+								{/if}
+							</div>
+						</div>
+						<div class="list-card-stats">
+							<span>{c.member_count} member{c.member_count !== 1 ? 's' : ''}</span>
+							{#if c.latitude != null && c.longitude != null && userLocated}
+								<span class="distance">{haversineKm(userLat, userLng, c.latitude, c.longitude).toFixed(1)} km</span>
+							{/if}
+						</div>
+					</a>
+				{/each}
+			</div>
+			{#if totalPages > 1}
+				<div class="pagination">
+					<button class="btn-page" disabled={currentPage === 0} onclick={() => currentPage--}>← {$t('common.prev')}</button>
+					<span class="page-info">{currentPage + 1} / {totalPages}</span>
+					<button class="btn-page" disabled={currentPage >= totalPages - 1} onclick={() => currentPage++}>{$t('common.next')} →</button>
+				</div>
+			{/if}
+		</section>
 	{/if}
 
 	{#if isAdmin}
@@ -742,6 +822,120 @@
 		background: var(--color-error-bg);
 		color: var(--color-error);
 		border: 1px solid var(--color-error);
+	}
+
+	/* ── All communities list ────────────────── */
+
+	.all-communities-section {
+		margin-bottom: 2rem;
+	}
+
+	.all-communities-section h2 {
+		font-size: 1.2rem;
+		font-weight: 500;
+		margin-bottom: 0.75rem;
+	}
+
+	.community-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.community-list-card {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 1rem 1.25rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		text-decoration: none;
+		color: var(--color-text);
+		transition: all var(--transition-fast);
+	}
+
+	.community-list-card:hover {
+		box-shadow: var(--shadow);
+		border-color: var(--color-primary);
+		text-decoration: none;
+	}
+
+	.community-list-card.is-mine {
+		border-left: 4px solid var(--color-success);
+	}
+
+	.list-card-info h3 {
+		font-size: 1rem;
+		font-weight: 500;
+		margin-bottom: 0.3rem;
+	}
+
+	.list-card-meta {
+		display: flex;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
+
+	.tag-mine {
+		background: var(--color-primary-light);
+		color: var(--color-primary);
+		font-size: 0.72rem;
+		font-weight: 600;
+		padding: 0.12rem 0.45rem;
+		border-radius: 999px;
+	}
+
+	.list-card-stats {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		flex-shrink: 0;
+		gap: 0.2rem;
+		font-size: 0.85rem;
+		color: var(--color-text-muted);
+	}
+
+	.distance {
+		font-size: 0.78rem;
+		color: var(--color-text-muted);
+	}
+
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		margin-top: 1rem;
+	}
+
+	.page-info {
+		font-size: 0.88rem;
+		color: var(--color-text-muted);
+		min-width: 3.5rem;
+		text-align: center;
+	}
+
+	.btn-page {
+		padding: 0.4rem 0.85rem;
+		border: 1px solid var(--color-border);
+		background: var(--color-surface);
+		color: var(--color-text);
+		border-radius: var(--radius-sm);
+		font-size: 0.85rem;
+		cursor: pointer;
+		transition: all var(--transition-fast);
+	}
+
+	.btn-page:hover:not(:disabled) {
+		border-color: var(--color-primary);
+		color: var(--color-primary);
+	}
+
+	.btn-page:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
 	}
 
 	/* ── Federation section ───────────────────── */

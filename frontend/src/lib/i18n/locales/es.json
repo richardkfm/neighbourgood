@@ -67,7 +67,9 @@
     "in": "en",
     "members": "{count} miembros",
     "resources": "{count} recursos",
-    "skills": "{count} habilidades"
+    "skills": "{count} habilidades",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Bienvenido de nuevo",
@@ -180,7 +182,9 @@
     "no_communities": "No se encontraron comunidades.",
     "primary_language": "Idioma principal",
     "my_communities": "Mis comunidades",
-    "explore": "Explorar todas las comunidades"
+    "explore": "Explorar todas las comunidades",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Intercambio de habilidades",

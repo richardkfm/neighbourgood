@@ -71,7 +71,9 @@
     "add": "Tambah",
     "review": "Ulasan",
     "result": "{count} hasil",
-    "results": "{count} hasil"
+    "results": "{count} hasil",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Wilujeng sumping deui",
@@ -299,7 +301,9 @@
     "join_prompt": "Gabung ka komunitas atawa jieun anyar pikeun nyambung jeung tatangga.",
     "crisis_badge": "Krisis",
     "you_are_here": "Anjeun di dieu",
-    "view_community": "Tempo komunitas"
+    "view_community": "Tempo komunitas",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Tukar kaahlian",

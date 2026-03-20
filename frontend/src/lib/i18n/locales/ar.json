@@ -67,7 +67,9 @@
     "in": "في",
     "members": "{count} أعضاء",
     "resources": "{count} موارد",
-    "skills": "{count} مهارات"
+    "skills": "{count} مهارات",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "مرحباً بعودتك",
@@ -180,7 +182,9 @@
     "no_communities": "لم يتم العثور على مجتمعات.",
     "primary_language": "اللغة الرئيسية",
     "my_communities": "مجتمعاتي",
-    "explore": "استكشاف جميع المجتمعات"
+    "explore": "استكشاف جميع المجتمعات",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "تبادل المهارات",

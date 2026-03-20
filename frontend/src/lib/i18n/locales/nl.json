@@ -66,7 +66,9 @@
     "in": "in",
     "members": "{count} leden",
     "resources": "{count} middelen",
-    "skills": "{count} vaardigheden"
+    "skills": "{count} vaardigheden",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Welkom terug",
@@ -179,7 +181,9 @@
     "no_communities": "Geen gemeenschappen gevonden.",
     "primary_language": "Primaire taal",
     "my_communities": "Mijn gemeenschappen",
-    "explore": "Alle gemeenschappen verkennen"
+    "explore": "Alle gemeenschappen verkennen",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Vaardigheidsuitwisseling",

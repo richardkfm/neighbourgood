@@ -67,7 +67,9 @@
     "in": "dans",
     "members": "{count} membres",
     "resources": "{count} ressources",
-    "skills": "{count} compétences"
+    "skills": "{count} compétences",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Bon retour",
@@ -180,7 +182,9 @@
     "no_communities": "Aucune communauté trouvée.",
     "primary_language": "Langue principale",
     "my_communities": "Mes communautés",
-    "explore": "Explorer toutes les communautés"
+    "explore": "Explorer toutes les communautés",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Échange de compétences",

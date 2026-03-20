@@ -72,7 +72,9 @@
     "add": "Додати",
     "review": "Відгук",
     "result": "{count} результат",
-    "results": "{count} результатів"
+    "results": "{count} результатів",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "З поверненням",
@@ -300,7 +302,9 @@
     "join_prompt": "Приєднайтесь до спільноти або створіть нову, щоб спілкуватися з сусідами.",
     "crisis_badge": "Криза",
     "you_are_here": "Ви тут",
-    "view_community": "Переглянути спільноту"
+    "view_community": "Переглянути спільноту",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Обмін навичками",

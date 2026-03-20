@@ -66,7 +66,9 @@
     "in": "σε",
     "members": "{count} μέλη",
     "resources": "{count} πόροι",
-    "skills": "{count} δεξιότητες"
+    "skills": "{count} δεξιότητες",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Καλώς ήρθατε πίσω",
@@ -179,7 +181,9 @@
     "no_communities": "Δεν βρέθηκαν κοινότητες.",
     "primary_language": "Κύρια γλώσσα",
     "my_communities": "Οι κοινότητές μου",
-    "explore": "Εξερεύνηση όλων των κοινοτήτων"
+    "explore": "Εξερεύνηση όλων των κοινοτήτων",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Ανταλλαγή δεξιοτήτων",

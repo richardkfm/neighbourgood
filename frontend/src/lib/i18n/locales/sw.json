@@ -67,7 +67,9 @@
     "in": "katika",
     "members": "wanachama {count}",
     "resources": "rasilimali {count}",
-    "skills": "ujuzi {count}"
+    "skills": "ujuzi {count}",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Karibu tena",
@@ -180,7 +182,9 @@
     "no_communities": "Hakuna jamii zilizopatikana.",
     "primary_language": "Lugha kuu",
     "my_communities": "Jamii zangu",
-    "explore": "Gundua jamii zote"
+    "explore": "Gundua jamii zote",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Kubadilishana ujuzi",

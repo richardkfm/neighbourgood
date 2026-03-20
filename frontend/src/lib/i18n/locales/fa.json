@@ -71,7 +71,9 @@
     "add": "افزودن",
     "review": "بررسی",
     "result": "{count} نتیجه",
-    "results": "{count} نتیجه"
+    "results": "{count} نتیجه",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "خوش برگشتید",
@@ -299,7 +301,9 @@
     "join_prompt": "به جامعه‌ای بپیوندید یا یکی بسازید تا با همسایگان ارتباط برقرار کنید.",
     "crisis_badge": "بحران",
     "you_are_here": "شما اینجا هستید",
-    "view_community": "مشاهده جامعه"
+    "view_community": "مشاهده جامعه",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "تبادل مهارت",

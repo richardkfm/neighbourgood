@@ -71,7 +71,9 @@
     "add": "Hinzufügen",
     "review": "Bewertung",
     "result": "{count} Ergebnis",
-    "results": "{count} Ergebnisse"
+    "results": "{count} Ergebnisse",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Willkommen zurück",
@@ -299,7 +301,9 @@
     "join_prompt": "Treten Sie einer Gemeinschaft bei oder erstellen Sie eine, um mit Ihren Nachbarn in Kontakt zu treten.",
     "crisis_badge": "Krise",
     "you_are_here": "Sie sind hier",
-    "view_community": "Gemeinschaft ansehen"
+    "view_community": "Gemeinschaft ansehen",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Fähigkeitstausch",

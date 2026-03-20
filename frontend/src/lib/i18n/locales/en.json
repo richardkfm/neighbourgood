@@ -72,7 +72,9 @@
     "add": "Add",
     "review": "Review",
     "result": "{count} result",
-    "results": "{count} results"
+    "results": "{count} results",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Welcome Back",
@@ -300,7 +302,9 @@
     "join_prompt": "Join or create a community to connect with your neighbours.",
     "crisis_badge": "Crisis",
     "you_are_here": "You are here",
-    "view_community": "View community"
+    "view_community": "View community",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Skill Exchange",

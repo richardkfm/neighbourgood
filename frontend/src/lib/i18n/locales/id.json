@@ -67,7 +67,9 @@
     "in": "di",
     "members": "{count} anggota",
     "resources": "{count} sumber daya",
-    "skills": "{count} keahlian"
+    "skills": "{count} keahlian",
+    "prev": "Prev",
+    "next": "Next"
   },
   "auth": {
     "login_title": "Selamat datang kembali",
@@ -180,7 +182,9 @@
     "no_communities": "Tidak ada komunitas ditemukan.",
     "primary_language": "Bahasa utama",
     "my_communities": "Komunitas saya",
-    "explore": "Jelajahi semua komunitas"
+    "explore": "Jelajahi semua komunitas",
+    "all_communities": "All Communities",
+    "your_community_badge": "Yours"
   },
   "skills": {
     "title": "Pertukaran keahlian",
