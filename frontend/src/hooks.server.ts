@@ -15,6 +15,10 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 		const headers = new Headers(event.request.headers);
 		headers.delete('host');
+		// Forward the real client IP so the backend rate-limiter buckets per user,
+		// not per proxy. getClientAddress() returns the connecting client's IP as
+		// seen by the Node adapter (respects adapter-level trusted proxies).
+		headers.set('x-forwarded-for', event.getClientAddress());
 
 		const response = await fetch(backendUrl, {
 			method: event.request.method,

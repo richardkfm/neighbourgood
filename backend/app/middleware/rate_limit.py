@@ -9,6 +9,7 @@ Returns HTTP 429 with a ``Retry-After`` header (seconds) when a limit is hit.
 No external dependencies — uses only the stdlib threading.Lock + time module.
 """
 
+import ipaddress
 import time
 from collections import defaultdict
 from threading import Lock
@@ -84,6 +85,28 @@ class RateLimitStore:
 _store = RateLimitStore()
 
 
+def _client_ip(request: Request) -> str:
+    """Return the real client IP, trusting X-Forwarded-For only from private/loopback proxies."""
+    connecting_host = request.client.host if request.client else None
+
+    if connecting_host:
+        try:
+            addr = ipaddress.ip_address(connecting_host)
+            trusted_proxy = addr.is_loopback or addr.is_private
+        except ValueError:
+            trusted_proxy = False
+
+        if trusted_proxy:
+            forwarded_for = request.headers.get("x-forwarded-for", "")
+            if forwarded_for:
+                # Take the leftmost (original client) IP
+                real_ip = forwarded_for.split(",")[0].strip()
+                if real_ip:
+                    return real_ip
+
+    return connecting_host or "unknown"
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """Apply per-IP rate limiting to all API paths.
 
@@ -97,7 +120,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if settings.debug:
             return await call_next(request)
 
-        ip = request.client.host if request.client else "unknown"
+        ip = _client_ip(request)
         path = request.url.path
 
         allowed, retry_after = _store.check_and_record(ip, path)
