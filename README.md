@@ -152,6 +152,9 @@ The Vite dev server automatically proxies `/api/*` requests to the backend at `:
 | Backend API | http://localhost:8300 |
 | API docs | http://localhost:8300/docs |
 
+<img width="1103" height="854" alt="grafik" src="https://github.com/user-attachments/assets/0d6556ea-68db-47d8-978e-e65353ef8770" />
+Frontend User Onboarding
+
 <a id="system-requirements"></a>
 ## 🖥️ System Requirements
 
@@ -250,17 +253,17 @@ When the internet goes down, NeighbourGood keeps working. In Red Sky mode the we
              └──────────────────┬────────────────────┘
                                 │
              ┌──────────────────▼────────────────────┐
-             │  More BitChat nodes in the             │
-             │  neighbourhood — no limit on count     │
-             │  or distance (up to 7 hops / ~700m)    │
+             │  More BitChat nodes in the            │
+             │  neighbourhood — no limit on count    │
+             │  or distance (up to 7 hops / ~700m)   │
              └───────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────────┐
   │                    INTERNET RETURNS                              │
   │                                                                  │
-  │  NeighbourGood shows "Sync N messages" button                   │
-  │  POST /mesh/sync  →  server deduplicates by message UUID        │
-  │  Emergency tickets and votes appear on the server               │
+  │  NeighbourGood shows "Sync N messages" button                    │
+  │  POST /mesh/sync  →  server deduplicates by message UUID         │
+  │  Emergency tickets and votes appear on the server                │
   └──────────────────────────────────────────────────────────────────┘
 ```
 
