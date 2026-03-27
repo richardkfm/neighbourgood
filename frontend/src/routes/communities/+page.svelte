@@ -365,11 +365,15 @@
 				</a>
 			{/each}
 		</section>
-	{:else if !loading}
+	{:else if !loading && allCommunities.length === 0}
 		<div class="empty-state fade-in">
 			<h2>{$t('communities.no_communities_yet')}</h2>
 			<p>{$t('communities.join_prompt')}</p>
 			<a href="/onboarding" class="btn-primary">{$t('communities.find_or_create')}</a>
+		</div>
+	{:else if !loading}
+		<div class="not-member-notice fade-in">
+			<p>{$t('communities.not_member_yet')}</p>
 		</div>
 	{/if}
 
@@ -770,6 +774,18 @@
 	.member-label {
 		font-size: 0.75rem;
 		color: var(--color-text-muted);
+	}
+
+	/* ── Not-member notice ───────────────────── */
+
+	.not-member-notice {
+		padding: 0.65rem 1rem;
+		border-radius: var(--radius);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		color: var(--color-text-muted);
+		font-size: 0.9rem;
+		margin-bottom: 1rem;
 	}
 
 	/* ── Empty state ─────────────────────────── */

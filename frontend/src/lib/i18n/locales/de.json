@@ -303,7 +303,8 @@
     "you_are_here": "Sie sind hier",
     "view_community": "Gemeinschaft ansehen",
     "all_communities": "All Communities",
-    "your_community_badge": "Yours"
+    "your_community_badge": "Yours",
+    "not_member_yet": "You haven't joined a community yet. Browse the list below to find your neighbourhood."
   },
   "skills": {
     "title": "Fähigkeitstausch",
