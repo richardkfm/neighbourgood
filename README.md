@@ -83,6 +83,8 @@ Once you see `Application startup complete` in the backend logs, the stack is re
 <img width="1103" height="854" alt="grafik" src="https://github.com/user-attachments/assets/0d6556ea-68db-47d8-978e-e65353ef8770" />
 Frontend User Onboarding
 
+
+--
 #### Useful Docker commands
 
 ```bash
