@@ -65,7 +65,7 @@ docker compose up --build
 - Backend API: http://localhost:8300
 - API docs: http://localhost:8300/docs
 
-<img width="1099" height="784" alt="grafik" src="https://github.com/user-attachments/assets/3fd69415-4286-4515-9a94-2c616ee40ca0" />
+<img width="1103" height="854" alt="grafik" src="https://github.com/user-attachments/assets/1d814218-8944-44a3-928a-b41296b80096" />
 Frontend: User Onboarding
 
 ### Local Development
