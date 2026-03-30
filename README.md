@@ -94,9 +94,6 @@ docker compose up --build -d
 # Stream logs while running in the background
 docker compose logs -f
 
-<img width="1103" height="854" alt="grafik" src="https://github.com/user-attachments/assets/1d814218-8944-44a3-928a-b41296b80096" />
-Frontend: User Onboarding
-
 ### Local Development
 
 # Stop everything (data is preserved in the postgres volume)
