@@ -133,6 +133,7 @@
 			);
 			if (myCommunities.length > 0) {
 				newCommunityId = String(myCommunities[0].id);
+				filterCommunity = String(myCommunities[0].id);
 			}
 		} catch {
 			myCommunities = [];
@@ -218,7 +219,7 @@
 						</select>
 					</label>
 				</div>
-				{#if myCommunities.length > 0}
+				{#if myCommunities.length > 1}
 					<label>
 						<span>{$t('resources.community_label')}</span>
 						<select bind:value={newCommunityId} required>
@@ -227,7 +228,7 @@
 							{/each}
 						</select>
 					</label>
-				{:else}
+				{:else if myCommunities.length === 0}
 					<p class="hint">{$t('resources.need_community')}</p>
 				{/if}
 				<button type="submit" class="btn-primary" disabled={myCommunities.length === 0}>{$t('resources.share_btn')}</button>
@@ -250,9 +251,8 @@
 				</option>
 			{/each}
 		</select>
-		{#if myCommunities.length > 0}
+		{#if myCommunities.length > 1}
 			<select bind:value={filterCommunity}>
-				<option value="">{$t('resources.all_communities')}</option>
 				{#each myCommunities as c}
 					<option value={c.id}>{c.name}</option>
 				{/each}

@@ -323,6 +323,7 @@
 		</div>
 	{:else}
 		<div class="controls">
+			{#if communities.length > 1}
 			<div class="control-group">
 				<label for="community-select">{$t('crisis.filter_community')}</label>
 				<select id="community-select" bind:value={selectedCommunityId} onchange={onCommunityChange}>
@@ -331,6 +332,7 @@
 					{/each}
 				</select>
 			</div>
+			{/if}
 
 			<div class="control-group">
 				<label for="urgency-filter">{$t('crisis.filter_urgency')}</label>
