@@ -564,8 +564,38 @@ If you only have the English string, add the key with the English value as a pla
 
 ---
 
-## Git Branch Convention
+## Git Workflow
+
+### Branch Convention
 
 - Feature branches: `claude/<short-description>-<session-id>`
 - Always push to the designated branch — never to `master` directly
 - Commit messages: present-tense imperative, explain *why* not just *what*
+
+### Version & Documentation Updates
+
+**Every commit must include:**
+
+1. **Version bump**: Update version in relevant files:
+   - Frontend: `frontend/package.json` → `version` field
+   - Backend: `backend/pyproject.toml` or version file (if present)
+   - Root: Check `README.md` or `.env.example` for hardcoded version strings
+   - Use **semantic versioning** (major.minor.patch, e.g., `1.9.5.1` → `1.9.6`)
+
+2. **README update**: If changes affect setup, deployment, or feature usage, update `README.md` with:
+   - New environment variables or configuration
+   - Installation or development workflow changes
+   - New features or API changes visible to users
+   - Keep the **Quick Start** section accurate and current
+
+3. **CHANGELOG update**: Add entry at the **top** of `CHANGELOG.md` with:
+   - Version number and date
+   - Bulleted list of changes (features, fixes, security updates)
+   - Test count if backend tests changed
+   - Follow the existing format from **Version History Summary** in this file
+   - Example format:
+     ```
+     | 1.9.6 | 2026-04-01 | Add feature X, fix bug Y, update docs (418 tests) |
+     ```
+
+**Exceptions**: Trivial changes (typo fixes in comments, whitespace) or doc-only changes may skip version bumps, but never skip CHANGELOG updates.
