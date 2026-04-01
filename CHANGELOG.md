@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.6] - 2026-04-01
+
+### Changed
+
+- **Simplified community display** — community dropdowns, filters, and selectors are now hidden when a user belongs to only one community, removing UI clutter in single-community deployments (the common case)
+- **Per-community resource/skill scoping** — resources, skills, events, and triage tickets now default to showing items from one community at a time instead of mixing all communities together; users with multiple communities can switch via a dropdown
+- Backend version bumped to 1.9.6
+- Frontend version bumped to 1.9.6
+
+---
+
 ## [1.9.5.1] - 2026-03-16
 
 ### Fixed
