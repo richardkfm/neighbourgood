@@ -90,7 +90,10 @@
 		try {
 			const data = await api<MyCommunity[]>('/communities/my/memberships', { auth: true });
 			myCommunities = Array.isArray(data) ? data : [];
-			if (myCommunities.length > 0) newCommunityId = String(myCommunities[0].id);
+			if (myCommunities.length > 0) {
+				newCommunityId = String(myCommunities[0].id);
+				filterCommunity = String(myCommunities[0].id);
+			}
 		} catch {
 			myCommunities = [];
 		}
@@ -268,7 +271,7 @@
 					Max attendees
 					<input type="number" bind:value={newMaxAttendees} min="1" max="10000" placeholder="Unlimited" />
 				</label>
-				{#if myCommunities.length > 0}
+				{#if myCommunities.length > 1}
 				<p class="community-info full-width">Community: <strong>{myCommunities[0].name}</strong></p>
 			{/if}
 				<label class="full-width">
@@ -293,12 +296,13 @@
 				<option value={cat.value}>{cat.label}</option>
 			{/each}
 		</select>
+		{#if myCommunities.length > 1}
 		<select bind:value={filterCommunity}>
-			<option value="">All my communities</option>
 			{#each myCommunities as c}
 				<option value={String(c.id)}>{c.name}</option>
 			{/each}
 		</select>
+		{/if}
 		<label class="toggle-label">
 			<input type="checkbox" bind:checked={filterUpcoming} />
 			{$t('events.upcoming_only')}
