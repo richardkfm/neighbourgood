@@ -4,7 +4,7 @@ import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.user import UserProfile
+from app.schemas.user import OwnerTrust, UserProfile
 
 VALID_SKILL_CATEGORIES = [
     "tutoring",
@@ -87,6 +87,7 @@ class SkillOut(BaseModel):
     owner_id: int
     community_id: int | None
     owner: UserProfile
+    owner_trust: OwnerTrust | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 

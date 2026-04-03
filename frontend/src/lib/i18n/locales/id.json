@@ -410,5 +410,36 @@
     "queued_confirmation": "Dalam antrean — akan dikirim saat terhubung kembali",
     "requires_connection": "Tindakan ini memerlukan koneksi internet",
     "queue_action": "Antrean"
+  },
+  "trust": {
+    "reliable_borrower": "Peminjam Terpercaya",
+    "trusted_lender": "Pemberi Pinjaman Terpercaya",
+    "skilled_helper": "Pembantu Terampil",
+    "badge_earned": "Lencana diperoleh",
+    "no_badges_yet": "Belum ada lencana"
+  },
+  "profile": {
+    "title": "Profil",
+    "loading": "Memuat profil...",
+    "member_since": "Anggota sejak",
+    "reviews": "ulasan",
+    "reviews_received": "Ulasan Diterima",
+    "reviews_given": "Ulasan Diberikan",
+    "no_reviews": "Belum ada ulasan.",
+    "load_more": "Muat Lebih",
+    "resources_shared": "Sumber Daya",
+    "skills_offered": "Keahlian",
+    "reputation_points": "Poin Reputasi",
+    "skill_review": "Keahlian",
+    "booking_review": "Peminjaman",
+    "listed_by": "Didaftarkan oleh"
+  },
+  "review": {
+    "leave_review": "Tinggalkan Ulasan",
+    "your_rating": "Penilaian Anda:",
+    "comment_placeholder": "Bagikan pengalaman Anda... (opsional)",
+    "submit": "Kirim Ulasan",
+    "submitted": "Ulasan terkirim!",
+    "already_reviewed": "Anda sudah mengulas keahlian ini."
   }
 }

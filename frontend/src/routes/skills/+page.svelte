@@ -6,7 +6,10 @@
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
 
+	import type { OwnerTrust } from '$lib/types';
+
 	interface SkillOwner {
+		id: number;
 		display_name: string;
 		neighbourhood: string | null;
 	}
@@ -19,6 +22,7 @@
 		skill_type: string;
 		community_id: number | null;
 		owner: SkillOwner;
+		owner_trust?: OwnerTrust | null;
 		created_at: string;
 	}
 
@@ -293,6 +297,14 @@
 						{/if}
 						<div class="card-footer">
 							<span class="owner">by {skill.owner.display_name}</span>
+							{#if skill.owner_trust}
+								{#if skill.owner_trust.total_reviews > 0}
+									<span class="trust-stars">★ {skill.owner_trust.average_rating.toFixed(1)}</span>
+								{/if}
+								{#each skill.owner_trust.badges as badge}
+									<span class="trust-pill">{badge === 'skilled_helper' ? '⭐' : badge === 'trusted_lender' ? '📦' : '🤝'}</span>
+								{/each}
+							{/if}
 						</div>
 					</div>
 				</a>
@@ -534,6 +546,19 @@
 	.card-footer {
 		font-size: 0.78rem;
 		color: var(--color-text-muted);
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
+
+	.trust-stars {
+		color: var(--color-warning);
+		font-weight: 600;
+	}
+
+	.trust-pill {
+		font-size: 0.72rem;
 	}
 
 	.loading {

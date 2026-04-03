@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.0.0] - 2026-04-03
+
+### Added
+
+- **Skill reviews & endorsements** — community members can now rate and review skill providers (1 review per person per skill, 1–5 stars with optional comment)
+- **Trust badges** — three earned badges visible on profiles and in listing cards:
+  - **Reliable Borrower** — avg ≥ 4.0 from 3+ borrowing reviews
+  - **Trusted Lender** — avg ≥ 4.0 from 3+ lending reviews
+  - **Skilled Helper** — avg ≥ 4.0 from 3+ skill reviews
+- **Public user profile page** (`/profile/{id}`) — shows trust summary, earned badges, rating breakdown (lender/borrower/skill), stats, and paginated reviews with Received/Given tabs (5 per page with Load More)
+- **Trust summary API** — `GET /users/{id}/trust` and `GET /users/me/trust` return full trust breakdown with badges
+- **OwnerTrust in listings** — skill and resource listings/detail pages now include owner trust info (reputation level, average rating, badge icons)
+- **Skill review form** — interactive star picker and comment form on skill detail pages for community members
+- **Review type filtering** — `GET /reviews/user/{id}?review_type=booking|skill|given` now supports type-based filtering
+- **Review summary breakdown** — `GET /reviews/user/{id}/summary` now includes lender/borrower/skill breakdown fields
+- **i18n** — trust, profile, and review UI strings added to all 7 locales (en, ar, fr, es, sw, id, uk)
+- 23 new backend tests covering skill reviews, trust badges, badge thresholds, and OwnerTrust embedding (441 total)
+
+### Changed
+
+- `Review` model: `booking_id` now nullable; added `skill_id` FK and `review_type` column
+- `ReviewOut` schema: now includes `skill_id`, `review_type` fields
+- `ReviewSummary` schema: added `lender_avg/count`, `borrower_avg/count`, `skill_avg/count`
+- `SkillOut` and `ResourceOut` schemas: added `owner_trust` field
+- Skills and resources routers batch-compute trust for listing owners
+- Owner names in skill/resource detail pages now link to `/profile/{id}`
+- Frontend version bumped to 2.0.0
+
+---
+
 ## [1.9.6] - 2026-04-01
 
 ### Changed

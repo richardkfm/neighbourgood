@@ -410,5 +410,36 @@
     "queued_confirmation": "En file d'attente — sera envoyé à la reconnexion",
     "requires_connection": "Cette action nécessite une connexion internet",
     "queue_action": "File d'attente"
+  },
+  "trust": {
+    "reliable_borrower": "Emprunteur fiable",
+    "trusted_lender": "Prêteur de confiance",
+    "skilled_helper": "Aide qualifié",
+    "badge_earned": "Badge obtenu",
+    "no_badges_yet": "Pas encore de badges"
+  },
+  "profile": {
+    "title": "Profil",
+    "loading": "Chargement du profil...",
+    "member_since": "Membre depuis",
+    "reviews": "avis",
+    "reviews_received": "Avis reçus",
+    "reviews_given": "Avis donnés",
+    "no_reviews": "Aucun avis pour le moment.",
+    "load_more": "Charger plus",
+    "resources_shared": "Ressources",
+    "skills_offered": "Compétences",
+    "reputation_points": "Points de réputation",
+    "skill_review": "Compétence",
+    "booking_review": "Prêt",
+    "listed_by": "Proposé par"
+  },
+  "review": {
+    "leave_review": "Laisser un avis",
+    "your_rating": "Votre note :",
+    "comment_placeholder": "Partagez votre expérience... (optionnel)",
+    "submit": "Envoyer l'avis",
+    "submitted": "Avis envoyé !",
+    "already_reviewed": "Vous avez déjà évalué cette compétence."
   }
 }

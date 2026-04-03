@@ -715,5 +715,36 @@
     "queued_confirmation": "Queued — will send when reconnected",
     "requires_connection": "This action requires an internet connection",
     "queue_action": "Queue"
+  },
+  "trust": {
+    "reliable_borrower": "Reliable Borrower",
+    "trusted_lender": "Trusted Lender",
+    "skilled_helper": "Skilled Helper",
+    "badge_earned": "Badge earned",
+    "no_badges_yet": "No badges yet"
+  },
+  "profile": {
+    "title": "Profile",
+    "loading": "Loading profile...",
+    "member_since": "Member since",
+    "reviews": "reviews",
+    "reviews_received": "Reviews Received",
+    "reviews_given": "Reviews Given",
+    "no_reviews": "No reviews yet.",
+    "load_more": "Load More",
+    "resources_shared": "Resources",
+    "skills_offered": "Skills",
+    "reputation_points": "Rep Points",
+    "skill_review": "Skill",
+    "booking_review": "Lending",
+    "listed_by": "Listed by"
+  },
+  "review": {
+    "leave_review": "Leave a Review",
+    "your_rating": "Your rating:",
+    "comment_placeholder": "Share your experience... (optional)",
+    "submit": "Submit Review",
+    "submitted": "Review submitted!",
+    "already_reviewed": "You have already reviewed this skill."
   }
 }

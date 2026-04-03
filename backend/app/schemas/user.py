@@ -61,3 +61,36 @@ class ReputationOut(BaseModel):
     score: int
     level: str
     breakdown: dict[str, int]
+
+
+class TrustBadge(BaseModel):
+    key: str
+    label: str
+    description: str
+
+
+class OwnerTrust(BaseModel):
+    reputation_level: str
+    average_rating: float
+    total_reviews: int
+    badges: list[str]
+
+
+class TrustSummary(BaseModel):
+    user_id: int
+    display_name: str
+    neighbourhood: str | None
+    member_since: datetime.datetime
+    reputation_level: str
+    reputation_score: int
+    average_rating: float
+    total_reviews: int
+    badges: list[TrustBadge]
+    lender_rating: float = 0.0
+    lender_reviews: int = 0
+    borrower_rating: float = 0.0
+    borrower_reviews: int = 0
+    skill_rating: float = 0.0
+    skill_reviews: int = 0
+    resources_count: int = 0
+    skills_count: int = 0

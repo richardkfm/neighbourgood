@@ -1,6 +1,7 @@
-"""User profile and reputation endpoints."""
+"""User profile, reputation, and trust endpoints."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,13 +9,17 @@ from app.dependencies import get_current_user
 from app.models.booking import Booking
 from app.models.message import Message
 from app.models.resource import Resource
+from app.models.review import Review
 from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.user import (
     ChangeEmail,
     ChangePassword,
     DashboardOverview,
+    OwnerTrust,
     ReputationOut,
+    TrustBadge,
+    TrustSummary,
     UserProfile,
     UserProfileUpdate,
 )
@@ -79,6 +84,135 @@ def _compute_reputation(db: Session, user_id: int) -> dict:
             level = label
 
     return {"score": score, "level": level, "breakdown": breakdown}
+
+
+# Badge threshold: avg >= 4.0 AND count >= 3
+_BADGE_MIN_COUNT = 3
+_BADGE_MIN_AVG = 4.0
+
+_BADGE_DEFS = {
+    "reliable_borrower": {"label": "Reliable Borrower", "desc_tpl": "{avg:.1f} avg from {count} borrowing reviews"},
+    "trusted_lender": {"label": "Trusted Lender", "desc_tpl": "{avg:.1f} avg from {count} lending reviews"},
+    "skilled_helper": {"label": "Skilled Helper", "desc_tpl": "{avg:.1f} avg from {count} skill reviews"},
+}
+
+
+def _compute_trust(db: Session, user: User) -> dict:
+    """Compute trust summary with badges for a user."""
+    rep = _compute_reputation(db, user.id)
+
+    # Overall reviews received
+    overall = (
+        db.query(
+            sqlfunc.count(Review.id).label("total"),
+            sqlfunc.avg(Review.rating).label("avg"),
+        )
+        .filter(Review.reviewee_id == user.id)
+        .first()
+    )
+    total_reviews = overall.total or 0
+    average_rating = round(float(overall.avg), 2) if overall.avg else 0.0
+
+    # Lender reviews: booking reviews where user was the resource owner
+    lender = (
+        db.query(
+            sqlfunc.count(Review.id).label("total"),
+            sqlfunc.avg(Review.rating).label("avg"),
+        )
+        .join(Booking, Booking.id == Review.booking_id)
+        .join(Resource, Resource.id == Booking.resource_id)
+        .filter(
+            Review.reviewee_id == user.id,
+            Review.review_type == "booking",
+            Resource.owner_id == user.id,
+        )
+        .first()
+    )
+
+    # Borrower reviews: booking reviews where user was the borrower
+    borrower = (
+        db.query(
+            sqlfunc.count(Review.id).label("total"),
+            sqlfunc.avg(Review.rating).label("avg"),
+        )
+        .join(Booking, Booking.id == Review.booking_id)
+        .filter(
+            Review.reviewee_id == user.id,
+            Review.review_type == "booking",
+            Booking.borrower_id == user.id,
+        )
+        .first()
+    )
+
+    # Skill reviews
+    skill = (
+        db.query(
+            sqlfunc.count(Review.id).label("total"),
+            sqlfunc.avg(Review.rating).label("avg"),
+        )
+        .filter(Review.reviewee_id == user.id, Review.review_type == "skill")
+        .first()
+    )
+
+    lender_count = lender.total or 0
+    lender_avg = round(float(lender.avg), 2) if lender.avg else 0.0
+    borrower_count = borrower.total or 0
+    borrower_avg = round(float(borrower.avg), 2) if borrower.avg else 0.0
+    skill_count = skill.total or 0
+    skill_avg = round(float(skill.avg), 2) if skill.avg else 0.0
+
+    # Compute badges
+    badges: list[TrustBadge] = []
+    category_data = {
+        "reliable_borrower": (borrower_avg, borrower_count),
+        "trusted_lender": (lender_avg, lender_count),
+        "skilled_helper": (skill_avg, skill_count),
+    }
+    for key, (avg, count) in category_data.items():
+        if count >= _BADGE_MIN_COUNT and avg >= _BADGE_MIN_AVG:
+            defn = _BADGE_DEFS[key]
+            badges.append(TrustBadge(
+                key=key,
+                label=defn["label"],
+                description=defn["desc_tpl"].format(avg=avg, count=count),
+            ))
+
+    resources_count = db.query(Resource).filter(Resource.owner_id == user.id).count()
+    skills_count = db.query(Skill).filter(Skill.owner_id == user.id).count()
+
+    return {
+        "user_id": user.id,
+        "display_name": user.display_name,
+        "neighbourhood": user.neighbourhood,
+        "member_since": user.created_at,
+        "reputation_level": rep["level"],
+        "reputation_score": rep["score"],
+        "average_rating": average_rating,
+        "total_reviews": total_reviews,
+        "badges": badges,
+        "lender_rating": lender_avg,
+        "lender_reviews": lender_count,
+        "borrower_rating": borrower_avg,
+        "borrower_reviews": borrower_count,
+        "skill_rating": skill_avg,
+        "skill_reviews": skill_count,
+        "resources_count": resources_count,
+        "skills_count": skills_count,
+    }
+
+
+def compute_owner_trust(db: Session, user_id: int) -> OwnerTrust:
+    """Compute a compact trust summary for embedding in listings."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return OwnerTrust(reputation_level="Newcomer", average_rating=0.0, total_reviews=0, badges=[])
+    trust = _compute_trust(db, user)
+    return OwnerTrust(
+        reputation_level=trust["reputation_level"],
+        average_rating=trust["average_rating"],
+        total_reviews=trust["total_reviews"],
+        badges=[b.key for b in trust["badges"]],
+    )
 
 
 @router.get("/me", response_model=UserProfile)
@@ -216,3 +350,21 @@ def change_email(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.get("/me/trust", response_model=TrustSummary)
+def get_my_trust(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the authenticated user's trust summary with badges."""
+    return TrustSummary(**_compute_trust(db, current_user))
+
+
+@router.get("/{user_id}/trust", response_model=TrustSummary)
+def get_user_trust(user_id: int, db: Session = Depends(get_db)):
+    """Get a user's public trust summary with badges."""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return TrustSummary(**_compute_trust(db, user))

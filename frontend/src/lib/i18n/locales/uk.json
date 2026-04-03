@@ -715,5 +715,36 @@
     "queued_confirmation": "У черзі — буде надіслано при підключенні",
     "requires_connection": "Ця дія потребує з'єднання з інтернетом",
     "queue_action": "Черга"
+  },
+  "trust": {
+    "reliable_borrower": "Надійний позичальник",
+    "trusted_lender": "Довірений кредитор",
+    "skilled_helper": "Вмілий помічник",
+    "badge_earned": "Значок отримано",
+    "no_badges_yet": "Ще немає значків"
+  },
+  "profile": {
+    "title": "Профіль",
+    "loading": "Завантаження профілю...",
+    "member_since": "Учасник з",
+    "reviews": "відгуків",
+    "reviews_received": "Отримані відгуки",
+    "reviews_given": "Надані відгуки",
+    "no_reviews": "Відгуків ще немає.",
+    "load_more": "Завантажити ще",
+    "resources_shared": "Ресурси",
+    "skills_offered": "Навички",
+    "reputation_points": "Очки репутації",
+    "skill_review": "Навичка",
+    "booking_review": "Позика",
+    "listed_by": "Опубліковано"
+  },
+  "review": {
+    "leave_review": "Залишити відгук",
+    "your_rating": "Ваша оцінка:",
+    "comment_placeholder": "Поділіться досвідом... (необов'язково)",
+    "submit": "Надіслати відгук",
+    "submitted": "Відгук надіслано!",
+    "already_reviewed": "Ви вже оцінили цю навичку."
   }
 }

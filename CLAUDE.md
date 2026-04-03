@@ -27,7 +27,7 @@ Token efficiency matters. Use the right model for the right task:
 
 Each instance exposes `/instance/info` so instances can discover and federate with each other.
 
-Current test count: **418 tests** across 28 test files (all backend, pytest + in-memory SQLite).
+Current test count: **441 tests** across 29 test files (all backend, pytest + in-memory SQLite).
 
 ---
 
@@ -465,7 +465,7 @@ def test_not_found(client, auth_headers):
     assert res.status_code == 404
 ```
 
-Current test files (26): `test_activity`, `test_auth`, `test_bookings`, `test_communities`, `test_crisis`, `test_events`, `test_federation`, `test_federation_sync`, `test_instance`, `test_inventory`, `test_invites`, `test_matching`, `test_mesh_sync`, `test_messages`, `test_notifications`, `test_reputation`, `test_resource_community`, `test_resources`, `test_resources_phase2`, `test_reviews`, `test_skills`, `test_status`, `test_telegram`, `test_triage`, `test_users`, `test_webhooks`.
+Current test files (27): `test_activity`, `test_auth`, `test_bookings`, `test_communities`, `test_crisis`, `test_events`, `test_federation`, `test_federation_sync`, `test_instance`, `test_inventory`, `test_invites`, `test_matching`, `test_mesh_sync`, `test_messages`, `test_notifications`, `test_reputation`, `test_resource_community`, `test_resources`, `test_resources_phase2`, `test_reviews`, `test_skills`, `test_status`, `test_telegram`, `test_triage`, `test_trust`, `test_users`, `test_webhooks`.
 
 ---
 
@@ -473,6 +473,7 @@ Current test files (26): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.0.0 | 2026-04-03 | Trust system: skill reviews/endorsements, trust badges (Reliable Borrower, Trusted Lender, Skilled Helper), public user profile page with tabbed reviews, OwnerTrust in listings, review filtering/breakdown, 23 new tests (441 total) |
 | 1.9.6 | 2026-04-01 | Simplified community display: hide community selectors for single-community users, scope resources/skills/events/triage to one community at a time |
 | 1.9.5.1 | 2026-03-16 | Fix login 500 (restore additive column auto-migration), move mesh networking to settings toggle (hidden by default), mesh settings store + i18n |
 | 1.9.5 | 2026-03-16 | Enhanced BLE mesh networking: 10-phase overhaul (mesh dashboard, auto-sync, resource sharing, check-ins, multi-hop relay, message ACKs, offline triage, E2E encryption, multi-device manager, analytics/diagnostics), improved offline functionality, i18n for offline UI, 20 new tests (418 total) |

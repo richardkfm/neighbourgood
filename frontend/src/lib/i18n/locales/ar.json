@@ -410,5 +410,36 @@
     "queued_confirmation": "في قائمة الانتظار — سيتم الإرسال عند الاتصال",
     "requires_connection": "يتطلب هذا الإجراء اتصالاً بالإنترنت",
     "queue_action": "انتظار"
+  },
+  "trust": {
+    "reliable_borrower": "مستعير موثوق",
+    "trusted_lender": "معير موثوق",
+    "skilled_helper": "مساعد ماهر",
+    "badge_earned": "شارة مكتسبة",
+    "no_badges_yet": "لا شارات بعد"
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "loading": "جارٍ تحميل الملف الشخصي...",
+    "member_since": "عضو منذ",
+    "reviews": "تقييمات",
+    "reviews_received": "التقييمات المستلمة",
+    "reviews_given": "التقييمات المقدمة",
+    "no_reviews": "لا توجد تقييمات بعد.",
+    "load_more": "تحميل المزيد",
+    "resources_shared": "الموارد",
+    "skills_offered": "المهارات",
+    "reputation_points": "نقاط السمعة",
+    "skill_review": "مهارة",
+    "booking_review": "إعارة",
+    "listed_by": "مدرج بواسطة"
+  },
+  "review": {
+    "leave_review": "اترك تقييماً",
+    "your_rating": "تقييمك:",
+    "comment_placeholder": "شارك تجربتك... (اختياري)",
+    "submit": "إرسال التقييم",
+    "submitted": "تم إرسال التقييم!",
+    "already_reviewed": "لقد قمت بتقييم هذه المهارة بالفعل."
   }
 }

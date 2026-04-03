@@ -410,5 +410,36 @@
     "queued_confirmation": "Imewekwa foleni — itatumwa unapounganishwa tena",
     "requires_connection": "Kitendo hiki kinahitaji muunganisho wa mtandao",
     "queue_action": "Foleni"
+  },
+  "trust": {
+    "reliable_borrower": "Mkopaji wa kuaminika",
+    "trusted_lender": "Mkopeshaji wa kuaminika",
+    "skilled_helper": "Msaidizi mstadi",
+    "badge_earned": "Beji imepatikana",
+    "no_badges_yet": "Hakuna beji bado"
+  },
+  "profile": {
+    "title": "Wasifu",
+    "loading": "Inapakia wasifu...",
+    "member_since": "Mwanachama tangu",
+    "reviews": "mapitio",
+    "reviews_received": "Mapitio yaliyopokelewa",
+    "reviews_given": "Mapitio yaliyotolewa",
+    "no_reviews": "Hakuna mapitio bado.",
+    "load_more": "Pakia zaidi",
+    "resources_shared": "Rasilimali",
+    "skills_offered": "Ujuzi",
+    "reputation_points": "Pointi za sifa",
+    "skill_review": "Ujuzi",
+    "booking_review": "Ukopeshaji",
+    "listed_by": "Imeorodheshwa na"
+  },
+  "review": {
+    "leave_review": "Acha mapitio",
+    "your_rating": "Kiwango chako:",
+    "comment_placeholder": "Shiriki uzoefu wako... (si lazima)",
+    "submit": "Tuma mapitio",
+    "submitted": "Mapitio yametumwa!",
+    "already_reviewed": "Tayari umepitia ujuzi huu."
   }
 }
