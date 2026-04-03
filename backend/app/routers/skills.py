@@ -9,6 +9,7 @@ from app.dependencies import get_current_user, get_current_user_optional
 from app.models.community import CommunityMember
 from app.models.skill import Skill
 from app.models.user import User
+from app.routers.users import compute_owner_trust
 from app.services.activity import record_activity
 from app.services.webhooks import dispatch_event
 from app.schemas.skill import (
@@ -25,8 +26,9 @@ from app.schemas.skill import (
 router = APIRouter(prefix="/skills", tags=["skills"])
 
 
-def _skill_to_out(skill: Skill) -> dict:
+def _skill_to_out(skill: Skill, owner_trust_map: dict | None = None) -> dict:
     """Convert a Skill ORM object to a dict for SkillOut."""
+    trust = owner_trust_map.get(skill.owner_id) if owner_trust_map else None
     return {
         "id": skill.id,
         "title": skill.title,
@@ -36,6 +38,7 @@ def _skill_to_out(skill: Skill) -> dict:
         "owner_id": skill.owner_id,
         "community_id": skill.community_id,
         "owner": skill.owner,
+        "owner_trust": trust,
         "created_at": skill.created_at,
         "updated_at": skill.updated_at,
     }
@@ -101,8 +104,11 @@ def list_skills(
 
     total = query.count()
     items = query.order_by(Skill.created_at.desc()).offset(skip).limit(limit).all()
+    # Batch-compute trust for unique owners
+    owner_ids = {s.owner_id for s in items}
+    trust_map = {oid: compute_owner_trust(db, oid) for oid in owner_ids}
     return SkillList(
-        items=[SkillOut(**_skill_to_out(s)) for s in items],
+        items=[SkillOut(**_skill_to_out(s, trust_map)) for s in items],
         total=total,
     )
 
@@ -163,7 +169,8 @@ def create_skill(
             skill.community_id,
         )
 
-    return SkillOut(**_skill_to_out(skill))
+    trust_map = {skill.owner_id: compute_owner_trust(db, skill.owner_id)}
+    return SkillOut(**_skill_to_out(skill, trust_map))
 
 
 @router.get("/{skill_id}", response_model=SkillOut)
@@ -177,7 +184,8 @@ def get_skill(skill_id: int, db: Session = Depends(get_db)):
     )
     if not skill:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill not found")
-    return SkillOut(**_skill_to_out(skill))
+    trust_map = {skill.owner_id: compute_owner_trust(db, skill.owner_id)}
+    return SkillOut(**_skill_to_out(skill, trust_map))
 
 
 @router.patch("/{skill_id}", response_model=SkillOut)
@@ -216,7 +224,8 @@ def update_skill(
     db.commit()
     db.refresh(skill)
     _ = skill.owner
-    return SkillOut(**_skill_to_out(skill))
+    trust_map = {skill.owner_id: compute_owner_trust(db, skill.owner_id)}
+    return SkillOut(**_skill_to_out(skill, trust_map))
 
 
 @router.delete("/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)

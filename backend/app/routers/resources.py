@@ -15,6 +15,7 @@ from app.dependencies import get_current_user, get_current_user_optional
 from app.models.community import CommunityMember
 from app.models.resource import Resource
 from app.models.user import User
+from app.routers.users import compute_owner_trust
 from app.services.activity import record_activity
 from app.services.file_upload import ALLOWED_EXTENSIONS, ALLOWED_IMAGE_TYPES, validate_image_magic
 from app.services.webhooks import dispatch_event
@@ -33,12 +34,13 @@ from app.schemas.resource import (
 router = APIRouter(prefix="/resources", tags=["resources"])
 
 
-def _resource_to_out(resource: Resource) -> dict:
+def _resource_to_out(resource: Resource, owner_trust_map: dict | None = None) -> dict:
     """Convert a Resource ORM object to a dict with image_url and inventory fields computed."""
     threshold = resource.reorder_threshold
     low_stock = (
         threshold is not None and resource.quantity_available <= threshold
     )
+    trust = owner_trust_map.get(resource.owner_id) if owner_trust_map else None
     return {
         "id": resource.id,
         "title": resource.title,
@@ -50,6 +52,7 @@ def _resource_to_out(resource: Resource) -> dict:
         "owner_id": resource.owner_id,
         "community_id": resource.community_id,
         "owner": resource.owner,
+        "owner_trust": trust,
         "quantity_total": resource.quantity_total,
         "quantity_available": resource.quantity_available,
         "reorder_threshold": resource.reorder_threshold,
@@ -119,8 +122,10 @@ def list_resources(
 
     total = query.count()
     items = query.order_by(Resource.created_at.desc()).offset(skip).limit(limit).all()
+    owner_ids = {r.owner_id for r in items}
+    trust_map = {oid: compute_owner_trust(db, oid) for oid in owner_ids}
     return ResourceList(
-        items=[ResourceOut(**_resource_to_out(r)) for r in items],
+        items=[ResourceOut(**_resource_to_out(r, trust_map)) for r in items],
         total=total,
     )
 
@@ -191,7 +196,8 @@ def get_resource(resource_id: int, db: Session = Depends(get_db)):
     )
     if not resource:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
-    return ResourceOut(**_resource_to_out(resource))
+    trust_map = {resource.owner_id: compute_owner_trust(db, resource.owner_id)}
+    return ResourceOut(**_resource_to_out(resource, trust_map))
 
 
 @router.patch("/{resource_id}", response_model=ResourceOut)

@@ -410,5 +410,36 @@
     "queued_confirmation": "En cola — se enviará al reconectarse",
     "requires_connection": "Esta acción requiere conexión a internet",
     "queue_action": "Cola"
+  },
+  "trust": {
+    "reliable_borrower": "Prestatario confiable",
+    "trusted_lender": "Prestamista de confianza",
+    "skilled_helper": "Ayudante hábil",
+    "badge_earned": "Insignia obtenida",
+    "no_badges_yet": "Sin insignias aún"
+  },
+  "profile": {
+    "title": "Perfil",
+    "loading": "Cargando perfil...",
+    "member_since": "Miembro desde",
+    "reviews": "reseñas",
+    "reviews_received": "Reseñas recibidas",
+    "reviews_given": "Reseñas dadas",
+    "no_reviews": "Sin reseñas aún.",
+    "load_more": "Cargar más",
+    "resources_shared": "Recursos",
+    "skills_offered": "Habilidades",
+    "reputation_points": "Puntos de reputación",
+    "skill_review": "Habilidad",
+    "booking_review": "Préstamo",
+    "listed_by": "Publicado por"
+  },
+  "review": {
+    "leave_review": "Dejar una reseña",
+    "your_rating": "Tu calificación:",
+    "comment_placeholder": "Comparte tu experiencia... (opcional)",
+    "submit": "Enviar reseña",
+    "submitted": "¡Reseña enviada!",
+    "already_reviewed": "Ya has reseñado esta habilidad."
   }
 }

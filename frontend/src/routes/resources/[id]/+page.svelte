@@ -182,9 +182,21 @@
 
 		<div class="owner-section">
 			<h3>Shared by</h3>
-			<p class="owner-name">{resource.owner.display_name}</p>
+			<a href="/profile/{resource.owner_id}" class="owner-name-link">{resource.owner.display_name}</a>
 			{#if resource.owner.neighbourhood}
 				<p class="owner-neighbourhood">{resource.owner.neighbourhood}</p>
+			{/if}
+			{#if resource.owner_trust}
+				<div class="owner-trust-row">
+					{#if resource.owner_trust.total_reviews > 0}
+						<span class="trust-stars">★ {resource.owner_trust.average_rating.toFixed(1)}</span>
+						<span class="trust-count">({resource.owner_trust.total_reviews} reviews)</span>
+					{/if}
+					{#each resource.owner_trust.badges as badge}
+						<span class="trust-badge-mini">{badge === 'skilled_helper' ? '⭐' : badge === 'trusted_lender' ? '📦' : '🤝'}</span>
+					{/each}
+					<span class="trust-level">{resource.owner_trust.reputation_level}</span>
+				</div>
 			{/if}
 			{#if $isLoggedIn && $user?.id !== resource.owner_id}
 				<button class="btn-message-owner" onclick={() => startConversation(resource!.owner_id)}>
@@ -413,8 +425,45 @@
 		margin-bottom: 0.25rem;
 	}
 
-	.owner-name {
+	.owner-name-link {
 		font-weight: 600;
+		color: var(--color-primary);
+		text-decoration: none;
+		font-size: 1.05rem;
+	}
+
+	.owner-name-link:hover {
+		text-decoration: underline;
+	}
+
+	.owner-trust-row {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.35rem;
+		font-size: 0.85rem;
+	}
+
+	.trust-stars {
+		color: var(--color-warning);
+		font-weight: 600;
+	}
+
+	.trust-count {
+		color: var(--color-text-muted);
+	}
+
+	.trust-badge-mini {
+		font-size: 0.9rem;
+	}
+
+	.trust-level {
+		padding: 0.1rem 0.5rem;
+		border-radius: 999px;
+		background: var(--color-primary-light);
+		color: var(--color-primary);
+		font-weight: 600;
+		font-size: 0.75rem;
 	}
 
 	.owner-neighbourhood {

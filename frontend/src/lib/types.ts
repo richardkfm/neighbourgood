@@ -24,6 +24,7 @@ export interface Resource {
 	owner_id: number;
 	community_id: number | null;
 	owner: UserInfo;
+	owner_trust?: OwnerTrust | null;
 	quantity_total: number;
 	quantity_available: number;
 	reorder_threshold: number | null;
@@ -284,6 +285,69 @@ export interface RedSkyAlertInfo {
 	severity: string;
 	is_active: boolean;
 	created_at: string;
+}
+
+// ── Trust & Review types ──────────────────────────────────────────────────
+
+export interface OwnerTrust {
+	reputation_level: string;
+	average_rating: number;
+	total_reviews: number;
+	badges: string[];
+}
+
+export interface TrustBadge {
+	key: string;
+	label: string;
+	description: string;
+}
+
+export interface TrustSummary {
+	user_id: number;
+	display_name: string;
+	neighbourhood: string | null;
+	member_since: string;
+	reputation_level: string;
+	reputation_score: number;
+	average_rating: number;
+	total_reviews: number;
+	badges: TrustBadge[];
+	lender_rating: number;
+	lender_reviews: number;
+	borrower_rating: number;
+	borrower_reviews: number;
+	skill_rating: number;
+	skill_reviews: number;
+	resources_count: number;
+	skills_count: number;
+}
+
+export interface ReviewOut {
+	id: number;
+	booking_id: number | null;
+	skill_id: number | null;
+	review_type: string;
+	reviewer_id: number;
+	reviewee_id: number;
+	rating: number;
+	comment: string | null;
+	reviewer: UserInfo;
+	reviewee: UserInfo;
+	created_at: string;
+}
+
+export interface SkillOut {
+	id: number;
+	title: string;
+	description: string | null;
+	category: string;
+	skill_type: string;
+	owner_id: number;
+	community_id: number | null;
+	owner: UserInfo;
+	owner_trust?: OwnerTrust | null;
+	created_at: string;
+	updated_at: string;
 }
 
 /**
