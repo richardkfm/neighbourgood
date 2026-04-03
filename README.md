@@ -1,6 +1,6 @@
 # 🏘️ NeighbourGood
 
-**v1.9.6** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v2.0.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -22,7 +22,7 @@ The default mode focuses on community building and resource sharing:
 - **Skill Exchange** – Offer and request skills (tutoring, repairs, cooking, languages)
 - **Calendar Booking** – Reserve items with date/time slots
 - **Community Events** – Organise and RSVP to local events (repair cafés, workshops, seed swaps, meetups)
-- **Gamification** – Earn reputation points for sharing, build trust scores
+- **Trust & Reputation** – Earn reputation points, collect trust badges (Reliable Borrower, Trusted Lender, Skilled Helper), review skills and lending experiences, public user profiles
 - **Community Feed** – Updates, requests, offers in a neighbourhood timeline
 
 ### 🔴 Red Sky Mode (Crisis Operation)
@@ -352,6 +352,9 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [x] PostgreSQL production default (Docker Compose)
 - [x] Invite system for new members (code-based, with expiry/max uses)
 - [x] Rating and review system for transactions (1-5 stars, per-booking)
+- [x] Skill reviews & endorsements — community members can rate skill providers (v2.0.0)
+- [x] Trust badges — Reliable Borrower, Trusted Lender, Skilled Helper (v2.0.0)
+- [x] Public user profile page with trust summary, badges, and paginated reviews (v2.0.0)
 
 ### Phase 3.5 — Federation Preparation
 
