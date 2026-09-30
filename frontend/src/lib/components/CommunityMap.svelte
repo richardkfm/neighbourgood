@@ -142,11 +142,9 @@
 			L.marker([c.latitude, c.longitude], { icon })
 				.addTo(markerLayer)
 				.bindPopup(`
-					<strong>${c.name}</strong>${isMine ? ' (your community)' : ''}<br/>
+					<strong>${c.name}</strong>${isMine ? ` (${get(t)('communities.your_community_paren')})` : ''}<br/>
 					${c.city} (${c.postal_code})<br/>
-					${c.member_count} member${c.member_count !== 1 ? 's' : ''}
-					&middot; ${c.resource_count} item${c.resource_count !== 1 ? 's' : ''}
-					&middot; ${c.skill_count} skill${c.skill_count !== 1 ? 's' : ''}<br/>
+					${get(t)('communities.map_popup_counts', { values: { members: c.member_count, items: c.resource_count, skills: c.skill_count } })}<br/>
 					<a href="/communities/${c.id}">${get(t)('communities.view_community')}</a>
 				`);
 		}

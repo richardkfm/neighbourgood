@@ -22,34 +22,34 @@
 </script>
 
 <section class="members-section slide-up">
-  <h2>Members</h2>
+  <h2>{$t('communities.members_heading')}</h2>
   <div class="members-list">
     {#each members as m (m.id)}
       <div class="member-row">
         <div class="member-info">
           <span class="member-name">{m.user.display_name}</span>
           {#if m.role === 'admin'}
-            <span class="role-badge">Admin</span>
+            <span class="role-badge">{$t('communities.role_admin')}</span>
           {:else if m.role === 'leader'}
-            <span class="role-badge role-badge-leader">Leader</span>
+            <span class="role-badge role-badge-leader">{$t('communities.role_leader')}</span>
           {/if}
         </div>
         <div class="member-right">
           {#if isAdmin && m.user.id !== currentUserId && m.role !== 'admin'}
             {#if m.role === 'leader'}
               <button class="btn-tiny" onclick={() => ondemote(m.user.id)} disabled={promotingUser === m.user.id}>
-                Demote
+                {$t('communities.demote_leader')}
               </button>
             {:else}
               <button class="btn-tiny" onclick={() => onpromote(m.user.id)} disabled={promotingUser === m.user.id}>
-                Make Leader
+                {$t('communities.make_leader')}
               </button>
             {/if}
             <button class="btn-tiny" onclick={() => onmakeadmin(m.user.id)} disabled={promotingUser === m.user.id}>
               {$t('communities.make_admin')}
             </button>
           {/if}
-          <span class="member-date">Joined {new Date(m.joined_at).toLocaleDateString()}</span>
+          <span class="member-date">{$t('communities.joined_on', { values: { date: new Date(m.joined_at).toLocaleDateString() } })}</span>
         </div>
       </div>
     {/each}

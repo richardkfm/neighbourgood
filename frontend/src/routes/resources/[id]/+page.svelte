@@ -61,7 +61,7 @@
 			resource = await api<Resource>(`/resources/${id}`);
 			await loadBookings(Number(id));
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Resource not found';
+			error = err instanceof Error ? err.message : $t('resources.not_found');
 		} finally {
 			loading = false;
 		}
@@ -98,7 +98,7 @@
 				body: { is_available: !resource.is_available }
 			});
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Update failed';
+			actionError = err instanceof Error ? err.message : $t('resources.update_failed');
 		}
 	}
 
@@ -121,7 +121,7 @@
 		try {
 			resource = await apiUpload<Resource>(`/resources/${resource.id}/image`, imageInput.files[0]);
 		} catch (err) {
-			actionError = err instanceof Error ? err.message : 'Upload failed';
+			actionError = err instanceof Error ? err.message : $t('resources.upload_failed');
 		} finally {
 			// Allow re-selecting the same file after a failed upload
 			if (imageInput) imageInput.value = '';
@@ -212,7 +212,7 @@
 					message: bookMessage || null
 				},
 				authToken: get(token),
-				label: `Borrow "${resource.title}": ${bookStartDate} → ${bookEndDate}`
+				label: $t('resources.offline_borrow', { values: { title: resource.title, start: bookStartDate, end: bookEndDate } })
 			});
 			showBookingForm = false;
 			bookQueued = true;
@@ -239,36 +239,36 @@
 			bookMessage = '';
 			await loadBookings(resource.id);
 		} catch (err) {
-			bookError = err instanceof Error ? err.message : 'Booking failed';
+			bookError = err instanceof Error ? err.message : $t('resources.booking_failed');
 		}
 	}
 
 </script>
 
 {#if loading}
-	<p class="loading">Loading...</p>
+	<p class="loading">{$t('common.loading')}</p>
 {:else if error}
 	<div class="error-page">
-		<h1>Oops</h1>
+		<h1>{$t('common.oops')}</h1>
 		<p>{error}</p>
-		<a href="/resources">Back to resources</a>
+		<a href="/resources">{$t('resources.back')}</a>
 	</div>
 {:else if resource}
 	<article class="resource-detail">
-		<a href="/resources" class="back-link">&larr; Back to resources</a>
+		<a href="/resources" class="back-link">&larr; {$t('resources.back')}</a>
 
 		<div class="detail-header">
 			<div class="badges">
-				<span class="category-badge">{resource.category}</span>
+				<span class="category-badge">{$t('resources.categories.' + resource.category)}</span>
 				{#if resource.condition}
-					<span class="condition-badge">{resource.condition}</span>
+					<span class="condition-badge">{$t('resources.conditions.' + resource.condition)}</span>
 				{/if}
 				<span class="availability" class:available={resource.is_available}>
-					{resource.is_available ? 'Available' : 'Unavailable'}
+					{resource.is_available ? $t('resources.available') : $t('resources.unavailable')}
 				</span>
 			</div>
 			<h1>{resource.title}</h1>
-			<p class="meta">Listed {new Date(resource.created_at).toLocaleDateString()}</p>
+			<p class="meta">{$t('common.listed_on', { values: { date: new Date(resource.created_at).toLocaleDateString() } })}</p>
 		</div>
 
 		{#if actionError}
@@ -375,11 +375,11 @@
 					</form>
 				{:else}
 					<div class="section-card">
-						<h3>About this item</h3>
+						<h3>{$t('resources.about_item')}</h3>
 						{#if resource.description}
 							<p>{resource.description}</p>
 						{:else}
-							<p class="no-description">The owner hasn't added a description yet.</p>
+							<p class="no-description">{$t('resources.no_description')}</p>
 						{/if}
 					</div>
 				{/if}
@@ -387,15 +387,15 @@
 				<!-- Booking section -->
 				{#if isOwner || bookings.length > 0}
 					<div class="section-card" class:owner-bookings-card={isOwner}>
-						<h3>{isOwner ? 'Who Has This Item?' : 'Booked Dates'}</h3>
+						<h3>{isOwner ? $t('resources.who_has_item') : $t('resources.booked_dates')}</h3>
 						{#if bookings.length > 0}
 							<div class="booking-list">
 								{#each bookings as b}
 									{@const days = Math.ceil((new Date(b.end_date).getTime() - new Date(b.start_date).getTime()) / 86400000)}
 									<div class="booking-item">
 										<span class="booking-dates">{b.start_date} &rarr; {b.end_date}</span>
-										<span class="booking-duration">({days} day{days !== 1 ? 's' : ''})</span>
-										<span class="booking-status" style="color: {statusColor(b.status)}">{b.status}</span>
+										<span class="booking-duration">({$t('resources.days', { values: { days } })})</span>
+										<span class="booking-status" style="color: {statusColor(b.status)}">{$t('bookings.status_' + b.status)}</span>
 										{#if isOwner}
 											<span class="booking-who">{b.borrower.display_name}</span>
 										{/if}
@@ -403,10 +403,10 @@
 								{/each}
 							</div>
 							{#if isOwner && bookings.some(b => b.status === 'pending')}
-								<p class="pending-alert">Pending requests waiting — <a href="/bookings">review in Bookings</a>.</p>
+								<p class="pending-alert">{@html $t('resources.pending_alert', { values: { link: `<a href="/bookings">${$t('resources.pending_alert_link')}</a>` } })}</p>
 							{/if}
 						{:else if isOwner}
-							<p class="empty-bookings">No current bookings. Your item is available to borrow.</p>
+							<p class="empty-bookings">{$t('resources.no_bookings')}</p>
 						{/if}
 					</div>
 				{/if}
@@ -415,10 +415,10 @@
 					<div class="section-card queued-notice">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
 						<div class="queued-notice-body">
-							<strong>Request saved for later</strong>
-							<p>Your borrow request will be sent automatically when you reconnect.</p>
+							<strong>{$t('resources.request_saved')}</strong>
+							<p>{$t('resources.request_saved_body')}</p>
 						</div>
-						<button class="queued-dismiss" onclick={() => (bookQueued = false)} aria-label="Dismiss">&times;</button>
+						<button class="queued-dismiss" onclick={() => (bookQueued = false)} aria-label={$t('banner.dismiss')}>&times;</button>
 					</div>
 				{/if}
 			</div>
@@ -426,7 +426,7 @@
 			<aside class="detail-side">
 				<!-- Owner card -->
 				<div class="section-card owner-card">
-					<h3>Shared by</h3>
+					<h3>{$t('resources.shared_by')}</h3>
 					<div class="owner-row">
 						<span class="owner-avatar" aria-hidden="true">{resource.owner.display_name.charAt(0).toUpperCase()}</span>
 						<div class="owner-id">
@@ -440,17 +440,17 @@
 						<div class="owner-trust-row">
 							{#if resource.owner_trust.total_reviews > 0}
 								<span class="trust-stars">★ {resource.owner_trust.average_rating.toFixed(1)}</span>
-								<span class="trust-count">({resource.owner_trust.total_reviews} reviews)</span>
+								<span class="trust-count">({$t('trust.review_count', { values: { count: resource.owner_trust.total_reviews } })})</span>
 							{/if}
 							{#each resource.owner_trust.badges as badge}
 								<span class="trust-badge-mini">{badge === 'skilled_helper' ? '⭐' : badge === 'trusted_lender' ? '📦' : '🤝'}</span>
 							{/each}
-							<span class="trust-level">{resource.owner_trust.reputation_level}</span>
+							<span class="trust-level">{$t('dashboard.level_' + resource.owner_trust.reputation_level.toLowerCase(), { default: resource.owner_trust.reputation_level })}</span>
 						</div>
 					{/if}
 					{#if $isLoggedIn && $user?.id !== resource.owner_id}
 						<button class="btn-message-owner" onclick={() => startConversation(resource!.owner_id)}>
-							Message Owner
+							{$t('resources.message_owner')}
 						</button>
 					{/if}
 				</div>
@@ -459,40 +459,40 @@
 				{#if canBook && !bookQueued}
 					<div class="section-card borrow-card">
 						{#if showBookingForm}
-							<h3>Request to Borrow</h3>
+							<h3>{$t('resources.request_to_borrow')}</h3>
 							{#if bookError}
 								<p class="error">{bookError}</p>
 							{/if}
 							{#if !$isOnline}
 								<p class="offline-note">
-									You're offline. Your request will be saved and sent when you reconnect.
+									{$t('resources.offline_note')}
 								</p>
 							{/if}
 							<form onsubmit={handleBooking} class="booking-form">
 								<div class="form-row">
 									<label>
-										<span>Start Date</span>
+										<span>{$t('bookings.start_date')}</span>
 										<input type="date" bind:value={bookStartDate} required />
 									</label>
 									<label>
-										<span>End Date</span>
+										<span>{$t('bookings.end_date')}</span>
 										<input type="date" bind:value={bookEndDate} required />
 									</label>
 								</div>
 								<label>
-									<span>Message (optional)</span>
-									<textarea bind:value={bookMessage} rows="2" placeholder="Hi! I'd like to borrow this for..."></textarea>
+									<span>{$t('bookings.message')}</span>
+									<textarea bind:value={bookMessage} rows="2" placeholder={$t('resources.borrow_placeholder')}></textarea>
 								</label>
 								<div class="form-actions">
 									<button type="submit" class="btn-primary">
-										{$isOnline ? 'Send Request' : 'Queue Request'}
+										{$isOnline ? $t('resources.send_request') : $t('resources.queue_request')}
 									</button>
-									<button type="button" class="btn-secondary" onclick={() => (showBookingForm = false)}>Cancel</button>
+									<button type="button" class="btn-secondary" onclick={() => (showBookingForm = false)}>{$t('common.cancel')}</button>
 								</div>
 							</form>
 						{:else}
 							<button class="btn-primary btn-borrow" onclick={() => (showBookingForm = true)}>
-								Request to Borrow
+								{$t('resources.request_to_borrow')}
 							</button>
 						{/if}
 					</div>
@@ -501,16 +501,16 @@
 				<!-- Owner actions -->
 				{#if isOwner}
 					<div class="section-card owner-panel">
-						<h3>Manage Resource</h3>
+						<h3>{$t('resources.manage')}</h3>
 						<div class="owner-actions">
 							<button class="btn-secondary" onclick={startEdit} disabled={editing}>
 								{$t('common.edit')}
 							</button>
 							<button class="btn-secondary" onclick={toggleAvailability}>
-								{resource.is_available ? 'Mark Unavailable' : 'Mark Available'}
+								{resource.is_available ? $t('resources.mark_unavailable') : $t('resources.mark_available')}
 							</button>
 							<label class="btn-secondary upload-btn">
-								Upload Image
+								{$t('resources.upload_image')}
 								<input
 									type="file"
 									accept="image/jpeg,image/png,image/webp,image/gif"

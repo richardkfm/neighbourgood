@@ -34,17 +34,17 @@
     <div class="crisis-indicator" class:crisis-red={effectiveMode === 'red'}>
       <span class="crisis-dot"></span>
       <span class="crisis-label">
-        {effectiveMode === 'red' ? 'Red Sky (Crisis)' : 'Blue Sky (Normal)'}
+        {effectiveMode === 'red' ? $t('crisis.panel.red_sky') : $t('crisis.panel.blue_sky')}
       </span>
     </div>
     {#if showToggle && isAdmin}
       {#if crisisStatus.mode === 'blue'}
         <button class="btn-crisis-activate" onclick={() => ontoggle('red')} disabled={togglingCrisis}>
-          {togglingCrisis ? 'Activating...' : 'Activate Crisis Mode'}
+          {togglingCrisis ? $t('crisis.panel.activating') : $t('crisis.panel.activate')}
         </button>
       {:else}
         <button class="btn-crisis-deactivate" onclick={() => ontoggle('blue')} disabled={togglingCrisis}>
-          {togglingCrisis ? 'Deactivating...' : 'Deactivate Crisis Mode'}
+          {togglingCrisis ? $t('crisis.panel.deactivating') : $t('crisis.panel.deactivate')}
         </button>
       {/if}
     {/if}
@@ -62,19 +62,19 @@
     <div class="vote-section">
       <div class="vote-bar">
         <div class="vote-info">
-          <span>Activate votes: <strong>{crisisStatus.votes_to_activate}</strong></span>
-          <span>Deactivate votes: <strong>{crisisStatus.votes_to_deactivate}</strong></span>
-          <span class="vote-threshold">Threshold: {crisisStatus.threshold_pct}% of {crisisStatus.total_members} members</span>
+          <span>{$t('crisis.panel.activate_votes')} <strong>{crisisStatus.votes_to_activate}</strong></span>
+          <span>{$t('crisis.panel.deactivate_votes')} <strong>{crisisStatus.votes_to_deactivate}</strong></span>
+          <span class="vote-threshold">{$t('crisis.panel.threshold', { values: { pct: crisisStatus.threshold_pct, total: crisisStatus.total_members } })}</span>
         </div>
         <div class="vote-actions">
           <!-- Only the vote that can change the stored mode ("activate" while red is a no-op) -->
           {#if crisisStatus.mode !== 'red'}
             <button class="btn-vote btn-vote-red" onclick={() => onvote('activate')} disabled={votingCrisis}>
-              Vote to Activate
+              {$t('crisis.panel.vote_activate')}
             </button>
           {:else}
             <button class="btn-vote btn-vote-blue" onclick={() => onvote('deactivate')} disabled={votingCrisis}>
-              Vote to Deactivate
+              {$t('crisis.panel.vote_deactivate')}
             </button>
           {/if}
         </div>

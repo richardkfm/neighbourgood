@@ -87,7 +87,7 @@
 			});
 			telegramState.botUrl = data.bot_url;
 		} catch (err) {
-			telegramState.error = err instanceof Error ? err.message : 'Telegram not configured on this instance';
+			telegramState.error = err instanceof Error ? err.message : $t('settings.telegram_not_configured');
 		} finally {
 			telegramState.loading = false;
 		}
@@ -99,10 +99,10 @@
 		try {
 			await api('/users/me/telegram', { method: 'DELETE', auth: true });
 			user.update(u => u ? { ...u, telegram_chat_id: null } : u);
-			telegramState.success = 'Telegram unlinked.';
+			telegramState.success = $t('settings.telegram_unlinked');
 			setTimeout(() => { telegramState.success = ''; }, 3000);
 		} catch (err) {
-			telegramState.error = err instanceof Error ? err.message : 'Failed to unlink';
+			telegramState.error = err instanceof Error ? err.message : $t('settings.telegram_unlink_failed');
 		} finally {
 			telegramState.unlinking = false;
 		}
@@ -112,7 +112,7 @@
 		e.preventDefault();
 		webhookForm.error = '';
 		if (!webhookForm.url || !webhookForm.secret || webhookForm.event_types.length === 0) {
-			webhookForm.error = 'URL, secret, and at least one event type are required';
+			webhookForm.error = $t('settings.webhook_required');
 			return;
 		}
 		webhookForm.loading = true;
@@ -131,7 +131,7 @@
 			webhookForm.secret = '';
 			webhookForm.event_types = [];
 		} catch (err) {
-			webhookForm.error = err instanceof Error ? err.message : 'Failed to add webhook';
+			webhookForm.error = err instanceof Error ? err.message : $t('settings.webhook_add_failed');
 		} finally {
 			webhookForm.loading = false;
 		}
@@ -216,17 +216,17 @@
 		passwordForm.success = false;
 
 		if (!passwordForm.current_password || !passwordForm.new_password) {
-			passwordForm.error = 'All fields are required';
+			passwordForm.error = $t('settings.all_fields_required');
 			return;
 		}
 
 		if (passwordForm.new_password !== passwordForm.confirm_password) {
-			passwordForm.error = 'New passwords do not match';
+			passwordForm.error = $t('settings.passwords_mismatch');
 			return;
 		}
 
 		if (passwordForm.new_password === passwordForm.current_password) {
-			passwordForm.error = 'New password must be different from current password';
+			passwordForm.error = $t('settings.password_same');
 			return;
 		}
 
@@ -253,7 +253,7 @@
 				passwordForm.success = false;
 			}, 3000);
 		} catch (err) {
-			passwordForm.error = err instanceof Error ? err.message : 'Failed to change password';
+			passwordForm.error = err instanceof Error ? err.message : $t('settings.password_change_failed');
 		} finally {
 			passwordForm.loading = false;
 		}
@@ -265,12 +265,12 @@
 		emailForm.success = false;
 
 		if (!emailForm.new_email || !emailForm.password) {
-			emailForm.error = 'Email and password are required';
+			emailForm.error = $t('settings.email_password_required');
 			return;
 		}
 
 		if (emailForm.new_email === $user?.email) {
-			emailForm.error = 'New email must be different from current email';
+			emailForm.error = $t('settings.email_same');
 			return;
 		}
 
@@ -296,7 +296,7 @@
 				emailForm.success = false;
 			}, 3000);
 		} catch (err) {
-			emailForm.error = err instanceof Error ? err.message : 'Failed to change email';
+			emailForm.error = err instanceof Error ? err.message : $t('settings.email_change_failed');
 		} finally {
 			emailForm.loading = false;
 		}
@@ -304,7 +304,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings - NeighbourGood</title>
+	<title>{$t('nav.settings')} - NeighbourGood</title>
 </svelte:head>
 
 <div class="settings-page">
@@ -365,7 +365,7 @@
 					bind:value={passwordForm.new_password}
 					required
 					disabled={passwordForm.loading}
-					placeholder="Min 8 chars, 1 uppercase, 1 lowercase, 1 digit"
+					placeholder={$t('settings.password_placeholder')}
 				/>
 			</div>
 
@@ -431,7 +431,7 @@
 	<div class="settings-section">
 		<h2>{$t('settings.telegram')}</h2>
 		<p class="section-desc">
-			Link your Telegram account to receive instant alerts for messages, bookings, and community events.
+			{$t('settings.telegram_desc')}
 		</p>
 
 		{#if telegramState.success}
@@ -453,11 +453,11 @@
 			</div>
 		{:else if telegramState.botUrl}
 			<div class="telegram-link-step">
-				<p>Open the link below in Telegram and press Start:</p>
+				<p>{$t('settings.telegram_open_hint')}</p>
 				<a href={telegramState.botUrl} target="_blank" rel="noopener" class="btn btn-telegram">
-					Open in Telegram
+					{$t('settings.telegram_open')}
 				</a>
-				<p class="info-hint">After pressing Start in Telegram, reload this page to confirm the link.</p>
+				<p class="info-hint">{$t('settings.telegram_reload_hint')}</p>
 			</div>
 		{:else}
 			<button
@@ -492,7 +492,7 @@
 	<div class="settings-section">
 		<h2>{$t('settings.webhooks')}</h2>
 		<p class="section-desc">
-			Register URLs to receive signed HTTP POST callbacks when events happen — for Slack, Discord, or any custom integration.
+			{$t('settings.webhooks_desc')}
 		</p>
 
 		{#if webhooks.length > 0}
@@ -503,7 +503,7 @@
 							<span class="webhook-url">{wh.url}</span>
 							<span class="webhook-events">{wh.event_types.join(', ')}</span>
 						</div>
-						<button class="btn-icon-danger" onclick={() => deleteWebhook(wh.id)} title="Delete webhook">
+						<button class="btn-icon-danger" onclick={() => deleteWebhook(wh.id)} title={$t('settings.webhook_delete')}>
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
 						</button>
 					</div>
@@ -521,8 +521,8 @@
 			</div>
 			<div class="form-group">
 				<label for="webhook-secret">{$t('settings.webhook_secret')}</label>
-				<input id="webhook-secret" type="text" bind:value={webhookForm.secret} placeholder="Min 8 characters" required disabled={webhookForm.loading} />
-				<span class="form-hint">Used to generate the X-NeighbourGood-Signature header so you can verify deliveries.</span>
+				<input id="webhook-secret" type="text" bind:value={webhookForm.secret} placeholder={$t('settings.webhook_secret_placeholder')} required disabled={webhookForm.loading} />
+				<span class="form-hint">{$t('settings.webhook_secret_hint')}</span>
 			</div>
 			<div class="form-group">
 				<label>{$t('settings.webhook_events')}</label>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { InviteOut } from '$lib/types';
+  import { t } from 'svelte-i18n';
 
   let {
     communityId,
@@ -33,7 +34,7 @@
       expiresHours = '';
       onrefresh();
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Could not create invite';
+      error = err instanceof Error ? err.message : $t('communities.invites.create_failed');
     } finally {
       creating = false;
     }
@@ -44,7 +45,7 @@
       await api(`/invites/${inviteId}`, { method: 'DELETE', auth: true });
       onrefresh();
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Could not revoke invite';
+      error = err instanceof Error ? err.message : $t('communities.invites.revoke_failed');
     }
   }
 
@@ -56,27 +57,27 @@
           copiedCode = code;
           setTimeout(() => { copiedCode = ''; }, 2000);
         },
-        () => window.prompt('Copy this invite link:', url)
+        () => window.prompt($t('communities.invites.copy_prompt'), url)
       );
     } else {
       // The Clipboard API needs a secure context; plain-http instances fall back to a prompt
-      window.prompt('Copy this invite link:', url);
+      window.prompt($t('communities.invites.copy_prompt'), url);
     }
   }
 
   function formatExpiry(expiresAt: string | null): string {
-    if (!expiresAt) return 'Never';
+    if (!expiresAt) return $t('communities.invites.never');
     const d = new Date(expiresAt);
-    if (d < new Date()) return 'Expired';
+    if (d < new Date()) return $t('communities.invites.expired');
     return d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   }
 </script>
 
 <section class="invites-section slide-up">
   <div class="section-header">
-    <h2>Invite Links</h2>
+    <h2>{$t('communities.invites.title')}</h2>
     <button class="btn-small" onclick={() => (showForm = !showForm)}>
-      {showForm ? 'Cancel' : 'Create Invite'}
+      {showForm ? $t('common.cancel') : $t('communities.invites.create')}
     </button>
   </div>
 
@@ -88,22 +89,22 @@
     <div class="invite-form fade-in">
       <div class="invite-form-row">
         <label>
-          <span>Max uses (optional)</span>
-          <input type="number" min="1" bind:value={maxUses} placeholder="Unlimited" />
+          <span>{$t('communities.invites.max_uses')}</span>
+          <input type="number" min="1" bind:value={maxUses} placeholder={$t('communities.invites.unlimited')} />
         </label>
         <label>
-          <span>Expires in hours (optional)</span>
-          <input type="number" min="1" bind:value={expiresHours} placeholder="Never" />
+          <span>{$t('communities.invites.expires_hours')}</span>
+          <input type="number" min="1" bind:value={expiresHours} placeholder={$t('communities.invites.never')} />
         </label>
       </div>
       <button class="btn-primary" onclick={createInvite} disabled={creating}>
-        {creating ? 'Creating...' : 'Generate Link'}
+        {creating ? $t('communities.invites.creating') : $t('communities.invites.generate')}
       </button>
     </div>
   {/if}
 
   {#if invites.length === 0}
-    <p class="section-hint">No active invite links. Create one to invite new members.</p>
+    <p class="section-hint">{$t('communities.invites.none')}</p>
   {:else}
     <div class="invites-list">
       {#each invites as inv (inv.id)}
@@ -111,16 +112,15 @@
           <div class="invite-info">
             <code class="invite-code">{inv.code.slice(0, 12)}...</code>
             <span class="invite-meta">
-              {inv.use_count}{inv.max_uses ? `/${inv.max_uses}` : ''} used
-              &middot; Expires: {formatExpiry(inv.expires_at)}
+              {$t('communities.invites.usage', { values: { uses: `${inv.use_count}${inv.max_uses ? `/${inv.max_uses}` : ''}`, expires: formatExpiry(inv.expires_at) } })}
             </span>
           </div>
           <div class="invite-actions">
             <button class="btn-small" onclick={() => copyLink(inv.code)}>
-              {copiedCode === inv.code ? 'Copied!' : 'Copy Link'}
+              {copiedCode === inv.code ? $t('communities.invites.copied') : $t('communities.invites.copy')}
             </button>
             <button class="btn-small btn-small-danger" onclick={() => revokeInvite(inv.id)}>
-              Revoke
+              {$t('communities.invites.revoke')}
             </button>
           </div>
         </div>

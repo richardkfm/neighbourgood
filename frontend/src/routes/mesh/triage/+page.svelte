@@ -89,8 +89,8 @@
 			{#each tickets as ticket (ticket.id)}
 				<button class="ticket-card" onclick={() => toggleTicket(ticket.id)}>
 					<div class="ticket-header">
-						<span class="ticket-urgency" style="background: {urgencyColor(ticket.urgency)}">{ticket.urgency}</span>
-						<span class="ticket-type">{ticket.ticket_type}</span>
+						<span class="ticket-urgency" style="background: {urgencyColor(ticket.urgency)}">{$t('crisis.priority.' + ticket.urgency, { default: ticket.urgency })}</span>
+						<span class="ticket-type">{$t('crisis.ticket_types.' + (ticket.ticket_type === 'emergency_ping' ? 'ping' : ticket.ticket_type), { default: ticket.ticket_type })}</span>
 						{#if ticket.server_id}
 							<span class="synced-badge">{$t('mesh.synced_to_server')}</span>
 						{:else}

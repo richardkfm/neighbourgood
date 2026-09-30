@@ -105,7 +105,7 @@
 			hasReviewed = true;
 			await loadReviews(skill.id);
 		} catch (err) {
-			reviewError = err instanceof Error ? err.message : 'Failed to submit review';
+			reviewError = err instanceof Error ? err.message : $_('skills.review_failed');
 		} finally {
 			submittingReview = false;
 		}
@@ -117,7 +117,7 @@
 			skill = await api<Skill>(`/skills/${id}`);
 			await loadReviews(skill.id);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Skill not found';
+			error = err instanceof Error ? err.message : $_('skills.not_found');
 		} finally {
 			loading = false;
 		}
@@ -130,7 +130,7 @@
 		try {
 			await api(`/skills/${skill.id}`, {
 				method: 'DELETE', auth: true,
-				offline: { label: `Delete skill: ${skill.title}` }
+				offline: { label: $_('skills.offline_delete', { values: { title: skill.title } }) }
 			});
 			goto('/skills');
 		} catch (err) {
@@ -188,7 +188,7 @@
 	<p class="loading">{$_('common.loading')}</p>
 {:else if error}
 	<div class="error-page">
-		<h1>Oops</h1>
+		<h1>{$_('common.oops')}</h1>
 		<p>{error}</p>
 		<a href="/skills">{$_('skills.back')}</a>
 	</div>
@@ -202,13 +202,13 @@
 			</div>
 			<div class="header-content">
 				<div class="badges">
-					<span class="category-badge">{skill.category}</span>
+					<span class="category-badge">{$_('skills.categories.' + skill.category)}</span>
 					<span class="type-badge" class:type-offer={skill.skill_type === 'offer'} class:type-request={skill.skill_type === 'request'}>
-						{skill.skill_type === 'offer' ? 'Offering' : 'Looking for'}
+						{skill.skill_type === 'offer' ? $_('skills.offering') : $_('skills.looking_for')}
 					</span>
 				</div>
 				<h1>{skill.title}</h1>
-				<p class="meta">Listed {formatDate(skill.created_at)}</p>
+				<p class="meta">{$_('common.listed_on', { values: { date: formatDate(skill.created_at) } })}</p>
 			</div>
 		</div>
 
@@ -261,11 +261,11 @@
 					</form>
 				{:else}
 					<div class="section-card">
-						<h3>About</h3>
+						<h3>{$_('skills.about')}</h3>
 						{#if skill.description}
 							<p>{skill.description}</p>
 						{:else}
-							<p class="no-description">No description added yet.</p>
+							<p class="no-description">{$_('skills.no_description')}</p>
 						{/if}
 					</div>
 				{/if}
@@ -353,12 +353,12 @@
 							{#each skill.owner_trust.badges as badge}
 								<span class="trust-badge-mini">{BADGE_ICONS[badge] ?? '🏆'}</span>
 							{/each}
-							<span class="trust-level">{skill.owner_trust.reputation_level}</span>
+							<span class="trust-level">{$_('dashboard.level_' + skill.owner_trust.reputation_level.toLowerCase(), { default: skill.owner_trust.reputation_level })}</span>
 						</div>
 					{/if}
 					{#if $isLoggedIn && $user?.id !== skill.owner_id}
 						<button class="btn-message-owner" onclick={() => startConversation(skill!.owner_id, skill!.id)}>
-							Message {skill.skill_type === 'offer' ? 'Tutor' : 'Requester'}
+							{skill.skill_type === 'offer' ? $_('skills.message_tutor') : $_('skills.message_requester')}
 						</button>
 					{/if}
 				</div>

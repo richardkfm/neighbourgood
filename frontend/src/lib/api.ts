@@ -4,10 +4,20 @@
  */
 
 import { get } from 'svelte/store';
+import { t as i18n } from 'svelte-i18n';
 import { token } from '$lib/stores/auth';
 import { isOnline, enqueueRequest } from '$lib/stores/offline';
 
 const BASE = '/api';
+
+/** Translate a message; falls back to English if i18n is not initialised yet (SSR / early boot). */
+function msg(key: string, fallback: string, values?: Record<string, string | number>): string {
+	try {
+		return get(i18n)(key, { values, default: fallback });
+	} catch {
+		return fallback;
+	}
+}
 
 interface OfflineOptions {
 	/** Human-readable label shown in the offline queue UI. */
@@ -54,7 +64,7 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 
 	if (res.status === 401 && auth) {
 		await handleUnauthorized();
-		throw new Error('Session expired');
+		throw new Error(msg('common.session_expired', 'Session expired'));
 	}
 
 	if (!res.ok) {
@@ -73,7 +83,10 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 			errorMsg = err.detail.toString();
 		}
 
-		throw new Error(errorMsg || `Request failed: ${res.status}`);
+		// The service worker's offline fallback response carries an English detail
+		if (res.status === 503 && errorMsg === 'You are offline') errorMsg = msg('offline.you_are_offline', errorMsg);
+
+		throw new Error(errorMsg || msg('common.request_failed', `Request failed: ${res.status}`, { status: res.status }));
 	}
 
 	if (res.status === 204) return undefined as T;
@@ -123,7 +136,7 @@ export async function apiUpload<T = unknown>(path: string, file: File): Promise<
 
 	if (res.status === 401 && t) {
 		await handleUnauthorized();
-		throw new Error('Session expired');
+		throw new Error(msg('common.session_expired', 'Session expired'));
 	}
 
 	if (!res.ok) {
@@ -139,7 +152,9 @@ export async function apiUpload<T = unknown>(path: string, file: File): Promise<
 			errorMsg = err.detail.toString();
 		}
 
-		throw new Error(errorMsg || `Upload failed: ${res.status}`);
+		if (res.status === 503 && errorMsg === 'You are offline') errorMsg = msg('offline.you_are_offline', errorMsg);
+
+		throw new Error(errorMsg || msg('common.upload_failed', `Upload failed: ${res.status}`, { status: res.status }));
 	}
 
 	return res.json();

@@ -79,7 +79,7 @@
 		try {
 			await connectToMesh();
 		} catch (e) {
-			meshError = e instanceof Error ? e.message : 'Failed to connect to mesh';
+			meshError = e instanceof Error ? e.message : $t('mesh.connect_failed');
 		} finally {
 			meshConnecting = false;
 		}
@@ -119,7 +119,7 @@
 					urgency: newTicketUrgency,
 					client_id: clientId
 				},
-				offline: { label: `Emergency ticket: ${newTicketTitle}` }
+				offline: { label: $t('crisis.offline_ticket', { values: { title: newTicketTitle } }) }
 			});
 			showNewTicketForm = false;
 			newTicketTitle = '';
@@ -127,7 +127,7 @@
 			newTicketType = 'request';
 			newTicketUrgency = 'medium';
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to broadcast ticket via mesh';
+			error = e instanceof Error ? e.message : $t('mesh.broadcast_failed');
 		} finally {
 			creatingTicket = false;
 		}
@@ -146,7 +146,7 @@
 				});
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to sync mesh messages';
+			error = e instanceof Error ? e.message : $t('mesh.sync_messages_failed');
 		} finally {
 			syncing = false;
 		}
@@ -203,7 +203,7 @@
 				await loadTickets();
 			}
 		} catch {
-			error = 'Failed to load your communities.';
+			error = $t('crisis.load_communities_failed');
 		} finally {
 			loadingCommunities = false;
 		}
@@ -239,7 +239,7 @@
 			const selectedCommunity = communities.find(c => c.id === selectedCommunityId);
 			selectedCommunityMode = selectedCommunity ? effectiveMode(selectedCommunity) : 'blue';
 		} catch {
-			error = 'Failed to load tickets.';
+			error = $t('crisis.load_tickets_failed');
 		} finally {
 			loading = false;
 		}
@@ -256,7 +256,7 @@
 			});
 			await loadTickets();
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to update ticket';
+			error = e instanceof Error ? e.message : $t('crisis.detail.update_failed');
 		}
 	}
 
@@ -275,7 +275,7 @@
 					// Replays of a queued create return the same ticket
 					client_id: crypto.randomUUID()
 				},
-				offline: { label: `Emergency ticket: ${newTicketTitle}` }
+				offline: { label: $t('crisis.offline_ticket', { values: { title: newTicketTitle } }) }
 			});
 			showNewTicketForm = false;
 			newTicketTitle = '';
@@ -286,7 +286,7 @@
 				await loadTickets();
 			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to create ticket';
+			error = e instanceof Error ? e.message : $t('crisis.create_failed');
 		} finally {
 			creatingTicket = false;
 		}
@@ -315,7 +315,7 @@
 </script>
 
 <svelte:head>
-	<title>Emergency – NeighbourGood</title>
+	<title>{$t('nav.emergency')} – NeighbourGood</title>
 </svelte:head>
 
 <div class="emergency-page">
@@ -351,7 +351,7 @@
 				<select id="urgency-filter" bind:value={filterUrgency}>
 					<option value="">{$t('crisis.filter_all')}</option>
 					{#each URGENCY_ORDER as u}
-						<option value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
+						<option value={u}>{$t(`crisis.priority.${u}`)}</option>
 					{/each}
 				</select>
 			</div>
@@ -378,7 +378,7 @@
 						<span class="mesh-dot" class:mesh-connected={$meshStatus === 'connected'} class:mesh-scanning={$meshStatus === 'scanning' || $meshStatus === 'connecting'} class:mesh-reconnecting={$meshStatus === 'reconnecting'}></span>
 						<span class="mesh-label">
 							{#if $meshStatus === 'connected'}
-								{$t('mesh.connected')}{$meshDeviceName ? ` to ${$meshDeviceName}` : ''}
+								{$meshDeviceName ? $t('mesh.connected_to', { values: { device: $meshDeviceName } }) : $t('mesh.connected')}
 							{:else if $meshStatus === 'reconnecting'}
 								{$t('mesh.reconnecting')}
 							{:else if $meshStatus === 'scanning' || $meshStatus === 'connecting'}
@@ -388,7 +388,7 @@
 							{/if}
 						</span>
 						{#if $meshStatus === 'connected'}
-							<span class="mesh-peers">{$meshPeerCount} peer{$meshPeerCount !== 1 ? 's' : ''}</span>
+							<span class="mesh-peers">{$t('mesh.peer_count', { values: { count: $meshPeerCount } })}</span>
 						{/if}
 					</div>
 					<div class="mesh-actions">
@@ -423,12 +423,12 @@
 						<div class="ticket-card mesh-ticket-card">
 							<div class="ticket-header">
 								<span class="urgency-badge" style="--u: {urgencyColor(String(msg.data.urgency ?? 'medium'))}">
-									{String(msg.data.urgency ?? 'medium').toUpperCase()}
+									{$t(`crisis.priority.${String(msg.data.urgency ?? 'medium')}`).toUpperCase()}
 								</span>
-								<span class="via-mesh-badge">mesh</span>
+								<span class="via-mesh-badge">{$t('mesh.badge')}</span>
 								<span class="ticket-type">{ticketTypeLabel(String(msg.data.ticket_type ?? 'request'))}</span>
 							</div>
-							<h3 class="ticket-title">{msg.data.title ?? 'Untitled'}</h3>
+							<h3 class="ticket-title">{msg.data.title ?? $t('crisis.untitled')}</h3>
 							{#if msg.data.description}
 								<p class="ticket-desc">{msg.data.description}</p>
 							{/if}
@@ -468,11 +468,11 @@
 				</div>
 				<label>
 					<span>{$t('crisis.form_title_field')}</span>
-					<input type="text" bind:value={newTicketTitle} placeholder="Short description..." maxlength="300" />
+					<input type="text" bind:value={newTicketTitle} placeholder={$t('crisis.title_placeholder')} maxlength="300" />
 				</label>
 				<label>
 					<span>{$t('crisis.form_description')}</span>
-					<textarea bind:value={newTicketDesc} rows="3" placeholder="More details..." maxlength="5000"></textarea>
+					<textarea bind:value={newTicketDesc} rows="3" placeholder={$t('crisis.description_placeholder')} maxlength="5000"></textarea>
 				</label>
 				{#if $meshEnabled && !$isOnline && $meshStatus === 'connected'}
 				<button class="btn-primary btn-mesh-send" onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
@@ -501,13 +501,13 @@
 					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="ticket-card" class:overdue={isOverdue(ticket.due_at)} style="--u: {urgencyColor(ticket.urgency)}">
 						<div class="ticket-header">
 							<span class="urgency-badge" style="--u: {urgencyColor(ticket.urgency)}">
-								{ticket.urgency.toUpperCase()}
+								{$t(`crisis.priority.${ticket.urgency}`).toUpperCase()}
 							</span>
 							{#if ticket.status !== 'resolved' && isOverdue(ticket.due_at)}
 								<span class="overdue-badge">{$t('crisis.overdue')}</span>
 							{/if}
 							{#if isAdminOrLeader && ticket.triage_score !== undefined}
-								<span class="score-badge" title="Triage score">{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
+								<span class="score-badge" title={$t('crisis.detail.triage_score')}>{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
 							{/if}
 							<span class="status-chip" style="color: {statusColor(ticket.status)}">
 								{ticketStatusLabel(ticket.status)}

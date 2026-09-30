@@ -181,7 +181,7 @@
 			allCommunities = mapData;
 			myCommunities = myData;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load communities';
+			error = err instanceof Error ? err.message : $t('communities.load_failed');
 		} finally {
 			loading = false;
 		}
@@ -194,7 +194,7 @@
 </script>
 
 <svelte:head>
-	<title>Communities - NeighbourGood</title>
+	<title>{$t('nav.communities')} - NeighbourGood</title>
 </svelte:head>
 
 <div class="communities-page">
@@ -232,7 +232,7 @@
 					</div>
 					<div class="my-card-right">
 						<span class="member-count">{c.member_count}</span>
-						<span class="member-label">member{c.member_count !== 1 ? 's' : ''}</span>
+						<span class="member-label">{$t('communities.member_label', { values: { count: c.member_count } })}</span>
 					</div>
 				</a>
 			{/each}
@@ -269,9 +269,9 @@
 							</div>
 						</div>
 						<div class="list-card-stats">
-							<span>{c.member_count} member{c.member_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.member_count', { values: { count: c.member_count } })}</span>
 							{#if c.latitude != null && c.longitude != null && userLocated}
-								<span class="distance">{haversineKm(userLat, userLng, c.latitude, c.longitude).toFixed(1)} km</span>
+								<span class="distance">{$t('communities.distance_km', { values: { distance: haversineKm(userLat, userLng, c.latitude, c.longitude).toFixed(1) } })}</span>
 							{/if}
 						</div>
 					</a>
@@ -304,7 +304,7 @@
 				<div class="fed-alerts">
 					{#each fedAlerts as alert}
 						<div class="fed-alert-card severity-{alert.severity}">
-							<span class="alert-severity">{alert.severity.toUpperCase()}</span>
+							<span class="alert-severity">{$t('alerts.severity_' + alert.severity, { default: alert.severity }).toUpperCase()}</span>
 							<div class="alert-content">
 								<strong>{alert.title}</strong>
 								{#if alert.description}

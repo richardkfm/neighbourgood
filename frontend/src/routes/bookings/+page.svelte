@@ -157,10 +157,10 @@
 					<div class="queued-row">
 						<div class="queued-info">
 							<span class="queued-label">{req.label}</span>
-							<span class="queued-date">Queued {new Date(req.createdAt).toLocaleString()}</span>
+							<span class="queued-date">{$t('bookings.queued_at', { values: { date: new Date(req.createdAt).toLocaleString() } })}</span>
 						</div>
-						<button class="btn-cancel-queued" onclick={() => removeFromQueue(req.id)} title="Remove from queue">
-							Cancel
+						<button class="btn-cancel-queued" onclick={() => removeFromQueue(req.id)} title={$t('bookings.remove_from_queue')}>
+							{$t('common.cancel')}
 						</button>
 					</div>
 				{/each}
@@ -206,7 +206,7 @@
 					<div class="booking-row">
 						<div class="booking-info">
 							<a href="/resources/{b.resource_id}" class="resource-link">
-								{b.resource_title ?? `Resource #${b.resource_id}`}
+								{b.resource_title ?? $t('common.resource_number', { values: { id: b.resource_id } })}
 							</a>
 							<div class="booking-meta">
 								<span class="dates">{b.start_date} &rarr; {b.end_date}</span>

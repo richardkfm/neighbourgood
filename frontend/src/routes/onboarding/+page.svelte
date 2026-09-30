@@ -6,6 +6,8 @@
 	import { t } from 'svelte-i18n';
 	import type { CommunityOut } from '$lib/types';
 
+	const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 	interface Suggestion {
 		label: string;
 		category: string;
@@ -141,7 +143,7 @@
 			total = res.total;
 			searched = true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Search failed';
+			error = err instanceof Error ? err.message : $t('onboarding.search_failed');
 		} finally {
 			searching = false;
 		}
@@ -156,7 +158,7 @@
 			communityName = name;
 			step = 'skills';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not join';
+			error = err instanceof Error ? err.message : $t('communities.join_failed');
 		} finally {
 			joining = null;
 		}
@@ -183,7 +185,7 @@
 			step = 'skills';
 		} catch (err) {
 			// e.g. 409 "leave your current community first" — shown next to the form
-			createError = err instanceof Error ? err.message : 'Could not create community';
+			createError = err instanceof Error ? err.message : $t('onboarding.create_failed');
 		} finally {
 			creating = false;
 		}
@@ -207,7 +209,7 @@
 			});
 			skillsAdded = new Set([...skillsAdded, label]);
 		} catch (err) {
-			skillsError = err instanceof Error ? err.message : 'Could not add skill';
+			skillsError = err instanceof Error ? err.message : $t('onboarding.add_skill_failed');
 		} finally {
 			skillsLoading = new Set([...skillsLoading].filter((l) => l !== label));
 		}
@@ -232,7 +234,7 @@
 			skillsAdded = new Set([...skillsAdded, label]);
 			skillCustom = '';
 		} catch (err) {
-			skillsError = err instanceof Error ? err.message : 'Could not add skill';
+			skillsError = err instanceof Error ? err.message : $t('onboarding.add_skill_failed');
 		} finally {
 			skillsAddingCustom = false;
 		}
@@ -256,7 +258,7 @@
 			});
 			itemsAdded = new Set([...itemsAdded, label]);
 		} catch (err) {
-			itemsError = err instanceof Error ? err.message : 'Could not add item';
+			itemsError = err instanceof Error ? err.message : $t('onboarding.add_item_failed');
 		} finally {
 			itemsLoading = new Set([...itemsLoading].filter((l) => l !== label));
 		}
@@ -281,7 +283,7 @@
 			itemsAdded = new Set([...itemsAdded, label]);
 			itemCustom = '';
 		} catch (err) {
-			itemsError = err instanceof Error ? err.message : 'Could not add item';
+			itemsError = err instanceof Error ? err.message : $t('onboarding.add_item_failed');
 		} finally {
 			itemsAddingCustom = false;
 		}
@@ -336,11 +338,11 @@
 					<input
 						type="text"
 						bind:value={query}
-						placeholder="e.g. Kreuzberg, 10999, Berlin..."
+						placeholder={$t('onboarding.search_placeholder')}
 						class="search-input"
 					/>
 					<button type="submit" class="btn-search" disabled={searching || !query.trim()}>
-						{searching ? 'Searching...' : 'Search'}
+						{searching ? $t('onboarding.searching') : $t('onboarding.search_btn')}
 					</button>
 				</div>
 			</form>
@@ -348,7 +350,7 @@
 			{#if searched}
 				<div class="results-section fade-in">
 					{#if results.length > 0}
-						<p class="results-count">{total} communit{total === 1 ? 'y' : 'ies'} found</p>
+						<p class="results-count">{$t('onboarding.results_count', { values: { count: total } })}</p>
 						<div class="results-list">
 							{#each results as community (community.id)}
 								<div class="community-card slide-up">
@@ -357,7 +359,7 @@
 										<div class="card-meta">
 											<span class="tag">{community.postal_code}</span>
 											<span class="tag">{community.city}</span>
-											<span class="member-count">{community.member_count} member{community.member_count !== 1 ? 's' : ''}</span>
+											<span class="member-count">{$t('communities.member_count', { values: { count: community.member_count } })}</span>
 										</div>
 										{#if community.description}
 											<p class="card-desc">{community.description}</p>
@@ -368,59 +370,59 @@
 										onclick={() => joinCommunity(community.id, community.name)}
 										disabled={joining === community.id}
 									>
-										{joining === community.id ? 'Joining...' : 'Join'}
+										{joining === community.id ? $t('onboarding.joining') : $t('onboarding.join_btn')}
 									</button>
 								</div>
 							{/each}
 						</div>
 					{:else}
 						<div class="no-results">
-							<p>No communities found for "{query}".</p>
-							<p class="hint">Be the first to create one for your area!</p>
+							<p>{$t('onboarding.no_results', { values: { query } })}</p>
+							<p class="hint">{$t('onboarding.be_first')}</p>
 						</div>
 					{/if}
 				</div>
 			{/if}
 
-			<div class="divider"><span>or</span></div>
+			<div class="divider"><span>{$t('common.or')}</span></div>
 
 			{#if !showCreate}
 				<button class="btn-create-toggle" onclick={() => (showCreate = true)}>
-					Create a new community
+					{$t('onboarding.create_community')}
 				</button>
 			{:else}
 				<div class="create-form fade-in">
-					<h2>Create a new community</h2>
+					<h2>{$t('onboarding.create_community')}</h2>
 					{#if createError}
 						<div class="alert alert-error fade-in">{createError}</div>
 					{/if}
 					<form onsubmit={(e) => { e.preventDefault(); createCommunity(); }}>
 						<label>
-							<span>Community Name</span>
-							<input type="text" bind:value={newName} required placeholder="e.g. Nachbarschaft Kreuzberg" />
+							<span>{$t('onboarding.community_name')}</span>
+							<input type="text" bind:value={newName} required placeholder={$t('onboarding.name_placeholder')} />
 						</label>
 						<div class="form-row">
 							<label class="flex-1">
-								<span>Postal Code</span>
-								<input type="text" bind:value={newPlz} required placeholder="e.g. 10999" />
+								<span>{$t('onboarding.postal_code')}</span>
+								<input type="text" bind:value={newPlz} required placeholder={$t('onboarding.postal_placeholder')} />
 							</label>
 							<label class="flex-2">
-								<span>City</span>
-								<input type="text" bind:value={newCity} required placeholder="e.g. Berlin" />
+								<span>{$t('onboarding.city')}</span>
+								<input type="text" bind:value={newCity} required placeholder={$t('onboarding.city_placeholder')} />
 							</label>
 						</div>
 						<label>
-							<span>Description (optional)</span>
-							<textarea bind:value={newDesc} rows="3" placeholder="What's this community about?"></textarea>
+							<span>{$t('onboarding.description')}</span>
+							<textarea bind:value={newDesc} rows="3" placeholder={$t('onboarding.description_placeholder')}></textarea>
 						</label>
 						<div class="form-actions">
-							<button type="button" class="btn-cancel" onclick={() => (showCreate = false)}>Cancel</button>
+							<button type="button" class="btn-cancel" onclick={() => (showCreate = false)}>{$t('common.cancel')}</button>
 							<button
 								type="submit"
 								class="btn-primary"
 								disabled={creating || !newName.trim() || !newPlz.trim() || !newCity.trim()}
 							>
-								{creating ? 'Creating...' : 'Create Community'}
+								{creating ? $t('onboarding.creating_community') : $t('onboarding.create_btn')}
 							</button>
 						</div>
 					</form>
@@ -428,7 +430,7 @@
 			{/if}
 
 			<div class="skip-section">
-				<a href="/dashboard" class="skip-link">Skip for now</a>
+				<a href="/dashboard" class="skip-link">{$t('onboarding.skip')}</a>
 			</div>
 		</div>
 
@@ -438,9 +440,9 @@
 	{:else if step === 'skills'}
 		<div class="step-content fade-in">
 			<div class="onboarding-header">
-				<h1>What are you good at?</h1>
+				<h1>{$t('onboarding.skills_title')}</h1>
 				<p class="subtitle">
-					No need to teach a class — just let neighbours know what you can help with.
+					{$t('onboarding.skills_hint')}
 				</p>
 			</div>
 
@@ -476,7 +478,7 @@
 				<input
 					type="text"
 					bind:value={skillCustom}
-					placeholder="Something else you're good at..."
+					placeholder={$t('onboarding.skill_custom_placeholder')}
 					maxlength="200"
 					onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
 				/>
@@ -485,13 +487,13 @@
 					onclick={addCustomSkill}
 					disabled={!skillCustom.trim() || skillsAddingCustom || skillsAdded.has(skillCustom.trim())}
 				>
-					{skillsAddingCustom ? '...' : 'Add'}
+					{skillsAddingCustom ? '...' : $t('onboarding.add_btn')}
 				</button>
 			</div>
 
 			<div class="step-actions">
 				<button class="btn-continue" onclick={() => (step = 'items')}>
-					{skillCount >= 3 ? 'Continue →' : 'Continue — you can add more later'}
+					{skillCount >= 3 ? $t('onboarding.continue_3plus') : $t('onboarding.continue_less')}
 				</button>
 			</div>
 		</div>
@@ -502,9 +504,9 @@
 	{:else if step === 'items'}
 		<div class="step-content fade-in">
 			<div class="onboarding-header">
-				<h1>What do you have at home?</h1>
+				<h1>{$t('onboarding.items_title')}</h1>
 				<p class="subtitle">
-					Just let people know it exists — no commitment to lend right now.
+					{$t('onboarding.items_subtitle')}
 				</p>
 			</div>
 
@@ -540,7 +542,7 @@
 				<input
 					type="text"
 					bind:value={itemCustom}
-					placeholder="Something else you could share..."
+					placeholder={$t('onboarding.item_custom_placeholder')}
 					maxlength="200"
 					onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomItem(); } }}
 				/>
@@ -549,13 +551,13 @@
 					onclick={addCustomItem}
 					disabled={!itemCustom.trim() || itemsAddingCustom || itemsAdded.has(itemCustom.trim())}
 				>
-					{itemsAddingCustom ? '...' : 'Add'}
+					{itemsAddingCustom ? '...' : $t('onboarding.add_btn')}
 				</button>
 			</div>
 
 			<div class="step-actions">
 				<button class="btn-continue" onclick={() => (step = 'done')}>
-					{itemCount >= 3 ? 'Finish →' : 'Finish — you can add more later'}
+					{itemCount >= 3 ? $t('onboarding.finish_3plus') : $t('onboarding.finish_less')}
 				</button>
 			</div>
 		</div>
@@ -566,20 +568,22 @@
 	{:else if step === 'done'}
 		<div class="step-content done-screen fade-in">
 			<div class="celebration-icon">🎉</div>
-			<h1>You're all set!</h1>
+			<h1>{$t('onboarding.done_title')}</h1>
 			<p class="subtitle">
-				You shared <strong>{skillCount} skill{skillCount !== 1 ? 's' : ''}</strong>
-				and <strong>{itemCount} item{itemCount !== 1 ? 's' : ''}</strong>
-				with <strong>{communityName}</strong>.
+				{@html $t('onboarding.done_summary', { values: {
+					skills: `<strong>${$t('onboarding.skills_count', { values: { count: skillCount } })}</strong>`,
+					items: `<strong>${$t('onboarding.items_count', { values: { count: itemCount } })}</strong>`,
+					community: `<strong>${escapeHtml(communityName)}</strong>`
+				} })}
 			</p>
 			<p class="subtitle-muted">
-				Your neighbours can now see what you bring to the community.
+				{$t('onboarding.done_note')}
 			</p>
 			<div class="done-actions">
 				<button class="btn-continue" onclick={() => goto(`/communities/${communityId}`)}>
-					Go to your community →
+					{$t('onboarding.go_to_community')}
 				</button>
-				<a href="/dashboard" class="skip-link">Go to dashboard</a>
+				<a href="/dashboard" class="skip-link">{$t('onboarding.go_to_dashboard')}</a>
 			</div>
 		</div>
 	{/if}

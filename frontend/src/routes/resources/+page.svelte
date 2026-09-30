@@ -107,7 +107,7 @@
 			newDescription = '';
 			await loadResources();
 		} catch (err) {
-			createError = err instanceof Error ? err.message : 'Failed to create resource';
+			createError = err instanceof Error ? err.message : $t('resources.create_failed');
 		}
 	}
 
@@ -181,11 +181,11 @@
 			<form onsubmit={handleCreate}>
 				<label>
 					<span>{$t('resources.title_label')}</span>
-					<input type="text" bind:value={newTitle} required placeholder="e.g. Bosch Drill" />
+					<input type="text" bind:value={newTitle} required placeholder={$t('resources.title_placeholder')} />
 				</label>
 				<label>
 					<span>{$t('resources.description_label')}</span>
-					<textarea bind:value={newDescription} rows="3" placeholder="What are you sharing? Any conditions?"></textarea>
+					<textarea bind:value={newDescription} rows="3" placeholder={$t('resources.description_placeholder')}></textarea>
 				</label>
 				<div class="form-row">
 					<label>
@@ -294,7 +294,7 @@
 					{/if}
 					<div class="card-body">
 						<div class="card-header">
-							<span class="category-badge">{resource.category}</span>
+							<span class="category-badge">{$t('resources.categories.' + resource.category)}</span>
 							{#if !resource.is_available}
 								<span class="unavailable-badge">{$t('resources.unavailable')}</span>
 							{/if}
@@ -305,7 +305,7 @@
 						{/if}
 						<div class="card-spacer"></div>
 						<div class="card-footer">
-							<span class="owner">by {resource.owner.display_name}</span>
+							<span class="owner">{$t('common.by_name', { values: { name: resource.owner.display_name } })}</span>
 							{#if resource.owner_trust && resource.owner_trust.total_reviews > 0}
 								<span class="trust-stars">★ {resource.owner_trust.average_rating.toFixed(1)}</span>
 							{/if}
@@ -315,7 +315,7 @@
 								{/each}
 							{/if}
 							{#if resource.condition}
-								<span class="condition">{resource.condition}</span>
+								<span class="condition">{$t('resources.conditions.' + resource.condition)}</span>
 							{/if}
 						</div>
 					</div>

@@ -107,7 +107,7 @@
 			<span class="status-icon">!</span>
 			<div>
 				<p class="status-text">{error}</p>
-				<p class="status-hint">Make sure the backend is running on port 8300.</p>
+				<p class="status-hint">{$t('home.backend_hint')}</p>
 			</div>
 		</section>
 	{:else if platformStatus}

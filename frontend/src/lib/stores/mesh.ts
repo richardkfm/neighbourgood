@@ -4,6 +4,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
+import { t } from 'svelte-i18n';
 import {
 	isBluetoothSupported,
 	scanForBitchatNode,
@@ -90,7 +91,7 @@ const UNSIGNED_TYPES = new Set(['heartbeat', 'ack']);
 /** Connect to a nearby BitChat node. Prompts the user with Chrome device picker. */
 export async function connectToMesh(): Promise<void> {
 	if (!isBluetoothSupported()) {
-		throw new Error('Web Bluetooth not supported');
+		throw new Error(get(t)('mesh.not_supported'));
 	}
 
 	try {

@@ -170,18 +170,18 @@
 			sessionStorage.setItem('ng_mesh_last_sync', lastSyncTime);
 		} catch (err: any) {
 			syncStatus = 'error';
-			error = err?.message || 'Sync failed';
+			error = err?.message || $t('mesh.sync_failed');
 		}
 	}
 
 	function messageTypeLabel(type: string): string {
 		const labels: Record<string, string> = {
-			emergency_ticket: 'Emergency Ticket',
-			ticket_comment: 'Ticket Comment',
-			crisis_vote: 'Crisis Vote',
-			crisis_status: 'Crisis Status',
-			direct_message: 'Direct Message',
-			heartbeat: 'Heartbeat'
+			emergency_ticket: $t('mesh.type_emergency_ticket'),
+			ticket_comment: $t('mesh.type_ticket_comment'),
+			crisis_vote: $t('mesh.type_crisis_vote'),
+			crisis_status: $t('mesh.type_crisis_status'),
+			direct_message: $t('mesh.type_direct_message'),
+			heartbeat: $t('mesh.type_heartbeat')
 		};
 		return labels[type] || type;
 	}
@@ -356,9 +356,9 @@
 							</div>
 							<div class="msg-meta">
 								{#if ackStatus.get(msg.id) === 'acked'}
-									<span class="ack-badge acked" title="Delivered">✓</span>
+									<span class="ack-badge acked" title={$t('mesh.delivered')}>✓</span>
 								{:else if ackStatus.get(msg.id) === 'pending'}
-									<span class="ack-badge pending" title="Pending">○</span>
+									<span class="ack-badge pending" title={$t('bookings.status_pending')}>○</span>
 								{/if}
 								<span class="msg-time">{formatTime(msg.ts)}</span>
 							</div>

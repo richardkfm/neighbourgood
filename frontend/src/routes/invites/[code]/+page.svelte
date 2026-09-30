@@ -27,7 +27,7 @@
 				auth: true,
 			});
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not redeem invite';
+			error = err instanceof Error ? err.message : $t('invite.redeem_failed');
 		} finally {
 			loading = false;
 		}

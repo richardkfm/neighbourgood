@@ -118,7 +118,7 @@
 						<p class="card-desc">{skill.description}</p>
 					{/if}
 					<div class="card-meta">
-						<span class="meta-item">{skill.category}</span>
+						<span class="meta-item">{$t('skills.categories.' + skill.category, { default: skill.category })}</span>
 						{#if skill.community_name}
 							<span class="meta-item">{skill.community_name}</span>
 						{/if}

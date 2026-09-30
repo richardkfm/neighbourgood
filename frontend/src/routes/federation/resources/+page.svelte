@@ -100,14 +100,14 @@
 				<div class="resource-card">
 					<div class="card-header">
 						<h3>{res.title}</h3>
-						<span class="category-badge">{res.category}</span>
+						<span class="category-badge">{$t('resources.categories.' + res.category, { default: res.category })}</span>
 					</div>
 					{#if res.description}
 						<p class="card-desc">{res.description}</p>
 					{/if}
 					<div class="card-meta">
 						{#if res.condition}
-							<span class="meta-item">{res.condition}</span>
+							<span class="meta-item">{$t('resources.conditions.' + res.condition, { default: res.condition })}</span>
 						{/if}
 						{#if res.community_name}
 							<span class="meta-item">{res.community_name}</span>

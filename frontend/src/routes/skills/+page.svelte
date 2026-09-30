@@ -109,7 +109,7 @@
 					skill_type: newSkillType,
 					community_id: Number(newCommunityId)
 				},
-				offline: { label: `New skill: ${newTitle}` }
+				offline: { label: $t('skills.offline_new', { values: { title: newTitle } }) }
 			});
 			showCreateForm = false;
 			newTitle = '';
@@ -118,7 +118,7 @@
 				await loadSkills();
 			}
 		} catch (err) {
-			createError = err instanceof Error ? err.message : 'Failed to create skill listing';
+			createError = err instanceof Error ? err.message : $t('skills.create_failed');
 		}
 	}
 
@@ -179,11 +179,11 @@
 			<form onsubmit={handleCreate}>
 				<label>
 					<span>{$t('skills.title_label')}</span>
-					<input type="text" bind:value={newTitle} required placeholder="e.g. Piano Lessons" />
+					<input type="text" bind:value={newTitle} required placeholder={$t('skills.title_placeholder')} />
 				</label>
 				<label>
 					<span>{$t('skills.description_label')}</span>
-					<textarea bind:value={newDescription} rows="3" placeholder="What skill are you offering or looking for?"></textarea>
+					<textarea bind:value={newDescription} rows="3" placeholder={$t('skills.description_placeholder')}></textarea>
 				</label>
 				<div class="form-row">
 					<label>
@@ -254,7 +254,7 @@
 				{/each}
 			</select>
 		{/if}
-		<span class="result-count">{total} result{total !== 1 ? 's' : ''}</span>
+		<span class="result-count">{$t(total === 1 ? 'common.result' : 'common.results', { values: { count: total } })}</span>
 	</div>
 
 	{#if loading}
@@ -279,7 +279,7 @@
 					</div>
 					<div class="card-body">
 						<div class="card-header">
-							<span class="category-badge">{skill.category}</span>
+							<span class="category-badge">{$t('skills.categories.' + skill.category)}</span>
 							<span class="type-badge" class:type-offer={skill.skill_type === 'offer'} class:type-request={skill.skill_type === 'request'}>
 								{skill.skill_type === 'offer' ? $t('skills.offering') : $t('skills.looking_for')}
 							</span>
@@ -290,7 +290,7 @@
 						{/if}
 						<div class="card-spacer"></div>
 						<div class="card-footer">
-							<span class="owner">by {skill.owner.display_name}</span>
+							<span class="owner">{$t('common.by_name', { values: { name: skill.owner.display_name } })}</span>
 							{#if skill.owner_trust}
 								{#if skill.owner_trust.total_reviews > 0}
 									<span class="trust-stars">★ {skill.owner_trust.average_rating.toFixed(1)}</span>

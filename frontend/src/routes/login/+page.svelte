@@ -37,7 +37,7 @@
 
 			goto('/dashboard');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Login failed';
+			error = err instanceof Error ? err.message : $t('auth.login_failed');
 		} finally {
 			loading = false;
 		}

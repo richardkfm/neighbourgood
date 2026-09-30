@@ -97,11 +97,11 @@
 							<span class="tag">{c.city}</span>
 						</div>
 						<div class="list-card-stats">
-							<span>{c.member_count} member{c.member_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.member_count', { values: { count: c.member_count } })}</span>
 							<span class="stat-sep">&middot;</span>
-							<span>{c.resource_count} item{c.resource_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.item_count', { values: { count: c.resource_count } })}</span>
 							<span class="stat-sep">&middot;</span>
-							<span>{c.skill_count} skill{c.skill_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.skill_count', { values: { count: c.skill_count } })}</span>
 						</div>
 					</a>
 				{/each}

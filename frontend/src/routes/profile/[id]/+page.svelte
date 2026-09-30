@@ -39,6 +39,26 @@
 		Pillar: '🏛️'
 	};
 
+	// What a review is about: skill endorsement, or the reviewee's role in a booking
+	function reviewLabel(review: ReviewOut): string {
+		if (review.review_type === 'skill') return $_('profile.skill_review');
+		if (review.reviewee_role === 'lender') return $_('profile.review_lending');
+		if (review.reviewee_role === 'borrower') return $_('profile.review_borrowing');
+		return $_('profile.review_booking');
+	}
+
+	// Backend badge descriptions are English templates; rebuild them from the trust summary
+	function badgeDescription(badge: { key: string; description: string }): string {
+		if (!trust) return badge.description;
+		if (badge.key === 'trusted_lender')
+			return $_('trust.desc_trusted_lender', { values: { avg: trust.lender_rating.toFixed(1), count: trust.lender_reviews } });
+		if (badge.key === 'reliable_borrower')
+			return $_('trust.desc_reliable_borrower', { values: { avg: trust.borrower_rating.toFixed(1), count: trust.borrower_reviews } });
+		if (badge.key === 'skilled_helper')
+			return $_('trust.desc_skilled_helper', { values: { avg: trust.skill_rating.toFixed(1), count: trust.skill_reviews } });
+		return badge.description;
+	}
+
 	function renderStars(rating: number): string {
 		const full = Math.floor(rating);
 		const half = rating - full >= 0.5 ? 1 : 0;
@@ -50,7 +70,7 @@
 		try {
 			trust = await api<TrustSummary>(`/users/${userId}/trust`);
 		} catch (e: any) {
-			error = e.message || 'Failed to load profile';
+			error = e.message || $_('profile.load_failed');
 		}
 	}
 
@@ -131,7 +151,7 @@
 				<p class="member-since">{$_('profile.member_since')} {formatDate(trust.member_since)}</p>
 				<span class="level-badge">
 					{LEVEL_ICONS[trust.reputation_level] ?? '🌱'}
-					{trust.reputation_level}
+					{$_('dashboard.level_' + trust.reputation_level.toLowerCase(), { default: trust.reputation_level })}
 				</span>
 			</div>
 		</section>
@@ -142,8 +162,8 @@
 				{#each trust.badges as badge}
 					<span class="trust-badge" style="--badge-color: {BADGE_COLORS[badge.key] ?? 'var(--color-primary)'}">
 						<span class="badge-icon">{BADGE_ICONS[badge.key] ?? '🏆'}</span>
-						<span class="badge-label">{badge.label}</span>
-						<span class="badge-desc">{badge.description}</span>
+						<span class="badge-label">{$_('trust.' + badge.key, { default: badge.label })}</span>
+						<span class="badge-desc">{badgeDescription(badge)}</span>
 					</span>
 				{/each}
 			</section>
@@ -229,7 +249,7 @@
 								</a>
 								<span class="review-stars">{renderStars(review.rating)}</span>
 								<span class="review-type-badge" class:skill={review.review_type === 'skill'}>
-									{review.review_type === 'skill' ? $_('profile.skill_review') : $_('profile.booking_review')}
+									{reviewLabel(review)}
 								</span>
 							</div>
 							{#if review.comment}

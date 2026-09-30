@@ -163,7 +163,7 @@
 			showCreateForm = false;
 			await loadEvents();
 		} catch (err: unknown) {
-			createError = err instanceof Error ? err.message : 'Could not create event.';
+			createError = err instanceof Error ? err.message : $t('events.create_failed');
 		}
 	}
 

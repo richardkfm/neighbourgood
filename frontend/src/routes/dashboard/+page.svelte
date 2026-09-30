@@ -69,8 +69,8 @@
 				for (const b of bookingsData.items) {
 					const item: BookingItem = {
 						id: b.id,
-						resource_title: b.resource_title ?? b.resource?.title ?? `Resource #${b.resource_id}`,
-						borrower_name: b.borrower?.display_name ?? 'Someone',
+						resource_title: b.resource_title ?? b.resource?.title ?? $t('common.resource_number', { values: { id: b.resource_id } }),
+						borrower_name: b.borrower?.display_name ?? $t('dashboard.someone'),
 						start_date: b.start_date,
 						end_date: b.end_date,
 						status: b.status,
@@ -106,7 +106,7 @@
 			}
 			assignedTickets = collected;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load dashboard';
+			error = err instanceof Error ? err.message : $t('dashboard.load_failed');
 		} finally {
 			loading = false;
 		}
@@ -150,7 +150,7 @@
 </script>
 
 <svelte:head>
-	<title>Home - NeighbourGood</title>
+	<title>{$t('nav.home')} - NeighbourGood</title>
 </svelte:head>
 
 <div class="dashboard">

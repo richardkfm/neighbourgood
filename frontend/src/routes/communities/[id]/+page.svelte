@@ -124,7 +124,7 @@
 			activities = [];
 		}
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load';
+			error = err instanceof Error ? err.message : $t('common.load_failed');
 		} finally {
 			loading = false;
 		}
@@ -132,10 +132,10 @@
 
 	function timeAgo(iso: string): string {
 		const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-		if (diff < 60) return 'just now';
-		if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-		if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-		return `${Math.floor(diff / 86400)}d ago`;
+		if (diff < 60) return $t('common.just_now');
+		if (diff < 3600) return $t('common.minutes_ago', { values: { n: Math.floor(diff / 60) } });
+		if (diff < 86400) return $t('common.hours_ago', { values: { n: Math.floor(diff / 3600) } });
+		return $t('common.days_ago', { values: { n: Math.floor(diff / 86400) } });
 	}
 
 	async function join() {
@@ -144,12 +144,12 @@
 		try {
 			await api(`/communities/${communityId}/join`, {
 				method: 'POST', auth: true,
-				offline: { label: `Join community: ${community?.name ?? communityId}` }
+				offline: { label: $t('communities.offline_join', { values: { name: community?.name ?? communityId } }) }
 			});
-			actionMsg = $isOnline ? 'Joined!' : 'Join request queued — will complete when back online.';
+			actionMsg = $isOnline ? $t('communities.joined_msg') : $t('communities.join_queued');
 			if ($isOnline) await loadData();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not join';
+			error = err instanceof Error ? err.message : $t('communities.join_failed');
 		} finally {
 			joiningOrLeaving = false;
 		}
@@ -160,10 +160,10 @@
 		error = '';
 		try {
 			await api(`/communities/${communityId}/leave`, { method: 'DELETE', auth: true });
-			actionMsg = 'You left this community.';
+			actionMsg = $t('communities.left_msg');
 			await loadData();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not leave';
+			error = err instanceof Error ? err.message : $t('communities.leave_failed');
 		} finally {
 			joiningOrLeaving = false;
 		}
@@ -178,10 +178,10 @@
 				auth: true,
 				body: { source_id: communityId, target_id: targetId },
 			});
-			actionMsg = 'Communities merged! Redirecting...';
+			actionMsg = $t('communities.merged_msg');
 			setTimeout(() => goto(`/communities/${targetId}`), 1200);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Merge failed';
+			error = err instanceof Error ? err.message : $t('communities.merge_failed');
 		} finally {
 			merging = null;
 		}
@@ -199,10 +199,10 @@
 			});
 			// Re-derive the global theme (another of the user's communities may still be red)
 			await refreshPlatformMode();
-			actionMsg = newMode === 'red' ? 'Crisis mode activated!' : 'Switched back to normal mode.';
+			actionMsg = newMode === 'red' ? $t('crisis.activated_msg') : $t('crisis.deactivated_msg');
 			await loadData();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to toggle crisis mode';
+			error = err instanceof Error ? err.message : $t('crisis.toggle_failed');
 		} finally {
 			togglingCrisis = false;
 		}
@@ -215,15 +215,15 @@
 		try {
 			await api(`/communities/${communityId}/crisis/vote`, {
 				method: 'POST', auth: true, body: { vote_type: voteType },
-				offline: { label: `Crisis vote: ${voteType}` }
+				offline: { label: $t('crisis.offline_vote', { values: { vote: voteType } }) }
 			});
 			if ($isOnline) {
 				crisisStatus = await api<CrisisStatus>(`/communities/${communityId}/crisis/status`);
 				await loadData();
 			}
-			actionMsg = $isOnline ? `Vote recorded: ${voteType}` : 'Vote queued — will be submitted when back online.';
+			actionMsg = $isOnline ? $t('crisis.vote_recorded', { values: { vote: voteType } }) : $t('crisis.vote_queued');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to cast vote';
+			error = err instanceof Error ? err.message : $t('crisis.vote_failed');
 		} finally {
 			votingCrisis = false;
 		}
@@ -246,7 +246,7 @@
 			tickets = ticketData.items;
 			ticketTotal = ticketData.total;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to create ticket';
+			error = err instanceof Error ? err.message : $t('crisis.create_failed');
 		} finally {
 			creatingTicket = false;
 		}
@@ -261,7 +261,7 @@
 			tickets = ticketData.items;
 			ticketTotal = ticketData.total;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to update ticket';
+			error = err instanceof Error ? err.message : $t('crisis.detail.update_failed');
 		}
 	}
 
@@ -271,10 +271,10 @@
 		actionMsg = '';
 		try {
 			await api(`/communities/${communityId}/leaders/${userId}`, { method: 'POST', auth: true });
-			actionMsg = 'User promoted to leader!';
+			actionMsg = $t('communities.leader_promoted');
 			await loadData();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to promote';
+			error = err instanceof Error ? err.message : $t('communities.promote_failed');
 		} finally {
 			promotingUser = null;
 		}
@@ -289,7 +289,7 @@
 			actionMsg = $t('communities.admin_made');
 			await loadData();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to promote';
+			error = err instanceof Error ? err.message : $t('communities.promote_failed');
 		} finally {
 			promotingUser = null;
 		}
@@ -301,10 +301,10 @@
 		actionMsg = '';
 		try {
 			await api(`/communities/${communityId}/leaders/${userId}`, { method: 'DELETE', auth: true });
-			actionMsg = 'User demoted from leader.';
+			actionMsg = $t('communities.leader_demoted');
 			await loadData();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to demote';
+			error = err instanceof Error ? err.message : $t('communities.demote_failed');
 		} finally {
 			promotingUser = null;
 		}
@@ -333,9 +333,9 @@
 	{:else if community}
 		<div class="community-header slide-up">
 			<div class="header-top">
-				<a href="/communities" class="back-link">&#8592; Communities</a>
+				<a href="/communities" class="back-link">&#8592; {$t('nav.communities')}</a>
 				{#if !community.is_active}
-					<span class="badge-merged">Merged</span>
+					<span class="badge-merged">{$t('communities.merged_badge')}</span>
 				{/if}
 			</div>
 
@@ -344,9 +344,9 @@
 				<span class="tag">{community.postal_code}</span>
 				<span class="tag">{community.city}</span>
 				<span class="meta-sep">&middot;</span>
-				<span>{community.member_count} member{community.member_count !== 1 ? 's' : ''}</span>
+				<span>{$t('communities.member_count', { values: { count: community.member_count } })}</span>
 				<span class="meta-sep">&middot;</span>
-				<span>Created {new Date(community.created_at).toLocaleDateString()}</span>
+				<span>{$t('communities.created_on', { values: { date: new Date(community.created_at).toLocaleDateString() } })}</span>
 			</div>
 
 			{#if community.description}
@@ -355,7 +355,7 @@
 
 			{#if community.merged_into_id}
 				<div class="alert alert-info fade-in">
-					This community has been merged into <a href="/communities/{community.merged_into_id}">another community</a>.
+					{@html $t('communities.merged_into', { values: { link: `<a href="/communities/${community.merged_into_id}">${$t('communities.merged_into_link')}</a>` } })}
 				</div>
 			{/if}
 
@@ -370,11 +370,11 @@
 				<div class="actions">
 					{#if isMember}
 						<button class="btn-secondary" onclick={leave} disabled={joiningOrLeaving}>
-							{joiningOrLeaving ? 'Leaving...' : 'Leave Community'}
+							{joiningOrLeaving ? $t('communities.leaving') : $t('communities.leave_community')}
 						</button>
 					{:else}
 						<button class="btn-primary" onclick={join} disabled={joiningOrLeaving}>
-							{joiningOrLeaving ? 'Joining...' : 'Join Community'}
+							{joiningOrLeaving ? $t('communities.joining') : $t('communities.join_community')}
 						</button>
 					{/if}
 				</div>
@@ -383,14 +383,14 @@
 
 		<!-- Tab navigation -->
 		<nav class="community-tabs">
-			<button class="community-tab" class:active={activeTab === 'overview'} onclick={() => activeTab = 'overview'}>Overview</button>
-			<button class="community-tab" class:active={activeTab === 'members'} onclick={() => activeTab = 'members'}>Members ({members.length})</button>
-			<button class="community-tab" class:active={activeTab === 'resources'} onclick={() => activeTab = 'resources'}>Resources ({resourceTotal})</button>
+			<button class="community-tab" class:active={activeTab === 'overview'} onclick={() => activeTab = 'overview'}>{$t('communities.tab_overview')}</button>
+			<button class="community-tab" class:active={activeTab === 'members'} onclick={() => activeTab = 'members'}>{$t('communities.tab_members', { values: { count: members.length } })}</button>
+			<button class="community-tab" class:active={activeTab === 'resources'} onclick={() => activeTab = 'resources'}>{$t('communities.tab_resources', { values: { count: resourceTotal } })}</button>
 			{#if isMember}
-				<button class="community-tab" class:active={activeTab === 'emergency'} onclick={() => activeTab = 'emergency'}>Emergency {ticketTotal > 0 ? `(${ticketTotal})` : ''}</button>
+				<button class="community-tab" class:active={activeTab === 'emergency'} onclick={() => activeTab = 'emergency'}>{$t('nav.emergency')} {ticketTotal > 0 ? `(${ticketTotal})` : ''}</button>
 			{/if}
 			{#if isAdmin}
-				<button class="community-tab" class:active={activeTab === 'admin'} onclick={() => activeTab = 'admin'}>Admin</button>
+				<button class="community-tab" class:active={activeTab === 'admin'} onclick={() => activeTab = 'admin'}>{$t('communities.role_admin')}</button>
 			{/if}
 		</nav>
 
@@ -412,7 +412,7 @@
 
 		{#if activities.length > 0}
 			<section class="timeline slide-up" style="animation-delay: 0.06s">
-				<h3 class="timeline-heading">Recent Activity</h3>
+				<h3 class="timeline-heading">{$t('communities.recent_activity')}</h3>
 				<ul class="timeline-list">
 					{#each activities as item (item.id)}
 						<li class="timeline-item">
@@ -430,9 +430,9 @@
 		{#if activeTab === 'emergency' && isMember}
 			<section class="tickets-section slide-up" style="animation-delay: 0.045s">
 				<div class="section-header">
-					<h2>Emergency Tickets ({ticketTotal})</h2>
+					<h2>{$t('communities.tickets_heading', { values: { count: ticketTotal } })}</h2>
 					<button class="btn-small" onclick={() => (showTicketForm = !showTicketForm)}>
-						{showTicketForm ? 'Cancel' : 'New Ticket'}
+						{showTicketForm ? $t('common.cancel') : $t('communities.new_ticket')}
 					</button>
 				</div>
 
@@ -440,41 +440,41 @@
 					<div class="ticket-form fade-in">
 						<div class="ticket-form-row">
 							<label>
-								<span>Type</span>
+								<span>{$t('crisis.form_type')}</span>
 								<select bind:value={ticketType}>
-									<option value="request">Request</option>
-									<option value="offer">Offer</option>
+									<option value="request">{$t('crisis.ticket_types.request')}</option>
+									<option value="offer">{$t('crisis.ticket_types.offer')}</option>
 									{#if (community?.effective_mode ?? community?.mode) === 'red'}
-										<option value="emergency_ping">Emergency Ping</option>
+										<option value="emergency_ping">{$t('crisis.ticket_types.ping')}</option>
 									{/if}
 								</select>
 							</label>
 							<label>
-								<span>Urgency</span>
+								<span>{$t('crisis.form_urgency')}</span>
 								<select bind:value={ticketUrgency}>
-									<option value="low">Low</option>
-									<option value="medium">Medium</option>
-									<option value="high">High</option>
-									<option value="critical">Critical</option>
+									<option value="low">{$t('crisis.priority.low')}</option>
+									<option value="medium">{$t('crisis.priority.medium')}</option>
+									<option value="high">{$t('crisis.priority.high')}</option>
+									<option value="critical">{$t('crisis.priority.critical')}</option>
 								</select>
 							</label>
 						</div>
 						<label>
-							<span>Title</span>
-							<input type="text" bind:value={ticketTitle} placeholder="Short description..." maxlength="300" />
+							<span>{$t('crisis.form_title_field')}</span>
+							<input type="text" bind:value={ticketTitle} placeholder={$t('crisis.title_placeholder')} maxlength="300" />
 						</label>
 						<label>
-							<span>Description (optional)</span>
-							<textarea bind:value={ticketDesc} rows="3" placeholder="More details..." maxlength="5000"></textarea>
+							<span>{$t('crisis.form_description_optional')}</span>
+							<textarea bind:value={ticketDesc} rows="3" placeholder={$t('crisis.description_placeholder')} maxlength="5000"></textarea>
 						</label>
 						<button class="btn-primary" onclick={createTicket} disabled={creatingTicket || !ticketTitle.trim()}>
-							{creatingTicket ? 'Creating...' : 'Create Ticket'}
+							{creatingTicket ? $t('crisis.creating_ticket') : $t('crisis.create_ticket')}
 						</button>
 					</div>
 				{/if}
 
 				{#if tickets.length === 0}
-					<p class="section-hint">No emergency tickets yet.</p>
+					<p class="section-hint">{$t('communities.no_tickets_yet')}</p>
 				{:else}
 					<div class="tickets-list">
 						{#each tickets as ticket (ticket.id)}
@@ -493,13 +493,13 @@
 									<p class="ticket-desc">{ticket.description}</p>
 								{/if}
 								<div class="ticket-footer">
-									<span class="ticket-meta">by {ticket.author.display_name} &middot; {new Date(ticket.created_at).toLocaleDateString()}</span>
+									<span class="ticket-meta">{$t('communities.ticket_by', { values: { name: ticket.author.display_name, date: new Date(ticket.created_at).toLocaleDateString() } })}</span>
 									{#if (isAdmin || isLeader || ticket.author.id === $user?.id) && ticket.status !== 'resolved'}
 										<div class="ticket-actions">
 											{#if ticket.status === 'open'}
-												<button class="btn-tiny" onclick={() => updateTicketStatus(ticket.id, 'in_progress')}>Start</button>
+												<button class="btn-tiny" onclick={() => updateTicketStatus(ticket.id, 'in_progress')}>{$t('crisis.start_ticket')}</button>
 											{/if}
-											<button class="btn-tiny btn-tiny-success" onclick={() => updateTicketStatus(ticket.id, 'resolved')}>Resolve</button>
+											<button class="btn-tiny btn-tiny-success" onclick={() => updateTicketStatus(ticket.id, 'resolved')}>{$t('crisis.resolve_ticket')}</button>
 										</div>
 									{/if}
 								</div>
@@ -525,13 +525,13 @@
 		{#if activeTab === 'resources'}
 		<section class="resources-section slide-up" style="animation-delay: 0.1s">
 			<div class="section-header">
-				<h2>Shared Resources ({resourceTotal})</h2>
+				<h2>{$t('communities.shared_resources', { values: { count: resourceTotal } })}</h2>
 				{#if isMember}
-					<a href="/resources" class="btn-small">Browse all</a>
+					<a href="/resources" class="btn-small">{$t('communities.browse_all')}</a>
 				{/if}
 			</div>
 			{#if resources.length === 0}
-				<p class="section-hint">No resources shared in this community yet.</p>
+				<p class="section-hint">{$t('communities.no_resources_yet')}</p>
 			{:else}
 				<div class="resource-grid">
 					{#each resources as r (r.id)}
@@ -546,9 +546,9 @@
 								</div>
 							{/if}
 							<div class="res-body">
-								<span class="res-category">{r.category}</span>
+								<span class="res-category">{$t('resources.categories.' + r.category)}</span>
 								<h3>{r.title}</h3>
-								<span class="res-owner">by {r.owner.display_name}</span>
+								<span class="res-owner">{$t('common.by_name', { values: { name: r.owner.display_name } })}</span>
 							</div>
 						</a>
 					{/each}
@@ -582,8 +582,8 @@
 
 			{#if suggestions.length > 0}
 			<section class="merge-section slide-up" style="animation-delay: 0.1s">
-				<h2>Merge Suggestions</h2>
-				<p class="section-hint">These communities share your postal code or city. Merging combines members into one group.</p>
+				<h2>{$t('communities.merge_suggestions')}</h2>
+				<p class="section-hint">{$t('communities.merge_hint')}</p>
 				<div class="suggestions-list">
 					{#each suggestions as s (s.target.id)}
 						<div class="suggestion-card">
@@ -592,7 +592,7 @@
 								<div class="suggestion-meta">
 									<span class="tag">{s.target.postal_code}</span>
 									<span class="tag">{s.target.city}</span>
-									<span class="member-count">{s.target.member_count} members</span>
+									<span class="member-count">{$t('common.members', { values: { count: s.target.member_count } })}</span>
 								</div>
 								<p class="suggestion-reason">{s.reason}</p>
 							</div>
@@ -601,7 +601,7 @@
 								onclick={() => merge(s.target.id)}
 								disabled={merging === s.target.id}
 							>
-								{merging === s.target.id ? 'Merging...' : 'Merge into this'}
+								{merging === s.target.id ? $t('communities.merging') : $t('communities.merge_into_this')}
 							</button>
 						</div>
 					{/each}

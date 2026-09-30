@@ -492,7 +492,7 @@
 			<polyline points="20 6 9 17 4 12"/>
 		</svg>
 		<span>{syncMessage}</span>
-		<button class="sync-banner-dismiss" onclick={() => (syncMessage = '')} aria-label="Dismiss">&times;</button>
+		<button class="sync-banner-dismiss" onclick={() => (syncMessage = '')} aria-label={$t('banner.dismiss')}>&times;</button>
 	</div>
 {/if}
 

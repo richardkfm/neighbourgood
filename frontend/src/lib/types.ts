@@ -344,6 +344,8 @@ export interface ReviewOut {
 	booking_id: number | null;
 	skill_id: number | null;
 	review_type: string;
+	/** Booking reviews only: the role the reviewee played in the booking. */
+	reviewee_role?: 'lender' | 'borrower' | null;
 	reviewer_id: number;
 	reviewee_id: number;
 	rating: number;

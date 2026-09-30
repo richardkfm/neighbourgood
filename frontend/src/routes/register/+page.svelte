@@ -45,7 +45,7 @@
 
 			goto('/onboarding');
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Registration failed';
+			error = err instanceof Error ? err.message : $t('auth.register_failed');
 		} finally {
 			loading = false;
 		}
@@ -76,7 +76,7 @@
 		</label>
 		<label>
 			<span>{$t('auth.neighbourhood')}</span>
-			<input type="text" bind:value={neighbourhood} placeholder="e.g. Kreuzberg, Friedrichshain" />
+			<input type="text" bind:value={neighbourhood} placeholder={$t('auth.neighbourhood_placeholder')} />
 		</label>
 		<button type="submit" disabled={loading}>
 			{loading ? $t('auth.creating_account') : $t('auth.register_btn')}

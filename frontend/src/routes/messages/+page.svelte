@@ -144,7 +144,7 @@
 					body: newMessage.trim(),
 					...(isFirstMessage && skillContext ? { skill_id: skillContext.id } : {})
 				},
-				offline: { label: `Message to ${selectedPartner.display_name}` }
+				offline: { label: $t('messages.offline_to', { values: { name: selectedPartner.display_name } }) }
 			});
 			if (msg) {
 				messages = [...messages, msg];
@@ -209,7 +209,7 @@
 					);
 					selectedPartner = { id: pid, display_name: rep.display_name, email: '' };
 				} catch {
-					selectedPartner = { id: pid, display_name: 'User', email: '' };
+					selectedPartner = { id: pid, display_name: $t('messages.unknown_user'), email: '' };
 				}
 				messages = [];
 			}
@@ -325,7 +325,7 @@
 			<div class="modal" role="dialog" onclick={(e) => e.stopPropagation()}>
 				<div class="modal-header">
 					<h2>{$t("messages.new_message")}</h2>
-					<button class="modal-close" onclick={() => showNewMessage = false} aria-label="Close">&times;</button>
+					<button class="modal-close" onclick={() => showNewMessage = false} aria-label={$t('common.close')}>&times;</button>
 				</div>
 				<div class="modal-body">
 					<input
