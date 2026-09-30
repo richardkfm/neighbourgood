@@ -120,9 +120,9 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | Endpoint                   | Method | Auth  | Description                              |
 | -------------------------- | ------ | ----- | ---------------------------------------- |
 | `/directory`               | GET    | No    | List known NeighbourGood instances       |
-| `/directory`               | POST   | Yes   | Add instance by URL (auto-fetches info)  |
+| `/directory`               | POST   | Admin | Add instance by URL (auto-fetches info)  |
 | `/directory/{id}`          | DELETE | Admin | Remove instance from directory           |
-| `/directory/refresh`       | POST   | Yes   | Re-crawl all instances for updates       |
+| `/directory/refresh`       | POST   | Admin | Re-crawl all instances for updates       |
 
 ## Federation – Red Sky Alerts
 
@@ -130,7 +130,8 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | ----------------------------- | ------ | ----- | ---------------------------------------- |
 | `/alerts`                     | GET    | No    | List Red Sky alerts (active by default)  |
 | `/alerts/send`                | POST   | Admin | Broadcast alert to all known instances   |
-| `/alerts/receive`             | POST   | No    | Receive alert from remote instance       |
+| `/alerts/receive`             | POST   | No    | Receive alert notification from a known instance; the alert is fetched back from its source to verify it |
+| `/alerts/outgoing/{alert_uid}` | GET   | No    | An alert this instance broadcast (used by receivers to verify) |
 | `/alerts/{id}/dismiss`        | PATCH  | Admin | Dismiss a Red Sky alert                  |
 
 ## Data Export & Migration

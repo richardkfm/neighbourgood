@@ -6,7 +6,7 @@
 export interface UserInfo {
 	id: number;
 	display_name: string;
-	/** Only present on the signed-in user and message contacts; public payloads omit it. */
+	/** Only present on the signed-in user's own profile; payloads about other users omit it. */
 	email?: string;
 	neighbourhood?: string | null;
 	role?: string;
@@ -214,7 +214,9 @@ export interface MeshSyncResult {
 	synced: number;
 	duplicates: number;
 	errors: number;
-	/** Mesh IDs of the messages the server rejected (absent on older servers). */
+	/** Messages refused by policy (too old, relayed vote/check-in, crisis mode change); not retried. */
+	rejected?: number;
+	/** Mesh IDs of the messages that failed and should be retried (absent on older servers). */
 	failed_ids?: string[];
 }
 

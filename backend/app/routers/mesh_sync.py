@@ -1,11 +1,13 @@
 """Mesh sync endpoint — ingests messages received via BLE mesh when internet returns."""
 
 import math
+import time
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.community import Community, CommunityMember
@@ -23,10 +25,60 @@ router = APIRouter(prefix="/mesh", tags=["mesh"])
 
 _NON_PERSISTED_TYPES = frozenset({"heartbeat", "ack"})
 
+# Actions that only make sense from their author: a relay must not cast its own
+# vote or report its own location on behalf of whoever it heard them from.
+_AUTHOR_ONLY_TYPES = frozenset({"crisis_vote", "location_checkin"})
+
+# Phone clocks drift while offline, so tolerate some skew into the future
+_MAX_FUTURE_SKEW_MS = 60 * 60 * 1000
+
 
 def _text(value) -> str:
     """Return a stripped string, or "" for non-strings (mesh payloads are untrusted)."""
     return value.strip() if isinstance(value, str) else ""
+
+
+def _relayed_from(msg: MeshMessageIn, user: User) -> str | None:
+    """The claimed original sender when the syncing user is relaying someone else's message.
+
+    Mesh messages are unsigned, so the name is only what the packet claims.
+    """
+    claimed = msg.sender_name.strip()
+    if claimed and claimed.casefold() != (user.display_name or "").strip().casefold():
+        return claimed
+    return None
+
+
+def _relay_note(msg: MeshMessageIn, user: User) -> str:
+    """Prefix for stored text so readers can see relayed content is unverified."""
+    claimed = _relayed_from(msg, user)
+    if not claimed:
+        return ""
+    return f'[Relayed via mesh by {user.display_name}; original sender "{claimed[:100]}" is unverified]\n'
+
+
+def _relay_suffix(msg: MeshMessageIn, user: User) -> str:
+    claimed = _relayed_from(msg, user)
+    return f', relayed from "{claimed[:100]}" (unverified)' if claimed else ""
+
+
+def _rejection_reason(msg: MeshMessageIn, user: User) -> str | None:
+    """Why a mesh message is refused outright, or None if it may be processed.
+
+    Refused messages are not retried by clients (they are not in failed_ids).
+    """
+    now_ms = int(time.time() * 1000)
+    if msg.ts < now_ms - settings.mesh_max_message_age_hours * 3600 * 1000:
+        return "too old"
+    if msg.ts > now_ms + _MAX_FUTURE_SKEW_MS:
+        return "timestamp in the future"
+    if msg.type == "crisis_status":
+        # Mode changes are admin-only through POST /crisis/toggle; an unsigned
+        # (and replayable) mesh packet must not be able to flip a community.
+        return "crisis mode can only be changed online"
+    if msg.type in _AUTHOR_ONLY_TYPES and _relayed_from(msg, user):
+        return "only the author can sync this message"
+    return None
 
 
 @router.post("/sync", response_model=MeshSyncResponse)
@@ -39,12 +91,14 @@ def sync_mesh_messages(
 
     Each message is deduplicated by its unique mesh ID. Already-synced
     messages are skipped. Supported types: emergency_ticket, ticket_comment,
-    crisis_vote, crisis_status, direct_message. Other types (heartbeat)
-    are acknowledged but not persisted.
+    crisis_vote, direct_message, resource_request/offer, location_checkin.
+    Heartbeats/acks are acknowledged but not persisted. Messages refused by
+    policy (see _rejection_reason) are counted in ``rejected``.
     """
     synced = 0
     duplicates = 0
     errors = 0
+    rejected = 0
     failed_ids: list[str] = []
 
     # Comments reference tickets synced from the same batch, so process them last
@@ -58,6 +112,10 @@ def sync_mesh_messages(
         )
         if existing:
             duplicates += 1
+            continue
+
+        if _rejection_reason(msg, current_user):
+            rejected += 1
             continue
 
         try:
@@ -92,7 +150,7 @@ def sync_mesh_messages(
             failed_ids.append(msg.id)
 
     return MeshSyncResponse(
-        synced=synced, duplicates=duplicates, errors=errors, failed_ids=failed_ids
+        synced=synced, duplicates=duplicates, errors=errors, rejected=rejected, failed_ids=failed_ids
     )
 
 
@@ -130,9 +188,6 @@ def _process_mesh_message(
         return None
     elif msg.type == "direct_message":
         return _sync_direct_message(db, msg, current_user)
-    elif msg.type == "crisis_status":
-        _sync_crisis_status(db, msg, current_user, community, membership)
-        return None
     elif msg.type in ("resource_request", "resource_offer"):
         return _sync_resource(db, msg, current_user, community)
     elif msg.type == "location_checkin":
@@ -172,7 +227,7 @@ def _sync_emergency_ticket(
         author_id=user.id,
         ticket_type=ticket_type,
         title=str(title)[:300],
-        description=str(description)[:5000],
+        description=(_relay_note(msg, user) + str(description))[:5000],
         urgency=urgency,
     )
     db.add(ticket)
@@ -181,7 +236,7 @@ def _sync_emergency_ticket(
     record_activity(
         db,
         event_type="ticket_created",
-        summary=f'created {ticket_type} ticket "{title}" (via mesh sync)',
+        summary=f'created {ticket_type} ticket "{title}" (via mesh sync{_relay_suffix(msg, user)})',
         actor_id=user.id,
         community_id=msg.community_id,
         commit=False,
@@ -247,7 +302,7 @@ def _sync_ticket_comment(
     comment = TicketComment(
         ticket_id=ticket.id,
         author_id=user.id,
-        body=str(body)[:5000],
+        body=(_relay_note(msg, user) + str(body))[:5000],
     )
     db.add(comment)
     db.flush()
@@ -255,7 +310,7 @@ def _sync_ticket_comment(
     record_activity(
         db,
         event_type="comment_created",
-        summary=f"commented on ticket \"{ticket.title}\" (via mesh sync)",
+        summary=f"commented on ticket \"{ticket.title}\" (via mesh sync{_relay_suffix(msg, user)})",
         actor_id=user.id,
         community_id=msg.community_id,
         commit=False,
@@ -314,50 +369,12 @@ def _sync_direct_message(
     message = Message(
         sender_id=user.id,
         recipient_id=recipient_id,
-        body=str(body)[:5000],
+        body=(_relay_note(msg, user) + str(body))[:5000],
     )
     db.add(message)
     db.flush()
 
     return message.id
-
-
-def _sync_crisis_status(
-    db: Session, msg: MeshMessageIn, user: User, community: Community,
-    membership: CommunityMember,
-) -> None:
-    """Update community crisis mode from a mesh message. Leader/admin only."""
-    data = msg.data
-    new_mode = data.get("new_mode", "")
-
-    if new_mode not in ("blue", "red"):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Invalid mode, must be 'blue' or 'red'",
-        )
-
-    if membership.role not in ("leader", "admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only leaders and admins can change crisis mode",
-        )
-
-    if community.mode == new_mode:
-        return  # Already in requested mode, no-op
-
-    community.mode = new_mode
-    # Mirror POST /crisis/toggle: an explicit mode change resets pending votes
-    db.query(CrisisVote).filter(CrisisVote.community_id == msg.community_id).delete()
-    db.flush()
-
-    record_activity(
-        db,
-        event_type="crisis_mode_changed",
-        summary=f"switched community to {new_mode} sky mode (via mesh sync)",
-        actor_id=user.id,
-        community_id=msg.community_id,
-        commit=False,
-    )
 
 
 def _sync_resource(
@@ -385,7 +402,7 @@ def _sync_resource(
 
     resource = Resource(
         title=str(title)[:200],
-        description=str(description)[:5000] if description else None,
+        description=(_relay_note(msg, user) + str(description or ""))[:5000] or None,
         category=category,
         condition="good",
         is_available=True,
@@ -399,7 +416,7 @@ def _sync_resource(
     record_activity(
         db,
         event_type="resource_created",
-        summary=f'{action} resource "{title}" (via mesh sync)',
+        summary=f'{action} resource "{title}" (via mesh sync{_relay_suffix(msg, user)})',
         actor_id=user.id,
         community_id=msg.community_id,
         commit=False,

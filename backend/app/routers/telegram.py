@@ -1,6 +1,7 @@
 """Telegram bot webhook receiver and account-linking endpoints."""
 
 import datetime
+import hmac
 import secrets
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
@@ -15,7 +16,7 @@ from app.models.resource import Resource
 from app.models.skill import Skill
 from app.models.user import User
 from app.models.webhook import TelegramLinkToken
-from app.schemas.webhook import TelegramGroupLinkStart, TelegramLinkStart
+from app.schemas.webhook import TelegramGroupLinkStart, TelegramLinkStart, TelegramWebhookRegistered
 from app.services import telegram as tg
 from app.services.telegram_ai import get_primary_community, handle_nl_message
 
@@ -158,6 +159,24 @@ def unlink_community_telegram(
 # ── Telegram bot webhook ──────────────────────────────────────────
 
 
+@router.post("/telegram/webhook/register", response_model=TelegramWebhookRegistered)
+def register_telegram_webhook(current_user: User = Depends(get_current_user)):
+    """Register this instance's webhook (with its secret) with Telegram (admin only)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    if not tg.is_configured():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Telegram bot not configured")
+    if not settings.instance_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set NG_INSTANCE_URL to the public HTTPS URL of this instance first",
+        )
+    url = f"{settings.instance_url.rstrip('/')}/telegram/webhook"
+    if not tg.set_webhook(url, tg.webhook_secret()):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Telegram rejected the webhook registration")
+    return TelegramWebhookRegistered(url=url)
+
+
 @router.post("/telegram/webhook", status_code=status.HTTP_200_OK)
 async def telegram_webhook(
     request: Request,
@@ -171,10 +190,13 @@ async def telegram_webhook(
     - /link {token}   → link a community group (sent inside a group)
     - /profile {name}, /lending {name}, /skills {name}  → community member lookup
     """
-    # Validate secret header if configured
-    if settings.telegram_webhook_secret:
-        if x_telegram_bot_api_secret_token != settings.telegram_webhook_secret:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid secret")
+    if not tg.is_configured():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Telegram integration is not configured")
+    # Always require the secret (explicit or derived) so forged updates are rejected
+    if not x_telegram_bot_api_secret_token or not hmac.compare_digest(
+        x_telegram_bot_api_secret_token.encode(), tg.webhook_secret().encode()
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid secret")
 
     body = await request.json()
     message = body.get("message") or body.get("edited_message")

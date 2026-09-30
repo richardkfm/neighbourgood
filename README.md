@@ -1,6 +1,6 @@
 # 🏘️ NeighbourGood
 
-**v2.2.2** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v2.3.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -65,7 +65,10 @@ cp .env.example .env
 # 3. Generate a secret key — the app refuses to start without one
 echo "NG_SECRET_KEY=$(openssl rand -hex 32)" >> .env
 
-# 4. Build images and start all services (first run takes ~2–3 min)
+# 4. Make your own account a platform admin (use the email you will sign up with)
+echo 'NG_ADMIN_EMAILS=["you@example.com"]' >> .env
+
+# 5. Build images and start all services (first run takes ~2–3 min)
 docker compose up --build
 ```
 
@@ -78,7 +81,7 @@ Once you see `Application startup complete` in the backend logs, the stack is re
 | **Interactive API docs** | http://localhost:8300/docs | Swagger UI — explore and test every endpoint |
 | **Alternative API docs** | http://localhost:8300/redoc | ReDoc-style reference |
 
-> **First time?** Navigate to http://localhost:3800, click **Sign Up**, create an account, then go through the onboarding flow to create or join a community.
+> **First time?** Navigate to http://localhost:3800, click **Sign Up**, create an account, then go through the onboarding flow to create or join a community. Signing up with an email listed in `NG_ADMIN_EMAILS` makes that account a platform admin, which is needed to manage the federation directory and send cross-instance Red Sky alerts.
 
 <img width="1103" height="854" alt="grafik" src="https://github.com/user-attachments/assets/0d6556ea-68db-47d8-978e-e65353ef8770" />
 Frontend User Onboarding

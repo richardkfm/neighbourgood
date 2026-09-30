@@ -4,12 +4,14 @@ import datetime
 import ipaddress
 import json
 import logging
-from urllib.parse import urlparse
+import secrets
+from urllib.parse import quote, urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, HttpUrl
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -17,7 +19,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
 from app.models.community import Community, CommunityMember
-from app.models.federation import KnownInstance, RedSkyAlert
+from app.models.federation import KnownInstance, RedSkyAlert, SentAlert
 from app.models.message import Message
 from app.models.resource import Resource
 from app.models.review import Review
@@ -79,13 +81,30 @@ class AlertCreate(BaseModel):
     severity: str = Field("warning", pattern="^(info|warning|critical)$")
 
 
+_ALERT_UID_PATTERN = "^[A-Za-z0-9_-]{16,64}$"
+
+
 class AlertReceive(BaseModel):
-    """Schema for incoming alerts from remote instances."""
+    """Notification that a remote instance published an alert.
+
+    Only the source URL and alert UID are used: the alert itself is fetched back
+    from the (known) source instance, so a forged notification cannot inject
+    content. Title/description/severity are still sent for older receivers.
+    """
     source_instance_url: str = Field(..., max_length=500)
-    source_instance_name: str = Field(..., max_length=200)
+    alert_uid: str = Field(..., pattern=_ALERT_UID_PATTERN)
+    source_instance_name: str = Field("", max_length=200)
+    title: str = Field("", max_length=300)
+    description: str = Field("", max_length=5000)
+    severity: str = Field("warning", max_length=20)
+
+
+class PublishedAlert(BaseModel):
+    """An alert as published by its source instance, fetched back for verification."""
+    alert_uid: str = Field(..., pattern=_ALERT_UID_PATTERN)
     title: str = Field(..., min_length=1, max_length=300)
     description: str = Field("", max_length=5000)
-    severity: str = "warning"
+    severity: str = Field(..., pattern="^(info|warning|critical)$")
 
 
 class DataExport(BaseModel):
@@ -127,7 +146,12 @@ def add_instance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add a new instance to the directory by URL. Fetches its /instance/info to populate metadata."""
+    """Add a new instance to the directory by URL (admin only). Fetches its /instance/info to populate metadata.
+
+    Known instances are trusted as alert sources, so only admins may add them.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     url = str(body.url).rstrip("/")
 
     existing = db.query(KnownInstance).filter(KnownInstance.url == url).first()
@@ -187,7 +211,9 @@ def refresh_directory(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Re-crawl all known instances to update their metadata and reachability."""
+    """Re-crawl all known instances to update their metadata and reachability (admin only)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     instances = db.query(KnownInstance).all()
     for inst in instances:
         info = _fetch_instance_info(inst.url)
@@ -270,9 +296,26 @@ def broadcast_alert(
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
+    if not settings.instance_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set NG_INSTANCE_URL so other instances can verify alerts from this instance",
+        )
+
+    sent_alert = SentAlert(
+        alert_uid=secrets.token_urlsafe(24),
+        title=body.title,
+        description=body.description,
+        severity=body.severity,
+        sent_by_id=current_user.id,
+    )
+    db.add(sent_alert)
+    db.commit()
+
     payload = {
-        "source_instance_url": settings.instance_url,
+        "source_instance_url": settings.instance_url.rstrip("/"),
         "source_instance_name": settings.instance_name,
+        "alert_uid": sent_alert.alert_uid,
         "title": body.title,
         "description": body.description,
         "severity": body.severity,
@@ -294,9 +337,43 @@ def broadcast_alert(
     return {"sent": sent, "failed": failed, "total": len(instances)}
 
 
+@router.get("/alerts/outgoing/{alert_uid}", response_model=PublishedAlert)
+def get_published_alert(alert_uid: str, db: Session = Depends(get_db)):
+    """Return an alert this instance broadcast, so receivers can verify it came from here."""
+    alert = db.query(SentAlert).filter(SentAlert.alert_uid == alert_uid).first()
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    return alert
+
+
+def _fetch_published_alert(base_url: str, alert_uid: str) -> PublishedAlert | None:
+    """Fetch an alert back from its source instance. Returns None if it cannot be verified."""
+    if not _is_safe_url(base_url):
+        logger.warning("Blocked SSRF attempt to internal URL: %s", base_url)
+        return None
+    try:
+        resp = httpx.get(
+            f"{base_url}/federation/alerts/outgoing/{quote(alert_uid, safe='')}",
+            timeout=10,
+            follow_redirects=False,
+        )
+        if resp.status_code != 200:
+            return None
+        published = PublishedAlert.model_validate(resp.json())
+    except Exception as exc:
+        logger.warning("Could not verify alert %s from %s: %s", alert_uid, base_url, exc)
+        return None
+    return published if published.alert_uid == alert_uid else None
+
+
 @router.post("/alerts/receive", response_model=AlertOut, status_code=status.HTTP_201_CREATED)
 def receive_alert(body: AlertReceive, db: Session = Depends(get_db)):
-    """Receive a Red Sky alert from a remote instance. Only accepts alerts from known instances."""
+    """Receive a Red Sky alert from a known remote instance.
+
+    The request body is only a notification: the alert is fetched back from the
+    source instance's URL in our directory and stored from that response, so
+    anyone who can reach this endpoint still cannot forge an alert.
+    """
     source_url = body.source_instance_url.rstrip("/")
     known = db.query(KnownInstance).filter(KnownInstance.url == source_url).first()
     if not known:
@@ -304,20 +381,41 @@ def receive_alert(body: AlertReceive, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Alerts only accepted from known instances",
         )
-    if body.severity not in ("info", "warning", "critical"):
+
+    existing = (
+        db.query(RedSkyAlert)
+        .filter(RedSkyAlert.source_instance_url == known.url, RedSkyAlert.source_alert_uid == body.alert_uid)
+        .first()
+    )
+    if existing:
+        return existing
+
+    published = _fetch_published_alert(known.url, body.alert_uid)
+    if published is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="severity must be one of: info, warning, critical",
+            detail="Alert could not be verified with its source instance",
         )
+
     alert = RedSkyAlert(
-        source_instance_url=source_url,
-        source_instance_name=body.source_instance_name[:200],
-        title=body.title[:300],
-        description=body.description[:5000] if body.description else "",
-        severity=body.severity,
+        source_instance_url=known.url,
+        source_alert_uid=published.alert_uid,
+        source_instance_name=known.name[:200],
+        title=published.title,
+        description=published.description,
+        severity=published.severity,
     )
     db.add(alert)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent delivery of the same alert won the race
+        db.rollback()
+        return (
+            db.query(RedSkyAlert)
+            .filter(RedSkyAlert.source_instance_url == known.url, RedSkyAlert.source_alert_uid == body.alert_uid)
+            .first()
+        )
     db.refresh(alert)
     return alert
 

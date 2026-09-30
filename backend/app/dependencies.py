@@ -4,6 +4,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.services.auth import decode_access_token
@@ -22,7 +23,21 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    _apply_admin_emails(user, db)
     return user
+
+
+def _apply_admin_emails(user: User, db: Session) -> None:
+    """Grant the platform admin role to accounts listed in NG_ADMIN_EMAILS.
+
+    Only ever promotes: removing an email from the list does not demote an
+    admin, so roles granted by other means are left alone.
+    """
+    if user.role == "admin" or not settings.admin_emails:
+        return
+    if user.email.lower() in {e.strip().lower() for e in settings.admin_emails}:
+        user.role = "admin"
+        db.commit()
 
 
 def get_current_user_optional(

@@ -71,3 +71,7 @@ class TelegramLinkStart(BaseModel):
 
 class TelegramGroupLinkStart(BaseModel):
     token: str
+
+
+class TelegramWebhookRegistered(BaseModel):
+    url: str

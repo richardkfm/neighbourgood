@@ -1,5 +1,6 @@
 """Regression tests from the Red Sky / mesh QA pass."""
 
+import time
 import uuid
 from unittest.mock import patch
 
@@ -7,13 +8,13 @@ from app.models.crisis import CrisisVote, EmergencyTicket
 from app.models.mesh import MeshSyncedMessage
 
 
-def _mesh_msg(msg_type, community_id, data=None, mid=None):
+def _mesh_msg(msg_type, community_id, data=None, mid=None, sender_name="Test User"):
     return {
         "ng": 1,
         "type": msg_type,
         "community_id": community_id,
-        "sender_name": "Test User",
-        "ts": 1709337600000,
+        "sender_name": sender_name,
+        "ts": int(time.time() * 1000),
         "id": mid or str(uuid.uuid4()),
         "data": data or {},
     }
@@ -195,7 +196,7 @@ def test_mesh_votes_reach_threshold_and_switch_mode(
     r2 = client.post(
         "/mesh/sync",
         headers=h2,
-        json={"messages": [_mesh_msg("crisis_vote", community_id, {"vote_type": "activate"})]},
+        json={"messages": [_mesh_msg("crisis_vote", community_id, {"vote_type": "activate"}, sender_name="User 2")]},
     )
     assert r2.json()["synced"] == 1
     st = client.get(f"/communities/{community_id}/crisis/status").json()
@@ -203,9 +204,10 @@ def test_mesh_votes_reach_threshold_and_switch_mode(
     assert st["votes_to_activate"] == 0
 
 
-def test_mesh_crisis_status_change_clears_votes(
+def test_mesh_crisis_status_is_refused_and_keeps_votes(
     client, auth_headers, community_id, register_user, db
 ):
+    """Mode changes are admin-only online; a (replayable) mesh packet cannot flip a community."""
     h2 = register_user(2)
     _join(client, h2, community_id)
     client.post(
@@ -213,15 +215,17 @@ def test_mesh_crisis_status_change_clears_votes(
         headers=h2,
         json={"vote_type": "activate"},
     )
-    assert db.query(CrisisVote).count() == 1
     res = client.post(
         "/mesh/sync",
         headers=auth_headers,
         json={"messages": [_mesh_msg("crisis_status", community_id, {"new_mode": "red"})]},
     )
-    assert res.json()["synced"] == 1
+    assert res.json()["synced"] == 0
+    assert res.json()["rejected"] == 1
+    assert res.json()["failed_ids"] == []
     db.expire_all()
-    assert db.query(CrisisVote).count() == 0
+    assert db.query(CrisisVote).count() == 1
+    assert client.get(f"/communities/{community_id}/crisis/status").json()["mode"] == "blue"
 
 
 # ── Mesh: cross-community comment injection ───────────────────────────

@@ -4,6 +4,55 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.3.0] - 2026-09-30
+
+Results of a full QA pass (Blue Sky and Red Sky/mesh), a UI/UX review, and follow-up security hardening.
+
+### Security
+
+- **Cross-instance Red Sky alerts can no longer be forged** — `POST /federation/alerts/receive` used to trust the source URL written in the request body. Receivers now fetch the alert back from the known instance's directory URL (`GET /federation/alerts/outgoing/{alert_uid}`) and store only what the source publishes; unverifiable notifications are refused with `422`, and repeated deliveries are idempotent. Broadcasting requires `NG_INSTANCE_URL`
+- **Only platform admins can add or re-crawl federation directory entries**, since known instances are trusted alert sources
+- **`NG_ADMIN_EMAILS`** — new setting that grants the platform admin role to the listed accounts on their next request. Before, nothing could make an account admin, so alert broadcast/dismiss and directory removal were unreachable
+- **Telegram webhook is always authenticated** — when `NG_TELEGRAM_WEBHOOK_SECRET` is unset a secret is derived from `NG_SECRET_KEY` and the bot token; updates without the matching header get `403`, and the webhook returns `404` when no bot is configured. New admin endpoint `POST /telegram/webhook/register` registers the webhook with its secret. **Upgrade note:** re-register existing webhooks once
+- **Mesh sync replay protection** — messages older than `NG_MESH_MAX_MESSAGE_AGE_HOURS` (default 72) or dated more than an hour ahead are refused; crisis mode can no longer be switched via mesh (it stays admin-only through `POST /crisis/toggle`); votes and check-ins relayed on behalf of someone else are refused; relayed tickets, comments, messages and resources are labelled with the unverified original sender. Refused messages are reported as `rejected` (not in `failed_ids`), so clients drop them instead of retrying
+- **Email and Telegram chat id no longer exposed** in community member lists, resource/skill owners, bookings, events, reviews, activity, crisis payloads, messages and the message contacts list (new `UserPublic` schema; the contact picker shows the neighbourhood instead)
+- Telegram notifications HTML-escape user text; mesh packets and BLE payloads are validated; federation alert broadcast validates severity and lengths
+
+### Fixed — Blue Sky
+
+- Event and feed times were shifted by the viewer's UTC offset; datetimes now serialise as UTC
+- Pages misjudged ownership/membership on a hard reload; profile page kept showing the previous user
+- A wrong current password on change-password/change-email logged the user out (now `400`)
+- Emails are case-insensitive, preventing duplicate accounts
+- Outsiders could post resources/skills into any community; community merge left resources, skills and events behind
+- Deleting a resource with live bookings orphaned them; deleting a skill with messages failed on PostgreSQL
+- Validation gaps: event end before start, whitespace-only names, invite/coordinate/import bounds, out-of-range integers (`500` → `422`)
+- Viewing resource images counted against the 10/min upload rate limit
+- Webhooks for `resource.shared`, `skill.created` and `member.joined` never fired
+- Invite link lost for signed-out visitors; language preference not saved or applied; federated category filter; copy-invite on plain HTTP; failed image upload replaced the whole page
+
+### Fixed — Red Sky and mesh
+
+- Mesh backlogs over 100 messages never synced; the queue was cleared even when the server rejected messages; persistence races lost messages
+- One malformed BLE packet permanently crashed the mesh and emergency pages
+- Mesh sync was not atomic, so retries could create duplicate tickets; heartbeats could squat real message IDs
+- Mesh crisis votes ignored the 60% threshold; mesh comments could target tickets of another community; check-in coordinates unchecked
+- Red Sky UI was evaluated only once at start-up and community pages overwrote the global mode; low-bandwidth mode stuck after a crisis
+- "Take this" and assignee status buttons were rejected by the API; tickets can now be unassigned; emergency page and dashboard only loaded 20 tickets
+- Switching to Red Sky by community vote sent no webhook/Telegram notification; unmet-needs endpoint returned `500` for long titles; Telegram-created requests missing from the activity feed
+
+### Changed — UI/UX
+
+- Mobile bottom tab bar with a "More" sheet; Emergency gets its own tab in Red Sky mode
+- Red Sky identity: complete always-dark palette, crisis pill, urgency tokens and tinted urgency badges
+- WCAG AA contrast fixes, visible focus ring, skip link, `prefers-reduced-motion`, 44px tap targets
+- Reworked phone layouts for bookings, messages (list/thread), resources, dashboard and settings; RTL uses logical CSS properties
+- Auth forms: autocomplete attributes, announced errors, password rules hint
+
+### Tests
+
+- 3 new test files (`test_blue_sky_qa.py`, `test_redsky_qa.py`, `test_security_hardening.py`) and updated federation, mesh and Telegram tests (521 tests total)
+
 ## [2.2.2] - 2026-07-15
 
 ### Fixed

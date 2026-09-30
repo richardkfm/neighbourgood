@@ -115,3 +115,21 @@ def create_community_fn(client, auth_headers):
         assert resp.status_code == 201, resp.text
         return resp.json()
     return _create
+
+
+@pytest.fixture()
+def telegram_bot(client, monkeypatch):
+    """Configure a (fake) Telegram bot and send the webhook secret on every request.
+
+    Outbound Bot API calls are stubbed; tests that assert on them patch
+    ``app.services.telegram.send_message`` themselves.
+    """
+    from app.config import settings
+    from app.services import telegram as tg
+
+    monkeypatch.setattr(settings, "telegram_bot_token", "123456:test-bot-token")
+    monkeypatch.setattr(settings, "telegram_webhook_secret", "")
+    monkeypatch.setattr(tg, "send_message", lambda *a, **kw: None)
+    client.headers["X-Telegram-Bot-Api-Secret-Token"] = tg.webhook_secret()
+    yield
+    client.headers.pop("X-Telegram-Bot-Api-Secret-Token", None)

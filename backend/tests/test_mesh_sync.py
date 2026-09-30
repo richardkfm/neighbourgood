@@ -1,5 +1,6 @@
 """Tests for the BLE mesh sync endpoint."""
 
+import time
 import uuid
 
 
@@ -10,7 +11,7 @@ def _mesh_msg(msg_type="emergency_ticket", community_id=1, data=None):
         "type": msg_type,
         "community_id": community_id,
         "sender_name": "Test User",
-        "ts": 1709337600000,
+        "ts": int(time.time() * 1000),
         "id": str(uuid.uuid4()),
         "data": data or {},
     }
@@ -314,8 +315,8 @@ def test_sync_direct_message_invalid_recipient(client, auth_headers, community_i
 # ── Crisis status sync ─────────────────────────────────────────
 
 
-def test_sync_crisis_status_as_admin(client, auth_headers, community_id):
-    """Admin (community creator) can change crisis mode via mesh."""
+def test_sync_crisis_status_is_refused(client, auth_headers, community_id):
+    """Crisis mode cannot be changed via mesh, not even by the community admin."""
     msg = _mesh_msg(
         msg_type="crisis_status",
         community_id=community_id,
@@ -325,31 +326,15 @@ def test_sync_crisis_status_as_admin(client, auth_headers, community_id):
         "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
     )
     assert res.status_code == 200
-    assert res.json()["synced"] == 1
+    assert res.json()["synced"] == 0
+    assert res.json()["rejected"] == 1
+    # Refused messages are not reported as failed, so clients drop them
+    assert res.json()["failed_ids"] == []
 
-    # Verify mode changed
     community_res = client.get(
         f"/communities/{community_id}", headers=auth_headers
     )
-    assert community_res.json()["mode"] == "red"
-
-
-def test_sync_crisis_status_as_member(client, auth_headers, community_id, register_user):
-    """Regular member cannot change crisis mode via mesh."""
-    user2_headers = register_user(3)
-    client.post(f"/communities/{community_id}/join", headers=user2_headers)
-
-    msg = _mesh_msg(
-        msg_type="crisis_status",
-        community_id=community_id,
-        data={"new_mode": "red"},
-    )
-    res = client.post(
-        "/mesh/sync", json={"messages": [msg]}, headers=user2_headers
-    )
-    assert res.status_code == 200
-    assert res.json()["errors"] == 1
-    assert res.json()["synced"] == 0
+    assert community_res.json()["mode"] == "blue"
 
 
 # ── Resource offer/request sync ──────────────────────────────────

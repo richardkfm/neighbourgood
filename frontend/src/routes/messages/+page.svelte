@@ -346,7 +346,9 @@
 								<li>
 									<button class="contact-item" onclick={() => selectContact(contact)}>
 										<span class="contact-name">{contact.display_name}</span>
-										<span class="contact-email">{contact.email}</span>
+										{#if contact.neighbourhood}
+											<span class="contact-meta">{contact.neighbourhood}</span>
+										{/if}
 									</button>
 								</li>
 							{/each}
@@ -751,7 +753,7 @@
 		font-weight: 600;
 	}
 
-	.contact-email {
+	.contact-meta {
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
 	}

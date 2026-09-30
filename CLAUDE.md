@@ -27,7 +27,7 @@ Token efficiency matters. Use the right model for the right task:
 
 Each instance exposes `/instance/info` so instances can discover and federate with each other.
 
-Current test count: **441 tests** across 29 test files (all backend, pytest + in-memory SQLite).
+Current test count: **521 tests** across 32 test files (all backend, pytest + in-memory SQLite).
 
 ---
 
@@ -203,6 +203,9 @@ All prefixed `NG_`. The app reads from `.env` via pydantic-settings.
 | `NG_INSTANCE_NAME/DESCRIPTION/REGION/URL` | No | — | Federation identity shown at `/instance/info` |
 | `NG_ADMIN_NAME/ADMIN_CONTACT` | No | — | Federation accountability metadata |
 | `NG_TELEGRAM_BOT_TOKEN` | No | unset | Telegram Bot API token; disables integration when unset |
+| `NG_TELEGRAM_WEBHOOK_SECRET` | No | derived | Webhook secret; derived from `NG_SECRET_KEY` + bot token when unset (always enforced) |
+| `NG_ADMIN_EMAILS` | No | `[]` | JSON array; matching accounts are promoted to platform admin on their next request |
+| `NG_MESH_MAX_MESSAGE_AGE_HOURS` | No | `72` | Mesh messages older than this are refused on sync |
 
 ---
 
@@ -473,6 +476,7 @@ Current test files (27): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.3.0 | 2026-09-30 | QA pass (Blue Sky + Red Sky/mesh, ~45 fixes), UI/UX overhaul (mobile tab bar, Red Sky identity, WCAG AA), security: verified federation alerts, NG_ADMIN_EMAILS, always-on Telegram webhook secret, mesh replay protection, no email leaks (521 tests) |
 | 2.0.0 | 2026-04-03 | Trust system: skill reviews/endorsements, trust badges (Reliable Borrower, Trusted Lender, Skilled Helper), public user profile page with tabbed reviews, OwnerTrust in listings, review filtering/breakdown, 23 new tests (441 total) |
 | 1.9.6 | 2026-04-01 | Simplified community display: hide community selectors for single-community users, scope resources/skills/events/triage to one community at a time |
 | 1.9.5.1 | 2026-03-16 | Fix login 500 (restore additive column auto-migration), move mesh networking to settings toggle (hidden by default), mesh settings store + i18n |

@@ -31,6 +31,9 @@ class MeshSyncResponse(BaseModel):
     synced: int = 0
     duplicates: int = 0
     errors: int = 0
+    # Refused by policy (too old, relayed personal action, crisis mode change);
+    # not in failed_ids, so clients drop them instead of retrying
+    rejected: int = 0
     # Mesh IDs of the messages counted in ``errors`` so clients can keep only those
     failed_ids: list[str] = Field(default_factory=list)
 
