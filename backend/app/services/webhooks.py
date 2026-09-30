@@ -121,7 +121,7 @@ def dispatch_event(
     Intended to be called as a FastAPI BackgroundTask so it does not block
     the HTTP response. All failures are logged and swallowed.
     """
-    from app.models.community import Community
+    from app.models.community import Community, CommunityMember
     from app.models.user import User
     from app.models.webhook import Webhook
 
@@ -130,6 +130,16 @@ def dispatch_event(
     # ── 1. Generic webhooks ──────────────────────────────────────
     try:
         all_webhooks = db.query(Webhook).filter(Webhook.is_active == True).all()  # noqa: E712
+        # Community-wide events (resource.shared, skill.created, member.joined, ...)
+        # carry no target users; they go to webhooks of the community's members.
+        community_member_ids: set[int] = set()
+        if community_id is not None:
+            community_member_ids = {
+                row[0]
+                for row in db.query(CommunityMember.user_id).filter(
+                    CommunityMember.community_id == community_id
+                )
+            }
         for wh in all_webhooks:
             try:
                 subscribed = json.loads(wh.event_types)
@@ -137,9 +147,11 @@ def dispatch_event(
                 continue
             if event_type not in subscribed:
                 continue
-            # Match scope: user webhooks fire for their own events;
-            # community webhooks fire for community events.
-            if wh.owner_type == "user" and wh.owner_id in user_ids:
+            # Match scope: user webhooks fire for their own events and for events
+            # in communities they belong to; community webhooks fire for community events.
+            if wh.owner_type == "user" and (
+                wh.owner_id in user_ids or wh.owner_id in community_member_ids
+            ):
                 _deliver_webhook(wh.url, wh.secret, event_type, payload)
             elif wh.owner_type == "community" and wh.owner_id == community_id:
                 _deliver_webhook(wh.url, wh.secret, event_type, payload)
