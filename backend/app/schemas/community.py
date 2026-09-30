@@ -4,7 +4,7 @@ import datetime
 
 from pydantic import BaseModel, Field
 
-from app.schemas.user import UserProfile
+from app.schemas.user import UserPublic
 
 
 class CommunityCreate(BaseModel):
@@ -25,7 +25,7 @@ class CommunityUpdate(BaseModel):
 
 class CommunityMemberOut(BaseModel):
     id: int
-    user: UserProfile
+    user: UserPublic
     role: str
     joined_at: datetime.datetime
 
@@ -45,7 +45,7 @@ class CommunityOut(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     member_count: int = 0
-    created_by: UserProfile
+    created_by: UserPublic
     merged_into_id: int | None = None
     created_at: datetime.datetime
 

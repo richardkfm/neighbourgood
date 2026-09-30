@@ -1,6 +1,9 @@
 """Mesh sync endpoint — ingests messages received via BLE mesh when internet returns."""
 
+import math
+
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -12,6 +15,7 @@ from app.models.mesh import MeshSyncedMessage
 from app.models.mesh_checkin import MeshCheckin
 from app.models.resource import Resource
 from app.models.user import User
+from app.routers.crisis import apply_vote_threshold
 from app.schemas.mesh import MeshCheckinOut, MeshMessageIn, MeshMetricsIn, MeshSyncRequest, MeshSyncResponse
 from app.services.activity import record_activity
 
@@ -60,6 +64,11 @@ def sync_mesh_messages(
             )
             db.commit()
             synced += 1
+        except IntegrityError:
+            # A concurrent sync of the same mesh ID won the race; the handler's
+            # writes are rolled back together with the dedup record.
+            db.rollback()
+            duplicates += 1
         except HTTPException:
             db.rollback()
             errors += 1
@@ -158,6 +167,7 @@ def _sync_emergency_ticket(
         summary=f'created {ticket_type} ticket "{title}" (via mesh sync)',
         actor_id=user.id,
         community_id=msg.community_id,
+        commit=False,
     )
 
     return ticket.id
@@ -209,6 +219,13 @@ def _sync_ticket_comment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Referenced ticket no longer exists",
         )
+    if ticket.community_id != msg.community_id:
+        # The sender was only membership-checked against msg.community_id, so
+        # never let a comment land on a ticket of a different community.
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ticket belongs to a different community",
+        )
 
     comment = TicketComment(
         ticket_id=ticket.id,
@@ -224,6 +241,7 @@ def _sync_ticket_comment(
         summary=f"commented on ticket \"{ticket.title}\" (via mesh sync)",
         actor_id=user.id,
         community_id=msg.community_id,
+        commit=False,
     )
 
     return comment.id
@@ -311,6 +329,8 @@ def _sync_crisis_status(
         return  # Already in requested mode, no-op
 
     community.mode = new_mode
+    # Mirror POST /crisis/toggle: an explicit mode change resets pending votes
+    db.query(CrisisVote).filter(CrisisVote.community_id == msg.community_id).delete()
     db.flush()
 
     record_activity(
@@ -319,6 +339,7 @@ def _sync_crisis_status(
         summary=f"switched community to {new_mode} sky mode (via mesh sync)",
         actor_id=user.id,
         community_id=msg.community_id,
+        commit=False,
     )
 
 
@@ -364,6 +385,7 @@ def _sync_resource(
         summary=f'{action} resource "{title}" (via mesh sync)',
         actor_id=user.id,
         community_id=msg.community_id,
+        commit=False,
     )
 
     return resource.id
@@ -393,6 +415,14 @@ def _sync_location_checkin(
             detail="lat and lng must be numbers",
         )
 
+    if not (math.isfinite(lat) and math.isfinite(lng)) or not (
+        -90 <= lat <= 90 and -180 <= lng <= 180
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="lat/lng out of range",
+        )
+
     if checkin_status not in ("safe", "need_help", "evacuating"):
         checkin_status = "safe"
 
@@ -415,6 +445,7 @@ def _sync_location_checkin(
         summary=f'checked in as "{checkin_status}" (via mesh sync)',
         actor_id=user.id,
         community_id=msg.community_id,
+        commit=False,
     )
 
     return checkin.id
@@ -562,3 +593,5 @@ def _sync_crisis_vote(
         )
         db.add(vote)
     db.flush()
+    # Honour the same 60% threshold as POST /crisis/vote
+    apply_vote_threshold(db, msg.community_id, vote_type, user.id, commit=False)

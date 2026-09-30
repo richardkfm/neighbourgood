@@ -6,6 +6,7 @@ FastAPI BackgroundTask so it never blocks the HTTP response.
 
 import hashlib
 import hmac
+import html
 import json
 import logging
 from datetime import datetime, timezone
@@ -20,28 +21,33 @@ logger = logging.getLogger(__name__)
 # ── Telegram message templates ────────────────────────────────────
 
 
+def _e(value) -> str:
+    """Escape user-controlled text for Telegram's HTML parse mode."""
+    return html.escape(str(value), quote=False)
+
+
 def _format_personal(event_type: str, payload: dict) -> str | None:
     """Return a personal Telegram message string, or None if not applicable."""
     if event_type == "message.new":
-        return f"New message from <b>{payload.get('sender_name', 'someone')}</b> — open the app to reply."
+        return f"New message from <b>{_e(payload.get('sender_name', 'someone'))}</b> — open the app to reply."
     if event_type == "booking.created":
         return (
-            f"<b>{payload.get('borrower_name', 'Someone')}</b> wants to borrow "
-            f"<b>{payload.get('resource_title', 'your item')}</b> "
-            f"({payload.get('start_date', '?')} – {payload.get('end_date', '?')})."
+            f"<b>{_e(payload.get('borrower_name', 'Someone'))}</b> wants to borrow "
+            f"<b>{_e(payload.get('resource_title', 'your item'))}</b> "
+            f"({_e(payload.get('start_date', '?'))} – {_e(payload.get('end_date', '?'))})."
         )
     if event_type == "booking.status_changed":
         return (
-            f"Your booking for <b>{payload.get('resource_title', 'an item')}</b>: "
-            f"status changed to <b>{payload.get('status', '?')}</b>."
+            f"Your booking for <b>{_e(payload.get('resource_title', 'an item'))}</b>: "
+            f"status changed to <b>{_e(payload.get('status', '?'))}</b>."
         )
     if event_type == "ticket.assigned":
         return (
-            f"Ticket assigned to you: [{payload.get('urgency', '?').upper()}] "
-            f"<b>{payload.get('title', '?')}</b>"
+            f"Ticket assigned to you: [{_e(payload.get('urgency', '?').upper())}] "
+            f"<b>{_e(payload.get('title', '?'))}</b>"
         )
     if event_type == "crisis.mode_changed":
-        community = payload.get("community_name", "Your community")
+        community = _e(payload.get("community_name", "Your community"))
         return f"<b>{community}</b> is now in Red Sky (crisis) mode."
     return None
 
@@ -50,29 +56,29 @@ def _format_group(event_type: str, payload: dict) -> str | None:
     """Return a community group Telegram message string, or None if not applicable."""
     if event_type == "resource.shared":
         return (
-            f"<b>{payload.get('actor_name', 'A neighbour')}</b> shared "
-            f"<b>'{payload.get('title', 'an item')}'</b> for borrowing!"
+            f"<b>{_e(payload.get('actor_name', 'A neighbour'))}</b> shared "
+            f"<b>'{_e(payload.get('title', 'an item'))}'</b> for borrowing!"
         )
     if event_type == "skill.created":
         skill_type = payload.get("skill_type", "offer")
-        category = payload.get("category", "")
-        title = payload.get("title", "a skill")
-        actor = payload.get("actor_name", "A neighbour")
+        category = _e(payload.get("category", ""))
+        title = _e(payload.get("title", "a skill"))
+        actor = _e(payload.get("actor_name", "A neighbour"))
         if skill_type == "offer":
             return f"<b>{actor}</b> is offering <b>'{title}'</b> ({category}) — connect in the app!"
         return f"<b>{actor}</b> is looking for help with <b>'{title}'</b> ({category})."
     if event_type == "member.joined":
         return (
-            f"Welcome <b>{payload.get('actor_name', 'a new member')}</b> to "
-            f"<b>{payload.get('community_name', 'the community')}</b>!"
+            f"Welcome <b>{_e(payload.get('actor_name', 'a new member'))}</b> to "
+            f"<b>{_e(payload.get('community_name', 'the community'))}</b>!"
         )
     if event_type == "crisis.mode_changed":
-        community = payload.get("community_name", "The community")
+        community = _e(payload.get("community_name", "The community"))
         return f"<b>{community}</b> has activated Red Sky mode — check emergency tickets in the app."
     if event_type == "ticket.created":
-        urgency = payload.get("urgency", "?").upper()
-        ticket_type = payload.get("ticket_type", "ticket")
-        title = payload.get("title", "?")
+        urgency = _e(payload.get("urgency", "?").upper())
+        ticket_type = _e(payload.get("ticket_type", "ticket"))
+        title = _e(payload.get("title", "?"))
         return f"[{urgency}] New {ticket_type}: <b>{title}</b>"
     return None
 

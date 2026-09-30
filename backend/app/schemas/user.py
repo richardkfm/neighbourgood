@@ -19,6 +19,19 @@ class UserProfile(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserPublic(BaseModel):
+    """Profile fields safe to show to other community members (no email / Telegram id)."""
+
+    id: int
+    display_name: str
+    neighbourhood: str | None
+    role: str
+    language_code: str = "en"
+    created_at: datetime.datetime
+
+    model_config = {"from_attributes": True}
+
+
 class UserProfileUpdate(BaseModel):
     display_name: str | None = Field(None, min_length=1, max_length=100)
     neighbourhood: str | None = Field(None, max_length=100)

@@ -97,7 +97,10 @@ def test_sync_deduplication(client, auth_headers, community_id):
 # ── Crisis vote sync ─────────────────────────────────────────────
 
 
-def test_sync_crisis_vote(client, auth_headers, community_id):
+def test_sync_crisis_vote(client, auth_headers, community_id, register_user):
+    # A second member keeps the single vote (50%) below the 60% threshold
+    other = register_user(2)
+    client.post(f"/communities/{community_id}/join", headers=other)
     msg = _mesh_msg(
         msg_type="crisis_vote",
         community_id=community_id,

@@ -12,8 +12,13 @@ def record_activity(
     summary: str,
     actor_id: int,
     community_id: int | None = None,
+    commit: bool = True,
 ) -> Activity:
-    """Create an activity feed event."""
+    """Create an activity feed event.
+
+    Pass ``commit=False`` to only flush, so the caller can commit the event
+    together with the rest of its unit of work (e.g. mesh sync).
+    """
     event = Activity(
         event_type=event_type,
         summary=summary,
@@ -21,6 +26,9 @@ def record_activity(
         community_id=community_id,
     )
     db.add(event)
-    db.commit()
-    db.refresh(event)
+    if commit:
+        db.commit()
+        db.refresh(event)
+    else:
+        db.flush()
     return event

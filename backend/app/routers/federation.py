@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -72,17 +72,17 @@ class AlertOut(BaseModel):
 
 
 class AlertCreate(BaseModel):
-    title: str
-    description: str = ""
-    severity: str = "warning"
+    title: str = Field(..., min_length=1, max_length=300)
+    description: str = Field("", max_length=5000)
+    severity: str = Field("warning", pattern="^(info|warning|critical)$")
 
 
 class AlertReceive(BaseModel):
     """Schema for incoming alerts from remote instances."""
-    source_instance_url: str
-    source_instance_name: str
-    title: str
-    description: str = ""
+    source_instance_url: str = Field(..., max_length=500)
+    source_instance_name: str = Field(..., max_length=200)
+    title: str = Field(..., min_length=1, max_length=300)
+    description: str = Field("", max_length=5000)
     severity: str = "warning"
 
 

@@ -20,7 +20,7 @@ class MatchSuggestion(BaseModel):
 
 class UnmetNeed(BaseModel):
     ticket_id: int
-    title: str = Field(max_length=200)
+    title: str = Field(max_length=300)
     ticket_type: str
     urgency: str
     created_at: datetime.datetime

@@ -4,7 +4,7 @@ import datetime
 
 from pydantic import BaseModel, Field
 
-from app.schemas.user import UserProfile
+from app.schemas.user import UserPublic
 
 
 # ── Crisis mode toggle ────────────────────────────────────────────
@@ -33,7 +33,7 @@ class CrisisVoteCreate(BaseModel):
 class CrisisVoteOut(BaseModel):
     id: int
     community_id: int
-    user: UserProfile
+    user: UserPublic
     vote_type: str
     created_at: datetime.datetime
 
@@ -63,7 +63,7 @@ class EmergencyTicketUpdate(BaseModel):
 class EmergencyTicketOut(BaseModel):
     id: int
     community_id: int
-    author: UserProfile
+    author: UserPublic
     ticket_type: str
     title: str
     description: str
@@ -71,7 +71,7 @@ class EmergencyTicketOut(BaseModel):
     urgency: str
     due_at: datetime.datetime | None = None
     triage_score: int = 0
-    assigned_to: UserProfile | None = None
+    assigned_to: UserPublic | None = None
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
@@ -93,7 +93,7 @@ class TicketCommentCreate(BaseModel):
 class TicketCommentOut(BaseModel):
     id: int
     ticket_id: int
-    author: UserProfile
+    author: UserPublic
     body: str
     created_at: datetime.datetime
     updated_at: datetime.datetime
@@ -106,7 +106,7 @@ class TicketCommentOut(BaseModel):
 
 class LeaderOut(BaseModel):
     id: int
-    user: UserProfile
+    user: UserPublic
     role: str
     joined_at: datetime.datetime
 

@@ -187,6 +187,72 @@ def get_crisis_status(
     )
 
 
+def apply_vote_threshold(
+    db: Session,
+    community_id: int,
+    vote_type: str,
+    actor_id: int,
+    *,
+    commit: bool = True,
+) -> str | None:
+    """Switch the community mode if ``vote_type`` has reached the threshold.
+
+    Returns the new mode ("red"/"blue") when a switch happened, else None.
+    Shared by the REST vote endpoint and the mesh sync endpoint so both
+    honour the same 60% rule. With ``commit=False`` the caller owns the
+    transaction (changes are only flushed).
+    """
+    total_members = (
+        db.query(CommunityMember)
+        .filter(CommunityMember.community_id == community_id)
+        .count()
+    )
+    vote_count = (
+        db.query(CrisisVote)
+        .filter(
+            CrisisVote.community_id == community_id,
+            CrisisVote.vote_type == vote_type,
+        )
+        .count()
+    )
+    threshold_needed = max(1, (total_members * VOTE_THRESHOLD_PCT + 99) // 100)
+    if vote_count < threshold_needed:
+        return None
+
+    new_mode = "red" if vote_type == "activate" else "blue"
+    # Re-fetch the community row with a row-level lock (no-op on SQLite, but
+    # PostgreSQL serialises concurrent voters here) and re-check the mode
+    # under the lock. Without this, two voters who both push the count over
+    # the threshold could each flip the mode and double-log the activity.
+    locked_community = (
+        db.query(Community)
+        .filter(Community.id == community_id)
+        .with_for_update()
+        .first()
+    )
+    if locked_community is None or locked_community.mode == new_mode:
+        return None
+
+    locked_community.mode = new_mode
+    # Clear all votes after mode switch
+    db.query(CrisisVote).filter(CrisisVote.community_id == community_id).delete()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+
+    label = "Red Sky (crisis)" if new_mode == "red" else "Blue Sky (normal)"
+    record_activity(
+        db,
+        event_type="crisis_mode_changed",
+        summary=f'community vote switched "{locked_community.name}" to {label}',
+        actor_id=actor_id,
+        community_id=community_id,
+        commit=commit,
+    )
+    return new_mode
+
+
 # ── Community vote ────────────────────────────────────────────────
 
 
@@ -194,6 +260,7 @@ def get_crisis_status(
 def cast_crisis_vote(
     community_id: int,
     body: CrisisVoteCreate,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -236,51 +303,22 @@ def cast_crisis_vote(
     # Build response before potential deletion
     vote_response = CrisisVoteOut.model_validate(vote)
 
-    # Check if threshold is met to auto-switch mode
-    total_members = (
-        db.query(CommunityMember)
-        .filter(CommunityMember.community_id == community_id)
-        .count()
-    )
-    target_type = body.vote_type  # activate or deactivate
-    vote_count = (
-        db.query(CrisisVote)
-        .filter(
-            CrisisVote.community_id == community_id,
-            CrisisVote.vote_type == target_type,
+    new_mode = apply_vote_threshold(db, community_id, body.vote_type, current_user.id)
+    if new_mode == "red":
+        member_ids = [
+            row[0]
+            for row in db.query(CommunityMember.user_id)
+            .filter(CommunityMember.community_id == community_id)
+            .all()
+        ]
+        background_tasks.add_task(
+            dispatch_event,
+            db,
+            "crisis.mode_changed",
+            {"community_name": community.name, "new_mode": new_mode},
+            member_ids,
+            community_id,
         )
-        .count()
-    )
-
-    threshold_needed = max(1, (total_members * VOTE_THRESHOLD_PCT + 99) // 100)
-    if vote_count >= threshold_needed:
-        new_mode = "red" if target_type == "activate" else "blue"
-        # Re-fetch the community row with a row-level lock (no-op on SQLite, but
-        # PostgreSQL serialises concurrent voters here) and re-check the mode
-        # under the lock. Without this, two voters who both push the count over
-        # the threshold could each flip the mode and double-log the activity.
-        locked_community = (
-            db.query(Community)
-            .filter(Community.id == community_id)
-            .with_for_update()
-            .first()
-        )
-        if locked_community is not None and locked_community.mode != new_mode:
-            locked_community.mode = new_mode
-            # Clear all votes after mode switch
-            db.query(CrisisVote).filter(
-                CrisisVote.community_id == community_id
-            ).delete()
-            db.commit()
-
-            label = "Red Sky (crisis)" if new_mode == "red" else "Blue Sky (normal)"
-            record_activity(
-                db,
-                event_type="crisis_mode_changed",
-                summary=f'community vote switched "{locked_community.name}" to {label}',
-                actor_id=current_user.id,
-                community_id=community_id,
-            )
 
     return vote_response
 
@@ -536,7 +574,9 @@ def update_ticket(
         ticket.urgency = body.urgency
     if "due_at" in body.model_fields_set:
         ticket.due_at = body.due_at
-    if body.assigned_to_id is not None:
+    if "assigned_to_id" in body.model_fields_set and body.assigned_to_id is None:
+        ticket.assigned_to_id = None
+    elif body.assigned_to_id is not None:
         # Verify assignee is a member
         assignee_membership = (
             db.query(CommunityMember)
