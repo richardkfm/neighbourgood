@@ -231,7 +231,7 @@
 			</button>
 		</div>
 
-		<div class="messages-layout">
+		<div class="messages-layout" class:has-selection={selectedPartner}>
 			<!-- Conversation list -->
 			<div class="conv-list">
 				{#if loading}
@@ -268,6 +268,9 @@
 					</div>
 				{:else}
 					<div class="thread-header">
+						<button class="thread-back" onclick={() => (selectedPartner = null)} aria-label={$t('common.back')}>
+							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+						</button>
 						<strong>{selectedPartner.display_name}</strong>
 					</div>
 					{#if skillContext}
@@ -486,7 +489,27 @@
 		color: var(--color-text-muted);
 	}
 
+	.thread-back {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--tap-target);
+		height: var(--tap-target);
+		margin: -0.5rem 0 -0.5rem -0.75rem;
+		background: none;
+		border: none;
+		color: var(--color-text);
+		cursor: pointer;
+	}
+
+	:global([dir='rtl']) .thread-back svg {
+		transform: scaleX(-1);
+	}
+
 	.thread-header {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-surface);
@@ -735,6 +758,8 @@
 
 	/* ── Responsive ───────────────────────────────────────────── */
 
+	/* Phones: classic master-detail. Show the conversation list, or the open
+	   thread with a back button, never both stacked with an empty pane. */
 	@media (max-width: 640px) {
 		.messages-layout {
 			grid-template-columns: 1fr;
@@ -743,12 +768,24 @@
 
 		.conv-list {
 			border-right: none;
-			border-bottom: 1px solid var(--color-border);
-			max-height: 200px;
+			max-height: none;
 		}
 
-		.thread {
-			min-height: 300px;
+		.messages-layout.has-selection .conv-list {
+			display: none;
+		}
+
+		.messages-layout:not(.has-selection) .thread {
+			display: none;
+		}
+
+		.messages-layout.has-selection .thread {
+			height: calc(100dvh - 17rem);
+			min-height: 320px;
+		}
+
+		.thread-back {
+			display: inline-flex;
 		}
 	}
 </style>

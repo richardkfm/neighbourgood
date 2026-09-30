@@ -424,7 +424,7 @@
 		height: 22px;
 		border-radius: 50%;
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 		font-weight: 700;
 		font-size: 0.75rem;
 		flex-shrink: 0;

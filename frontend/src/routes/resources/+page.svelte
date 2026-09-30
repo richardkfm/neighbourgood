@@ -233,6 +233,7 @@
 			type="search"
 			class="search-input"
 			placeholder={$t('resources.search_placeholder')}
+			aria-label={$t('resources.search_placeholder')}
 			bind:value={searchQuery}
 			oninput={handleSearchInput}
 		/>
@@ -250,11 +251,23 @@
 				{/each}
 			</select>
 		{/if}
-		<span class="result-count">{total} result{total !== 1 ? 's' : ''}</span>
+		<span class="result-count" aria-live="polite">{$t(total === 1 ? 'common.result' : 'common.results', { values: { count: total } })}</span>
 	</div>
 
 	{#if loading}
-		<p class="loading">{$t('common.loading')}</p>
+		<div class="resource-grid" role="status" aria-live="polite" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3, 4, 5, 6] as n (n)}
+				<div class="resource-card" aria-hidden="true">
+					<div class="card-image skeleton"></div>
+					<div class="card-body">
+						<span class="skeleton" style="height: 0.9rem; width: 30%"></span>
+						<span class="skeleton" style="height: 1.1rem; width: 70%; margin-top: 0.6rem"></span>
+						<span class="skeleton" style="height: 0.8rem; width: 90%; margin-top: 0.6rem"></span>
+					</div>
+				</div>
+			{/each}
+		</div>
 	{:else if resources.length === 0}
 		<div class="empty-state">
 			<p>{$t('resources.no_results')}</p>
@@ -584,10 +597,6 @@
 		margin-left: auto;
 	}
 
-	.loading {
-		color: var(--color-text-muted);
-	}
-
 	.empty-state {
 		text-align: center;
 		padding: 3rem 1rem;
@@ -596,6 +605,53 @@
 
 	.empty-state p + p {
 		margin-top: 0.5rem;
+	}
+
+	/* Phones: a dense list (thumbnail left, details right) instead of one huge
+	   image per screen-height, so ~4 items fit instead of ~1.5. */
+	@media (max-width: 560px) {
+		.filter-bar {
+			margin-bottom: 1.25rem;
+		}
+
+		.search-input {
+			flex-basis: 100%;
+		}
+
+		.filter-bar select {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.resource-grid {
+			grid-template-columns: 1fr;
+			gap: 0.75rem;
+		}
+
+		.resource-card {
+			flex-direction: row;
+		}
+
+		.resource-card:hover {
+			transform: none;
+		}
+
+		.card-image {
+			width: 96px;
+			height: auto;
+			min-height: 120px;
+			flex-shrink: 0;
+		}
+
+		.card-body {
+			min-width: 0;
+			padding: 0.85rem 1rem;
+		}
+
+		.card-footer {
+			margin-top: 0.5rem;
+			padding-top: 0.5rem;
+		}
 	}
 
 	.cache-notice {
