@@ -5,6 +5,7 @@
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { t } from 'svelte-i18n';
 	import CommunityMap from '$lib/components/CommunityMap.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 	import type { KnownInstance, MapCommunity, RedSkyAlertInfo } from '$lib/types';
 
 	interface MyCommunity {
@@ -120,10 +121,6 @@
 		}
 	}
 
-	function modeClass(mode: string) {
-		return mode === 'red' ? 'mode-red' : 'mode-blue';
-	}
-
 	function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
 		const R = 6371;
 		const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -203,7 +200,7 @@
 			<h1>{$t('communities.title')}</h1>
 			<p class="subtitle">{$t('communities.subtitle')}</p>
 		</div>
-		<a href="/onboarding" class="btn-find">{$t('communities.find_or_create')}</a>
+		<a href="/onboarding" class="btn btn-primary">{$t('communities.find_or_create')}</a>
 	</div>
 
 	{#if error}
@@ -216,7 +213,7 @@
 		<section class="my-community-section">
 			<h2>{$t('communities.your_community')}</h2>
 			{#each myCommunities as c (c.id)}
-				<a href="/communities/{c.id}" class="my-community-card">
+				<a href="/communities/{c.id}" class="card card-interactive my-community-card">
 					<div class="my-card-left">
 						<h3>{c.name}</h3>
 						<div class="my-card-meta">
@@ -239,9 +236,10 @@
 		</section>
 	{:else if !loading && allCommunities.length === 0}
 		<div class="empty-state fade-in">
+			<span class="empty-icon"><Icon name="users" size={26} /></span>
 			<h2>{$t('communities.no_communities_yet')}</h2>
 			<p>{$t('communities.join_prompt')}</p>
-			<a href="/onboarding" class="btn-primary">{$t('communities.find_or_create')}</a>
+			<a href="/onboarding" class="btn btn-primary">{$t('communities.find_or_create')}</a>
 		</div>
 	{:else if !loading}
 		<div class="not-member-notice fade-in">
@@ -254,7 +252,7 @@
 			<h2>{$t('communities.all_communities')}</h2>
 			<div class="community-list">
 				{#each pagedCommunities as c (c.id)}
-					<a href="/communities/{c.id}" class="community-list-card {myIds.has(c.id) ? 'is-mine' : ''}">
+					<a href="/communities/{c.id}" class="card card-interactive community-list-card {myIds.has(c.id) ? 'is-mine' : ''}">
 						<div class="list-card-info">
 							<h3>{c.name}</h3>
 							<div class="list-card-meta">
@@ -279,9 +277,9 @@
 			</div>
 			{#if totalPages > 1}
 				<div class="pagination">
-					<button class="btn-page" disabled={currentPage === 0} onclick={() => currentPage--}>← {$t('common.prev')}</button>
+					<button class="btn btn-secondary btn-sm" disabled={currentPage === 0} onclick={() => currentPage--}><Icon name="arrow-left" size={14} class="flip-rtl" /> {$t('common.prev')}</button>
 					<span class="page-info">{currentPage + 1} / {totalPages}</span>
-					<button class="btn-page" disabled={currentPage >= totalPages - 1} onclick={() => currentPage++}>{$t('common.next')} →</button>
+					<button class="btn btn-secondary btn-sm" disabled={currentPage >= totalPages - 1} onclick={() => currentPage++}>{$t('common.next')} <Icon name="arrow-right" size={14} class="flip-rtl" /></button>
 				</div>
 			{/if}
 		</section>
@@ -295,8 +293,8 @@
 					<p class="fed-subtitle">{$t('federation.subtitle')}</p>
 				</div>
 				<div class="fed-header-actions">
-					<a href="/federation/resources" class="action-link">{$t('federation.browse_resources')}</a>
-					<a href="/federation/skills" class="action-link">{$t('federation.browse_skills')}</a>
+					<a href="/federation/resources" class="btn btn-secondary btn-sm">{$t('federation.browse_resources')}</a>
+					<a href="/federation/skills" class="btn btn-secondary btn-sm">{$t('federation.browse_skills')}</a>
 				</div>
 			</div>
 
@@ -304,7 +302,7 @@
 				<div class="fed-alerts">
 					{#each fedAlerts as alert}
 						<div class="fed-alert-card severity-{alert.severity}">
-							<span class="alert-severity">{alert.severity.toUpperCase()}</span>
+							<span class="badge alert-severity">{alert.severity.toUpperCase()}</span>
 							<div class="alert-content">
 								<strong>{alert.title}</strong>
 								{#if alert.description}
@@ -317,25 +315,25 @@
 				</div>
 			{/if}
 
-			<div class="fed-admin-controls">
+			<div class="card fed-admin-controls">
 				<form class="fed-add-form" onsubmit={(e) => { e.preventDefault(); addInstance(); }}>
 					<input
 						type="url"
 						bind:value={addUrl}
 						placeholder={$t('federation.add_placeholder')}
-						class="fed-url-input"
+						class="input fed-url-input"
 						required
 					/>
-					<button type="submit" class="btn btn-primary" disabled={adding}>
+					<button type="submit" class="btn btn-primary" class:is-loading={adding} disabled={adding}>
 						{adding ? $t('common.loading') : $t('federation.add_btn')}
 					</button>
 				</form>
 				{#if addError}
-					<p class="fed-error-text">{addError}</p>
+					<p class="alert alert-error" role="alert">{addError}</p>
 				{/if}
 
 				<div class="fed-actions">
-					<button class="btn btn-secondary" onclick={refreshAll} disabled={refreshing}>
+					<button class="btn btn-secondary" class:is-loading={refreshing} onclick={refreshAll} disabled={refreshing}>
 						{refreshing ? $t('common.loading') : $t('federation.refresh_all')}
 					</button>
 					<button class="btn btn-secondary" onclick={triggerSync}>
@@ -348,18 +346,24 @@
 			</div>
 
 			{#if fedLoading}
-				<p class="fed-loading">{$t('common.loading')}</p>
+				<div class="instance-grid" role="status" aria-busy="true">
+				<span class="sr-only">{$t('common.loading')}</span>
+				{#each [1, 2, 3] as n (n)}
+					<div class="skeleton skeleton-card" style="height: 11rem" aria-hidden="true"></div>
+				{/each}
+			</div>
 			{:else if instances.length === 0}
-				<div class="fed-empty">
+				<div class="empty-state fed-empty">
+					<span class="empty-icon"><Icon name="globe" size={26} /></span>
 					<p>{$t('federation.no_instances')}</p>
 				</div>
 			{:else}
 				<div class="instance-grid">
 					{#each instances as inst}
-						<div class="instance-card">
+						<div class="card instance-card">
 							<div class="instance-header">
 								<h3>{inst.name}</h3>
-								<span class="mode-badge {modeClass(inst.platform_mode)}">
+								<span class="badge badge-caps {inst.platform_mode === 'red' ? 'badge-error' : 'badge-primary'}">
 									{inst.platform_mode === 'red' ? $t('federation.mode_red') : $t('federation.mode_blue')}
 								</span>
 							</div>
@@ -396,14 +400,14 @@
 								</div>
 							</div>
 							<div class="instance-footer">
-								<span class="reachable-badge" class:unreachable={!inst.is_reachable}>
+								<span class="badge" class:badge-success={inst.is_reachable}>
 									{inst.is_reachable ? $t('federation.reachable') : $t('federation.unreachable')}
 								</span>
 								{#if inst.admin_contact}
 									<span class="admin-contact">{inst.admin_contact}</span>
 								{/if}
-								<button class="btn-remove" onclick={() => removeInstance(inst.id)} title={$t('common.delete')}>
-									&times;
+								<button class="btn btn-ghost btn-sm btn-remove" onclick={() => removeInstance(inst.id)} title={$t('common.delete')} aria-label={$t('common.delete')}>
+									<Icon name="x" size={16} />
 								</button>
 							</div>
 						</div>
@@ -419,25 +423,6 @@
 		width: 100%;
 	}
 
-
-	.btn-find {
-		padding: 0.5rem 1rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border-radius: var(--radius);
-		font-size: 0.88rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-		white-space: nowrap;
-	}
-
-	.btn-find:hover {
-		background: var(--color-primary-hover);
-		text-decoration: none;
-		box-shadow: var(--shadow);
-		transform: translateY(-1px);
-	}
 
 	/* ── My community card ──────────────────── */
 
@@ -456,20 +441,9 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		padding: 1.25rem;
 		background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-primary-light) 100%);
-		border: 1px solid var(--color-primary);
-		border-left: 4px solid var(--color-success);
-		border-radius: var(--radius-lg);
-		text-decoration: none;
-		color: var(--color-text);
-		transition: all var(--transition-fast);
-	}
-
-	.my-community-card:hover {
-		box-shadow: var(--shadow-md);
-		transform: translateY(-2px);
-		text-decoration: none;
+		border-color: var(--color-primary);
+		border-inline-start: 4px solid var(--color-success);
 	}
 
 	.my-card-left h3 {
@@ -482,15 +456,6 @@
 		display: flex;
 		gap: 0.4rem;
 		flex-wrap: wrap;
-	}
-
-	.tag {
-		font-size: 0.72rem;
-		font-weight: 500;
-		padding: 0.12rem 0.45rem;
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
 	}
 
 	.tag-crisis {
@@ -539,8 +504,6 @@
 	/* ── Empty state ─────────────────────────── */
 
 	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
 		background: var(--color-surface);
 		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-lg);
@@ -554,38 +517,6 @@
 	.empty-state p {
 		color: var(--color-text-muted);
 		margin-bottom: 1rem;
-	}
-
-	.btn-primary {
-		display: inline-block;
-		padding: 0.5rem 1.25rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		text-decoration: none;
-	}
-
-	/* ── Alerts ───────────────────────────────── */
-
-	.alert {
-		padding: 0.65rem 1rem;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		margin-bottom: 1rem;
-	}
-
-	.alert-error {
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		border: 1px solid var(--color-error);
 	}
 
 	/* ── All communities list ────────────────── */
@@ -612,22 +543,14 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		text-decoration: none;
-		color: var(--color-text);
-		transition: all var(--transition-fast);
 	}
 
 	.community-list-card:hover {
-		box-shadow: var(--shadow);
 		border-color: var(--color-primary);
-		text-decoration: none;
 	}
 
 	.community-list-card.is-mine {
-		border-left: 4px solid var(--color-success);
+		border-inline-start: 4px solid var(--color-success);
 	}
 
 	.list-card-info h3 {
@@ -640,15 +563,6 @@
 		display: flex;
 		gap: 0.4rem;
 		flex-wrap: wrap;
-	}
-
-	.tag-mine {
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-		font-size: 0.72rem;
-		font-weight: 600;
-		padding: 0.12rem 0.45rem;
-		border-radius: 999px;
 	}
 
 	.list-card-stats {
@@ -679,27 +593,6 @@
 		color: var(--color-text-muted);
 		min-width: 3.5rem;
 		text-align: center;
-	}
-
-	.btn-page {
-		padding: 0.4rem 0.85rem;
-		border: 1px solid var(--color-border);
-		background: var(--color-surface);
-		color: var(--color-text);
-		border-radius: var(--radius-sm);
-		font-size: 0.85rem;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-page:hover:not(:disabled) {
-		border-color: var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
-	.btn-page:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
 	}
 
 	/* ── Federation section ───────────────────── */
@@ -738,23 +631,6 @@
 		gap: 0.5rem;
 	}
 
-	.action-link {
-		padding: 0.4rem 0.9rem;
-		border-radius: var(--radius-sm);
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-		text-decoration: none;
-		font-size: 0.85rem;
-		font-weight: 600;
-		transition: all var(--transition-fast);
-	}
-
-	.action-link:hover {
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		text-decoration: none;
-	}
-
 	/* Federation alerts */
 	.fed-alerts {
 		margin-bottom: 1rem;
@@ -767,7 +643,7 @@
 		padding: 0.75rem 1rem;
 		border-radius: var(--radius);
 		margin-bottom: 0.5rem;
-		border-left: 4px solid;
+		border-inline-start: 4px solid;
 	}
 
 	.fed-alert-card.severity-info {
@@ -790,7 +666,6 @@
 		font-weight: 700;
 		padding: 0.15rem 0.5rem;
 		border-radius: 999px;
-		background: var(--color-surface);
 		white-space: nowrap;
 	}
 
@@ -811,9 +686,6 @@
 
 	/* Admin controls */
 	.fed-admin-controls {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
 		padding: 1rem;
 		margin-bottom: 1.5rem;
 	}
@@ -825,17 +697,6 @@
 
 	.fed-url-input {
 		flex: 1;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.9rem;
-		background: var(--color-bg);
-		color: var(--color-text);
-	}
-
-	.fed-url-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
 	}
 
 	.fed-actions {
@@ -844,68 +705,11 @@
 		margin-top: 0.75rem;
 	}
 
-	.fed-error-text {
-		color: var(--color-error);
-		font-size: 0.85rem;
-		margin: 0.5rem 0 0;
-	}
-
-	.fed-sync-message {
-		font-size: 0.85rem;
-		color: var(--color-success, #10b981);
-		margin: 0.5rem 0 0;
-	}
-
-	/* Buttons */
-	.btn {
-		padding: 0.5rem 1rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		border: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	:global(.federation-section) .btn-primary {
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		display: inline-block;
-	}
-
-	:global(.federation-section) .btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-	}
-
-	.btn-secondary {
-		background: var(--color-surface);
-		color: var(--color-text);
-		border: 1px solid var(--color-border);
-	}
-
-	.btn-secondary:hover:not(:disabled) {
-		border-color: var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
 	/* Instance grid */
 	.instance-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 		gap: 1rem;
-	}
-
-	.instance-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 1.25rem;
-		transition: box-shadow var(--transition-fast);
 	}
 
 	.instance-card:hover {
@@ -924,24 +728,6 @@
 		font-size: 1.05rem;
 		font-weight: 600;
 		color: var(--color-text);
-	}
-
-	.mode-badge {
-		font-size: 0.72rem;
-		font-weight: 700;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		text-transform: uppercase;
-	}
-
-	.mode-blue {
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-	}
-
-	.mode-red {
-		background: var(--color-error-bg, rgba(239, 68, 68, 0.1));
-		color: var(--color-error);
 	}
 
 	.instance-desc {
@@ -990,41 +776,20 @@
 		font-size: 0.82rem;
 	}
 
-	.reachable-badge {
-		color: var(--color-success, #10b981);
-		font-weight: 600;
-	}
-
-	.reachable-badge.unreachable {
-		color: var(--color-text-muted);
-	}
-
 	.admin-contact {
 		color: var(--color-text-muted);
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.btn-remove {
-		background: none;
-		border: none;
 		color: var(--color-text-muted);
-		font-size: 1.2rem;
-		cursor: pointer;
-		padding: 0 0.25rem;
-		line-height: 1;
 	}
 
-	.btn-remove:hover {
+	.btn-remove:hover:not(:disabled) {
 		color: var(--color-error);
 	}
 
 	/* Federation empty / loading */
-	.fed-loading {
-		text-align: center;
-		color: var(--color-text-muted);
-		padding: 2rem;
-	}
-
 	.fed-empty {
 		text-align: center;
 		padding: 2rem 1rem;

@@ -742,7 +742,7 @@ input[type='checkbox'], input[type='radio'] {
 }
 
 .field > label,
-label.field > span:first-child,
+label.field,
 .field-label {
 	font-size: 0.85rem;
 	font-weight: 600;
@@ -761,6 +761,7 @@ label.field > span:first-child,
 	background: var(--color-surface);
 	color: var(--color-text);
 	font-size: 0.95rem;
+	font-weight: 400;
 	line-height: 1.4;
 }
 
