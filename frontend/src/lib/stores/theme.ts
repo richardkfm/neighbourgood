@@ -3,7 +3,9 @@
  * Persists to localStorage and syncs with the <html> data-theme attribute.
  */
 
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
+import { api } from '$lib/api';
+import { token } from '$lib/stores/auth';
 
 function getInitialTheme(): 'light' | 'dark' {
 	if (typeof localStorage === 'undefined') return 'light';
@@ -60,14 +62,65 @@ export function toggleBandwidth() {
 
 export const platformMode = writable<'blue' | 'red'>('blue');
 
+/** Bandwidth preference to restore once Red Sky ends (Red Sky forces 'low'). */
+const PRE_RED_BANDWIDTH_KEY = 'ng_bandwidth_pre_red';
+
 export function setPlatformMode(mode: 'blue' | 'red') {
 	platformMode.set(mode);
 	if (typeof document !== 'undefined') {
 		if (mode === 'red') {
 			document.documentElement.setAttribute('data-mode', 'red');
+			try {
+				// Remember the user's own preference once; a reload while still in
+				// Red Sky must not overwrite it with the forced 'low'.
+				if (localStorage.getItem(PRE_RED_BANDWIDTH_KEY) === null) {
+					localStorage.setItem(PRE_RED_BANDWIDTH_KEY, get(bandwidth));
+				}
+			} catch {
+				// localStorage unavailable — skip restore support
+			}
 			bandwidth.set('low');
 		} else {
 			document.documentElement.removeAttribute('data-mode');
+			// The bandwidth toggle is only shown in Red Sky, so without this the
+			// forced low-bandwidth mode would stick forever after the crisis (also
+			// when the crisis ended while the app was closed).
+			try {
+				const previous = localStorage.getItem(PRE_RED_BANDWIDTH_KEY);
+				if (previous !== null) {
+					localStorage.removeItem(PRE_RED_BANDWIDTH_KEY);
+					if (previous === 'normal') bandwidth.set('normal');
+				}
+			} catch {
+				// ignore
+			}
 		}
 	}
+}
+
+/**
+ * Derive the global Blue/Red Sky UI mode from the instance mode and the
+ * viewer's own community memberships (any Red Sky community => Red Sky UI).
+ * On a network error the current mode is kept, so going offline mid-crisis
+ * never flips the UI back to Blue Sky.
+ */
+export async function refreshPlatformMode(): Promise<void> {
+	let mode: 'blue' | 'red';
+	try {
+		const status = await api<{ mode: string }>('/status');
+		mode = status.mode === 'red' ? 'red' : 'blue';
+	} catch {
+		return;
+	}
+	if (get(token)) {
+		try {
+			const communities = await api<Array<{ mode: string }>>('/communities/my/memberships', {
+				auth: true
+			});
+			if (communities.some((c) => c.mode === 'red')) mode = 'red';
+		} catch {
+			return;
+		}
+	}
+	setPlatformMode(mode);
 }

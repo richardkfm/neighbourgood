@@ -3,8 +3,9 @@
 	import { onMount } from 'svelte';
 	import { isLoggedIn, user, token, logout, syncTokenFromStorage } from '$lib/stores/auth';
 	import type { UserProfile } from '$lib/stores/auth';
-	import { theme, toggleTheme, bandwidth, toggleBandwidth, platformMode, setPlatformMode } from '$lib/stores/theme';
+	import { theme, toggleTheme, bandwidth, toggleBandwidth, platformMode, refreshPlatformMode } from '$lib/stores/theme';
 	import { page } from '$app/stores';
+	import { afterNavigate } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { t } from 'svelte-i18n';
 	import { get } from 'svelte/store';
@@ -52,6 +53,33 @@
 		closeLangMenu();
 	}
 
+	// Red Sky can start (vote / admin toggle / instance mode) while the app is
+	// open, and login/logout happen without a full reload, so the global mode and
+	// cross-instance alerts are re-evaluated on navigation, tab focus and a slow
+	// timer rather than only once at startup.
+	let lastCrisisRefresh = 0;
+	const CRISIS_REFRESH_MS = 20_000;
+
+	async function refreshCrisisAwareness(force = false) {
+		const now = Date.now();
+		if (!force && now - lastCrisisRefresh < CRISIS_REFRESH_MS) return;
+		lastCrisisRefresh = now;
+		await refreshPlatformMode();
+		if (get(token)) {
+			try {
+				fedAlerts = await api<FedAlert[]>('/federation/alerts?active_only=true', { auth: true });
+			} catch {
+				// ignore — keep showing the previous alerts
+			}
+		} else {
+			fedAlerts = [];
+		}
+	}
+
+	afterNavigate(() => {
+		if (typeof window !== 'undefined') refreshCrisisAwareness();
+	});
+
 	onMount(async () => {
 		// ── Sync token from localStorage after SSR hydration ────────────────────
 		syncTokenFromStorage();
@@ -95,30 +123,8 @@
 			hydrateLocale($user.language_code);
 		}
 
-		// Fetch platform mode and apply Red Sky automatically when active
-		try {
-			const status = await api<{ mode: string }>('/status');
-			setPlatformMode(status.mode);
-		} catch {
-			// Backend unreachable — leave mode at default blue
-		}
-
-		// Check if user is a member of any Red Sky communities
-		if (t) {
-			try {
-				const communities = await api<Array<{ id: number; mode: string }>>(
-					'/communities/my/memberships',
-					{ auth: true }
-				);
-				// If any community is in Red Sky mode, activate it globally
-				const hasRedSky = communities.some((c) => c.mode === 'red');
-				if (hasRedSky) {
-					setPlatformMode('red');
-				}
-			} catch {
-				// If we can't fetch communities, just use the instance mode
-			}
-		}
+		// Apply Red Sky (instance mode or any of the user's communities) and load alerts
+		await refreshCrisisAwareness();
 
 		// Fetch unread message count for nav badge
 		if (t) {
@@ -127,15 +133,6 @@
 				unreadCount = data.count;
 			} catch {
 				// Ignore — badge just won't show
-			}
-		}
-
-		// Fetch active cross-instance alerts
-		if (t) {
-			try {
-				fedAlerts = await api<FedAlert[]>('/federation/alerts?active_only=true', { auth: true });
-			} catch {
-				// ignore — alerts just won't show
 			}
 		}
 
@@ -223,9 +220,18 @@
 		};
 		navigator.serviceWorker?.addEventListener('message', handleSWMessage);
 
+		// Pick up a Red Sky switch that happens while the app stays open
+		const onVisible = () => {
+			if (document.visibilityState === 'visible') refreshCrisisAwareness();
+		};
+		document.addEventListener('visibilitychange', onVisible);
+		const crisisTimer = setInterval(() => refreshCrisisAwareness(), 60_000);
+
 		return () => {
 			unsub();
 			navigator.serviceWorker?.removeEventListener('message', handleSWMessage);
+			document.removeEventListener('visibilitychange', onVisible);
+			clearInterval(crisisTimer);
 		};
 	});
 

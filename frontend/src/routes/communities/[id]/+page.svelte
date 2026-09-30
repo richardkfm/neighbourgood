@@ -5,7 +5,7 @@
 	import { api } from '$lib/api';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
-	import { bandwidth, setPlatformMode } from '$lib/stores/theme';
+	import { bandwidth, refreshPlatformMode } from '$lib/stores/theme';
 	import type { ActivityOut, ActivityList, CommunityOut, CrisisStatus, EmergencyTicket as TicketOut, TicketList, CommunityMember as MemberOut, MergeSuggestion, InviteOut, Resource as ResourceItem } from '$lib/types';
 	import CrisisModePanel from '$lib/components/community/CrisisModePanel.svelte';
 	import MembersList from '$lib/components/community/MembersList.svelte';
@@ -69,9 +69,11 @@
 			// Load crisis status (public)
 			try {
 				crisisStatus = await api<CrisisStatus>(`/communities/${communityId}/crisis/status`);
-			// Apply the community's mode to the global theme
+			// Viewing a community must not change the global theme (that is derived
+			// from the viewer's own memberships); re-sync it in case this page's
+			// data shows a mode change (own vote/toggle, or a stale layout).
 			if (crisisStatus) {
-				setPlatformMode(crisisStatus.mode as 'blue' | 'red');
+				refreshPlatformMode();
 			}
 			} catch {
 				crisisStatus = null;
@@ -194,8 +196,8 @@
 			crisisStatus = await api<CrisisStatus>(`/communities/${communityId}/crisis/toggle`, {
 				method: 'POST', auth: true, body: { mode: newMode }
 			});
-			// Apply the mode to the global theme immediately
-			setPlatformMode(newMode as 'blue' | 'red');
+			// Re-derive the global theme (another of the user's communities may still be red)
+			await refreshPlatformMode();
 			actionMsg = newMode === 'red' ? 'Crisis mode activated!' : 'Switched back to normal mode.';
 			await loadData();
 		} catch (err) {
