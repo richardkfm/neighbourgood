@@ -31,6 +31,8 @@
 	/* Focus ring + layout tokens shared by every theme */
 	--color-on-error: #ffffff;
 	--color-on-success: #ffffff; /* 5.0:1 on --color-success */
+	--color-on-accent: #ffffff; /* 5.5:1 on --color-accent */
+	--color-on-warning: #ffffff; /* 5.0:1 on --color-warning */
 	--focus-ring: var(--color-primary);
 	--tap-target: 44px;
 	--bottom-nav-height: 64px;
@@ -92,6 +94,8 @@
 	--color-status-dot: #34d399;
 	--color-on-error: #1a0a0a;
 	--color-on-success: #052e16; /* 7.6:1 on the dark-theme success green */
+	--color-on-accent: #1f1206; /* 5.6:1 on the dark-theme accent */
+	--color-on-warning: #1f1206;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 	--shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -134,6 +138,8 @@
 	--color-status-dot: #ef4444;
 	--color-on-error: #1a0a0a;
 	--color-on-success: #052e16;
+	--color-on-accent: #1f1206;
+	--color-on-warning: #1f1206;
 	--focus-ring: #fbbf24;
 	--urgency-low: #b3b3b3;
 	--urgency-medium: #fbbf24;
@@ -267,6 +273,39 @@ h3, h4, h5, h6 {
 	.page-header h1 {
 		font-size: 1.6rem;
 	}
+}
+
+/* Resources / Skills tab switcher */
+.browse-tabs {
+	display: flex;
+	gap: 0.25rem;
+	border-bottom: 1px solid var(--color-border);
+	margin-bottom: 2rem;
+}
+
+.browse-tab {
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--tap-target);
+	padding: 0.65rem 1.25rem;
+	font-size: 0.95rem;
+	font-weight: 500;
+	color: var(--color-text-muted);
+	text-decoration: none;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.browse-tab:hover {
+	color: var(--color-text);
+	text-decoration: none;
+}
+
+.browse-tab.active {
+	color: var(--color-primary-text);
+	border-bottom-color: var(--color-primary);
+	font-weight: 600;
 }
 
 /* Filter bars (resources, skills pages) */
@@ -621,6 +660,12 @@ input[type='checkbox'], input[type='radio'] {
 	border-radius: var(--radius-sm);
 }
 
+.btn-lg {
+	min-height: 2.9rem;
+	padding: 0.7rem 1.5rem;
+	font-size: 0.95rem;
+}
+
 .btn-block {
 	display: flex;
 	width: 100%;
@@ -784,6 +829,47 @@ label.field > span:first-child,
 	.field select,
 	.input {
 		min-height: var(--tap-target);
+	}
+}
+
+/* Centered single-card layout for login / register / password reset */
+.auth-card {
+	max-width: 420px;
+	margin: 3rem auto;
+	padding: 2.25rem 2rem;
+}
+
+.auth-card h1 {
+	font-size: 1.9rem;
+	margin-bottom: 0.25rem;
+}
+
+.auth-card .subtitle {
+	margin: 0 0 1.75rem;
+}
+
+.auth-card .btn[type='submit'] {
+	margin-top: 0.5rem;
+}
+
+.auth-switch {
+	text-align: center;
+	margin-top: 1.5rem;
+	font-size: 0.9rem;
+	color: var(--color-text-muted);
+}
+
+.auth-switch a {
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--tap-target);
+	padding-inline: 0.5rem;
+}
+
+@media (max-width: 480px) {
+	.auth-card {
+		margin: 1rem auto;
+		padding: 1.5rem 1.25rem;
 	}
 }
 

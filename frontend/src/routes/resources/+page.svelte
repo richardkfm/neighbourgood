@@ -333,35 +333,6 @@
 </div>
 
 <style>
-	.browse-tabs {
-		display: flex;
-		gap: 0.25rem;
-		border-bottom: 1px solid var(--color-border);
-		margin-bottom: 2rem;
-	}
-
-	.browse-tab {
-		padding: 0.65rem 1.25rem;
-		font-size: 0.95rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-		text-decoration: none;
-		border-bottom: 2px solid transparent;
-		margin-bottom: -1px;
-		transition: all var(--transition-fast);
-	}
-
-	.browse-tab:hover {
-		color: var(--color-text);
-		text-decoration: none;
-	}
-
-	.browse-tab.active {
-		color: var(--color-primary-text);
-		border-bottom-color: var(--color-primary);
-		font-weight: 600;
-	}
-
 	.resources-page {
 		max-width: 960px;
 	}
@@ -452,6 +423,7 @@
 		line-height: 1.55;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}

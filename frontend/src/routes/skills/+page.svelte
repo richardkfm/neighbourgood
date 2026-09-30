@@ -5,6 +5,8 @@
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
+	import Icon from '$lib/components/Icon.svelte';
+	import { SKILL_CATEGORY_ICON, TRUST_BADGE_ICON } from '$lib/icons';
 
 	import type { OwnerTrust } from '$lib/types';
 
@@ -34,12 +36,6 @@
 
 	const CATEGORIES = ['', 'tutoring', 'repairs', 'cooking', 'languages', 'music', 'gardening', 'tech', 'crafts', 'fitness', 'other'];
 
-	const CATEGORY_ICONS: Record<string, string> = {
-		tutoring: '📚', repairs: '🔧', cooking: '🍳', languages: '🌐',
-		music: '🎵', gardening: '🌱', tech: '💻', crafts: '✂️',
-		fitness: '💪', other: '⭐'
-	};
-
 	const TYPE_FILTERS = ['', 'offer', 'request'];
 
 	let skills: Skill[] = $state([]);
@@ -61,6 +57,7 @@
 	let newSkillType = $state('offer');
 	let newCommunityId = $state('');
 	let createError = $state('');
+	let creating = $state(false);
 	let myCommunities = $state<MyCommunity[]>([]);
 
 	async function loadSkills() {
@@ -98,6 +95,8 @@
 			createError = get(t)('resources.please_select_community');
 			return;
 		}
+		if (creating) return;
+		creating = true;
 		try {
 			await api('/skills', {
 				method: 'POST',
@@ -119,6 +118,8 @@
 			}
 		} catch (err) {
 			createError = err instanceof Error ? err.message : 'Failed to create skill listing';
+		} finally {
+			creating = false;
 		}
 	}
 
@@ -159,7 +160,7 @@
 	<div class="page-header">
 		<h1>{$t('skills.title')}</h1>
 		{#if $isLoggedIn}
-			<button class="btn-primary" onclick={() => (showCreateForm = !showCreateForm)}>
+			<button class="btn btn-primary" onclick={() => (showCreateForm = !showCreateForm)} aria-expanded={showCreateForm}>
 				{showCreateForm ? $t('common.cancel') : $t('skills.share_btn')}
 			</button>
 		{/if}
@@ -171,22 +172,22 @@
 	</nav>
 
 	{#if showCreateForm}
-		<div class="create-form-card">
+		<div class="card create-form-card">
 			<h2>{$t('skills.share_title')}</h2>
 			{#if createError}
-				<p class="error">{createError}</p>
+				<p class="alert alert-error" role="alert">{createError}</p>
 			{/if}
-			<form onsubmit={handleCreate}>
-				<label>
+			<form class="form-stack" onsubmit={handleCreate}>
+				<label class="field">
 					<span>{$t('skills.title_label')}</span>
 					<input type="text" bind:value={newTitle} required placeholder="e.g. Piano Lessons" />
 				</label>
-				<label>
+				<label class="field">
 					<span>{$t('skills.description_label')}</span>
 					<textarea bind:value={newDescription} rows="3" placeholder="What skill are you offering or looking for?"></textarea>
 				</label>
-				<div class="form-row">
-					<label>
+				<div class="field-row">
+					<label class="field">
 						<span>{$t('skills.category_label')}</span>
 						<select bind:value={newCategory}>
 							{#each CATEGORIES.slice(1) as cat}
@@ -194,7 +195,7 @@
 							{/each}
 						</select>
 					</label>
-					<label>
+					<label class="field">
 						<span>{$t('skills.type_label')}</span>
 						<select bind:value={newSkillType}>
 							<option value="offer">{$t('skills.type_offering')}</option>
@@ -203,7 +204,7 @@
 					</label>
 				</div>
 				{#if myCommunities.length > 1}
-					<label>
+					<label class="field">
 						<span>{$t('skills.community_label')}</span>
 						<select bind:value={newCommunityId} required>
 							{#each myCommunities as c}
@@ -212,9 +213,9 @@
 						</select>
 					</label>
 				{:else if myCommunities.length === 0}
-					<p class="hint">{$t('skills.need_community')}</p>
+					<p class="field-hint">{$t('skills.need_community')}</p>
 				{/if}
-				<button type="submit" class="btn-primary" disabled={myCommunities.length === 0}>{$t('skills.post_btn')}</button>
+				<button type="submit" class="btn btn-primary" class:is-loading={creating} disabled={myCommunities.length === 0}>{$t('skills.post_btn')}</button>
 			</form>
 		</div>
 	{/if}
@@ -222,19 +223,19 @@
 	<div class="filter-bar">
 		<input
 			type="search"
-			class="search-input"
+			class="input input-grow"
 			placeholder={$t('skills.search_placeholder')}
 			bind:value={searchQuery}
 			oninput={handleSearchInput}
 		/>
-		<select bind:value={filterCategory}>
+		<select class="input" bind:value={filterCategory}>
 			{#each CATEGORIES as cat}
 				<option value={cat}>
 					{cat === '' ? $t('skills.all_categories') : $t('skills.categories.' + cat)}
 				</option>
 			{/each}
 		</select>
-		<select bind:value={filterType}>
+		<select class="input" bind:value={filterType}>
 			{#each TYPE_FILTERS as typeFilter}
 				<option value={typeFilter}>
 					{#if typeFilter === ''}
@@ -248,7 +249,7 @@
 			{/each}
 		</select>
 		{#if myCommunities.length > 1}
-			<select bind:value={filterCommunity}>
+			<select class="input" bind:value={filterCommunity}>
 				{#each myCommunities as c}
 					<option value={c.id}>{c.name}</option>
 				{/each}
@@ -258,29 +259,46 @@
 	</div>
 
 	{#if loading}
-		<p class="loading">{$t('common.loading')}</p>
+		<div class="skill-grid" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3, 4, 5, 6] as n (n)}
+				<div class="card skill-card" aria-hidden="true">
+					<span class="skeleton card-icon"></span>
+					<div class="card-body">
+						<span class="skeleton" style="height: 0.9rem; width: 40%"></span>
+						<span class="skeleton" style="height: 1.1rem; width: 75%; margin-top: 0.6rem"></span>
+						<span class="skeleton" style="height: 0.8rem; width: 90%; margin-top: 0.6rem"></span>
+					</div>
+				</div>
+			{/each}
+		</div>
 	{:else if skills.length === 0}
 		<div class="empty-state">
+			<span class="empty-icon"><Icon name="lightbulb" size={26} /></span>
 			<p>{$t('skills.no_skills')}</p>
 			{#if searchQuery || filterCategory || filterType}
 				<p>{$t('resources.adjust_filters')}</p>
 			{:else if $isLoggedIn}
 				<p>{$t('skills.first_skill')}</p>
+				<button class="btn btn-primary" onclick={() => { showCreateForm = true; window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+					<Icon name="plus" size={16} />{$t('skills.share_btn')}
+				</button>
 			{:else}
 				<p>{$t('skills.sign_up_skills')}</p>
+				<a href="/register" class="btn btn-primary">{$t('nav.signup')}</a>
 			{/if}
 		</div>
 	{:else}
 		<div class="skill-grid">
 			{#each skills as skill}
-				<a href="/skills/{skill.id}" class="skill-card">
+				<a href="/skills/{skill.id}" class="card card-interactive skill-card">
 					<div class="card-icon">
-						<span>{CATEGORY_ICONS[skill.category] ?? '⭐'}</span>
+						<Icon name={SKILL_CATEGORY_ICON[skill.category] ?? 'star'} size={22} />
 					</div>
 					<div class="card-body">
 						<div class="card-header">
-							<span class="category-badge">{skill.category}</span>
-							<span class="type-badge" class:type-offer={skill.skill_type === 'offer'} class:type-request={skill.skill_type === 'request'}>
+							<span class="badge badge-primary badge-caps">{skill.category}</span>
+							<span class="badge" class:badge-success={skill.skill_type === 'offer'} class:badge-warning={skill.skill_type === 'request'}>
 								{skill.skill_type === 'offer' ? $t('skills.offering') : $t('skills.looking_for')}
 							</span>
 						</div>
@@ -293,10 +311,10 @@
 							<span class="owner">by {skill.owner.display_name}</span>
 							{#if skill.owner_trust}
 								{#if skill.owner_trust.total_reviews > 0}
-									<span class="trust-stars">★ {skill.owner_trust.average_rating.toFixed(1)}</span>
+									<span class="trust-stars"><Icon name="star" size={13} />{skill.owner_trust.average_rating.toFixed(1)}</span>
 								{/if}
 								{#each skill.owner_trust.badges as badge}
-									<span class="trust-pill">{badge === 'skilled_helper' ? '⭐' : badge === 'trusted_lender' ? '📦' : '🤝'}</span>
+									<span class="trust-pill"><Icon name={TRUST_BADGE_ICON[badge] ?? 'handshake'} size={14} /></span>
 								{/each}
 							{/if}
 						</div>
@@ -308,35 +326,6 @@
 </div>
 
 <style>
-	.browse-tabs {
-		display: flex;
-		gap: 0.25rem;
-		border-bottom: 1px solid var(--color-border);
-		margin-bottom: 2rem;
-	}
-
-	.browse-tab {
-		padding: 0.65rem 1.25rem;
-		font-size: 0.95rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-		text-decoration: none;
-		border-bottom: 2px solid transparent;
-		margin-bottom: -1px;
-		transition: all var(--transition-fast);
-	}
-
-	.browse-tab:hover {
-		color: var(--color-text);
-		text-decoration: none;
-	}
-
-	.browse-tab.active {
-		color: var(--color-primary-text);
-		border-bottom-color: var(--color-primary);
-		font-weight: 600;
-	}
-
 	.skills-page {
 		max-width: 960px;
 	}
@@ -345,108 +334,12 @@
 		margin-bottom: 1.25rem;
 	}
 
-	.btn-primary {
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		padding: 0.55rem 1.2rem;
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		box-shadow: var(--shadow-sm);
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-	}
-
-	.create-form-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.create-form-card h2 {
-		font-size: 1.1rem;
-		margin-bottom: 1rem;
-	}
-
-	.create-form-card form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem;
-	}
-
-	label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	label span {
-		font-size: 0.85rem;
-		font-weight: 500;
-	}
-
-	input, textarea, select {
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-	}
-
-	.error {
-		color: var(--color-error);
-		font-size: 0.9rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.hint {
-		font-size: 0.85rem;
-		color: var(--color-text-muted);
-	}
-
 	.filter-bar {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
 		margin-bottom: 2rem;
-		flex-wrap: wrap;
-	}
-
-	.search-input {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.filter-bar input,
-	.filter-bar select {
-		padding: 0.6rem 0.9rem;
-	}
-
-	.filter-bar select {
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.88rem;
-		background: var(--color-surface);
-		color: var(--color-text);
 	}
 
 	.result-count {
-		margin-left: auto;
+		margin-inline-start: auto;
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
 		white-space: nowrap;
@@ -461,20 +354,11 @@
 	.skill-card {
 		display: flex;
 		gap: 1rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		padding: 1.25rem;
-		transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
-		text-decoration: none;
-		color: var(--color-text);
 	}
 
 	.skill-card:hover {
 		border-color: var(--color-primary);
-		box-shadow: var(--shadow-md);
 		transform: translateY(-3px);
-		text-decoration: none;
 	}
 
 	.card-icon {
@@ -485,7 +369,7 @@
 		height: 44px;
 		border-radius: var(--radius);
 		background: var(--color-primary-light);
-		font-size: 1.35rem;
+		color: var(--color-primary-text);
 		flex-shrink: 0;
 	}
 
@@ -507,34 +391,6 @@
 		flex-wrap: wrap;
 	}
 
-	.category-badge {
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		background: var(--color-primary-light);
-		padding: 0.15rem 0.55rem;
-		border-radius: 999px;
-		color: var(--color-primary-text);
-		font-weight: 600;
-	}
-
-	.type-badge {
-		font-size: 0.7rem;
-		padding: 0.15rem 0.55rem;
-		border-radius: 999px;
-		font-weight: 600;
-	}
-
-	.type-offer {
-		background: var(--color-success-bg);
-		color: var(--color-success);
-	}
-
-	.type-request {
-		background: var(--color-warning-bg);
-		color: var(--color-warning);
-	}
-
 	.skill-card h3 {
 		font-size: 1.05rem;
 		margin-bottom: 0.35rem;
@@ -547,6 +403,7 @@
 		line-height: 1.55;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
@@ -564,25 +421,16 @@
 	}
 
 	.trust-stars {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
 		color: var(--color-warning);
 		font-weight: 600;
 	}
 
 	.trust-pill {
-		font-size: 0.72rem;
+		display: inline-flex;
+		color: var(--color-primary-text);
 	}
 
-	.loading {
-		color: var(--color-text-muted);
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
-		color: var(--color-text-muted);
-	}
-
-	.empty-state p + p {
-		margin-top: 0.5rem;
-	}
 </style>

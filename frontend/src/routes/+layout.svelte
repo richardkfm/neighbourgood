@@ -449,7 +449,7 @@
 				</div>
 			{:else}
 				<a href="/login" class="nav-link" onclick={closeMobileMenu}>{$t('nav.login')}</a>
-				<a href="/register" class="nav-btn-primary" onclick={closeMobileMenu}>{$t('nav.signup')}</a>
+				<a href="/register" class="btn btn-primary btn-sm" onclick={closeMobileMenu}>{$t('nav.signup')}</a>
 			{/if}
 		</div>
 	</div>
@@ -623,7 +623,7 @@
 		height: 34px;
 		border-radius: var(--radius-sm);
 		background: var(--color-accent);
-		color: white;
+		color: var(--color-on-accent);
 		flex-shrink: 0;
 	}
 
@@ -831,26 +831,6 @@
 		color: var(--color-error);
 	}
 
-	.nav-btn-primary {
-		display: inline-flex;
-		align-items: center;
-		background: var(--color-primary);
-		color: var(--color-on-primary) !important;
-		padding: 0.4rem 0.9rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.85rem;
-		font-weight: 600;
-		transition: all var(--transition-fast);
-		text-decoration: none;
-	}
-
-	.nav-btn-primary:hover {
-		background: var(--color-primary-hover);
-		text-decoration: none;
-		box-shadow: var(--shadow-md);
-		transform: translateY(-1px);
-	}
-
 	/* ── Red Sky identity in the nav ─────────────────────────── */
 
 	.main-nav.crisis {
@@ -987,9 +967,8 @@
 			justify-content: space-between;
 		}
 
-		.nav-btn-primary {
+		.main-nav .btn-primary {
 			margin: 0.25rem 1.5rem;
-			justify-content: center;
 		}
 
 		.mobile-overlay {
@@ -1198,7 +1177,7 @@
 	.update-banner-btn {
 		margin-inline-start: auto;
 		background: var(--color-accent);
-		color: white;
+		color: var(--color-on-accent);
 		border: none;
 		border-radius: var(--radius-sm);
 		padding: 0.25rem 0.75rem;
@@ -1474,8 +1453,8 @@
 
 	.offline-queue-chip {
 		margin-inline-start: auto;
-		background: var(--color-warning, #f59e0b);
-		color: white;
+		background: var(--color-warning);
+		color: var(--color-on-warning);
 		font-size: 0.75rem;
 		font-weight: 700;
 		padding: 0.15rem 0.6rem;
