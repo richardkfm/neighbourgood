@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isLoggedIn, token } from '$lib/stores/auth';
+	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
+	import { meshEnabled, MESH_COMMUNITY_KEY } from '$lib/stores/mesh-settings';
+	import { api } from '$lib/api';
 	import { t } from 'svelte-i18n';
 	import {
 		meshStatus,
@@ -14,7 +16,8 @@
 		connectToMesh,
 		disconnectFromMesh,
 		syncMeshMessagesToServer,
-		broadcastHeartbeat,
+		startHeartbeat,
+		stopHeartbeat,
 		meshRelayEnabled,
 		meshRelayCount,
 		meshAckStatus,
@@ -22,12 +25,28 @@
 	} from '$lib/stores/mesh';
 	import type { MeshStatus } from '$lib/stores/mesh';
 	import type { NGMeshMessage } from '$lib/bluetooth/protocol';
+	import type { CommunityOut, MeshSyncResult } from '$lib/types';
+	import {
+		currentMeshKeyId,
+		ensureMeshKeyRegistered,
+		listMeshKeys,
+		revokeMeshKey,
+		type MeshKeyInfo
+	} from '$lib/mesh-keys';
 
 	let error = $state('');
 	let syncStatus = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
-	let syncResult = $state<{ synced: number; duplicates: number; errors: number } | null>(null);
+	let syncResult = $state<MeshSyncResult | null>(null);
 	let lastSyncTime = $state<string | null>(null);
-	let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+	// The community heartbeats announce and the offline triage view is scoped to.
+	// Remembered locally so it is known offline too.
+	let communities = $state<CommunityOut[]>([]);
+	let communityId = $state<number | null>(null);
+
+	let keys = $state<MeshKeyInfo[]>([]);
+	let thisKeyId = $state<string | null>(null);
+	let keysError = $state('');
 
 	// Reactive derivations
 	let status: MeshStatus = $derived($meshStatus);
@@ -47,11 +66,75 @@
 		}
 		// Restore last sync time from session
 		lastSyncTime = sessionStorage.getItem('ng_mesh_last_sync');
+		try {
+			const stored = Number(localStorage.getItem(MESH_COMMUNITY_KEY));
+			if (stored) communityId = stored;
+		} catch {
+			// storage unavailable
+		}
+		if (!$meshEnabled) return;
+		loadCommunities();
+		loadKeys();
 	});
 
 	onDestroy(() => {
-		if (heartbeatInterval) clearInterval(heartbeatInterval);
+		stopHeartbeat();
 	});
+
+	// Announce ourselves to nearby peers while connected
+	$effect(() => {
+		const name = $user?.display_name;
+		if ($meshEnabled && status === 'connected' && communityId && name) {
+			startHeartbeat(communityId, name);
+			return () => stopHeartbeat();
+		}
+	});
+
+	async function loadCommunities() {
+		try {
+			communities = await api<CommunityOut[]>('/communities/my/memberships', { auth: true });
+		} catch {
+			return; // offline: keep the remembered community
+		}
+		if (!communities.some((c) => c.id === communityId)) {
+			const initial = communities.find((c) => (c.effective_mode ?? c.mode) === 'red') ?? communities[0];
+			selectCommunity(initial?.id ?? null);
+		}
+	}
+
+	function selectCommunity(id: number | null) {
+		communityId = id;
+		try {
+			if (id) localStorage.setItem(MESH_COMMUNITY_KEY, String(id));
+			else localStorage.removeItem(MESH_COMMUNITY_KEY);
+		} catch {
+			// storage unavailable
+		}
+	}
+
+	async function loadKeys() {
+		const uid = $user?.id;
+		if (!$isOnline || !uid) return;
+		keysError = '';
+		try {
+			await ensureMeshKeyRegistered(uid);
+			thisKeyId = await currentMeshKeyId(uid);
+			keys = await listMeshKeys();
+		} catch (e) {
+			keysError = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	async function handleRevoke(keyId: string) {
+		keysError = '';
+		try {
+			await revokeMeshKey(keyId);
+			// Revoking this browser's own key: register a fresh one right away
+			await loadKeys();
+		} catch (e) {
+			keysError = e instanceof Error ? e.message : String(e);
+		}
+	}
 
 	async function handleConnect() {
 		error = '';
@@ -67,10 +150,6 @@
 	}
 
 	function handleDisconnect() {
-		if (heartbeatInterval) {
-			clearInterval(heartbeatInterval);
-			heartbeatInterval = null;
-		}
 		disconnectFromMesh();
 	}
 
@@ -156,7 +235,12 @@
 		<p class="mesh-subtitle">{$t('mesh.subtitle')}</p>
 	</header>
 
-	{#if !supported}
+	{#if !$meshEnabled}
+		<div class="mesh-card mesh-disabled">
+			<p>{$t('mesh.disabled_notice')}</p>
+			<a href="/settings" class="btn btn-primary">{$t('mesh.enable_in_settings')}</a>
+		</div>
+	{:else if !supported}
 		<div class="mesh-card mesh-unsupported">
 			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
 			<p>{$t('mesh.not_supported')}</p>
@@ -192,6 +276,16 @@
 			{:else}
 				<!-- Connected -->
 				<div class="connection-info">
+					{#if communities.length > 1}
+						<label class="device-row">
+							<span class="device-label">{$t('mesh.community')}</span>
+							<select value={communityId} onchange={(e) => selectCommunity(Number(e.currentTarget.value))}>
+								{#each communities as c (c.id)}
+									<option value={c.id}>{c.name}</option>
+								{/each}
+							</select>
+						</label>
+					{/if}
 					<div class="device-row">
 						<span class="device-label">{$t('mesh.device')}</span>
 						<span class="device-name">{deviceName || $t('mesh.unknown_device')}</span>
@@ -243,7 +337,12 @@
 						<div class="message-item">
 							<span class="msg-icon">{messageTypeIcon(msg.type)}</span>
 							<div class="msg-content">
-								<span class="msg-type">{messageTypeLabel(msg.type)}</span>
+								<span class="msg-type">
+									{messageTypeLabel(msg.type)}
+									{#if msg.sig}
+										<span class="signed-badge" title={$t('mesh.signed_hint')}>{$t('mesh.signed')}</span>
+									{/if}
+								</span>
 								<span class="msg-sender">{$t('common.by')} {msg.sender_name}</span>
 								{#if msg.type === 'emergency_ticket' && msg.data.title}
 									<span class="msg-detail">{msg.data.title}</span>
@@ -286,17 +385,24 @@
 					{:else}
 						<p class="sync-offline-hint">{$t('mesh.sync_when_online')}</p>
 					{/if}
+				</div>
+			{/if}
 
-					{#if syncResult}
-						<div class="sync-result" class:sync-success={syncResult.errors === 0} class:sync-partial={syncResult.errors > 0}>
-							{$t('mesh.sync_result', { values: { synced: syncResult.synced, duplicates: syncResult.duplicates, errors: syncResult.errors } })}
-						</div>
+			<!-- Shown after the queue empties too, so the outcome of a sync stays visible -->
+			{#if syncResult}
+				<div class="sync-result" class:sync-success={syncResult.errors === 0} class:sync-partial={syncResult.errors > 0}>
+					{$t('mesh.sync_result', { values: { synced: syncResult.synced, duplicates: syncResult.duplicates, errors: syncResult.errors } })}
+					{#if syncResult.verified}
+						· {$t('mesh.sync_verified', { values: { count: syncResult.verified } })}
 					{/if}
-
-					{#if lastSyncTime}
-						<p class="last-sync">{$t('mesh.last_sync')}: {lastSyncTime}</p>
+					{#if syncResult.rejected}
+						· {$t('mesh.sync_rejected', { values: { count: syncResult.rejected } })}
 					{/if}
 				</div>
+			{/if}
+
+			{#if lastSyncTime}
+				<p class="last-sync">{$t('mesh.last_sync')}: {lastSyncTime}</p>
 			{/if}
 		</div>
 
@@ -308,6 +414,42 @@
 				<p>{$t('mesh.offline_triage_hint')}</p>
 			</div>
 		</a>
+
+		<!-- Device keys: which browsers can sign mesh messages for this account -->
+		<div class="mesh-card">
+			<h2 class="card-title">{$t('mesh.keys_title')}</h2>
+			<p class="keys-hint">{$t('mesh.keys_hint')}</p>
+			{#if !$isOnline}
+				<p class="sync-offline-hint">{$t('mesh.keys_offline')}</p>
+			{:else if keys.length === 0}
+				<p class="empty-state">{$t('mesh.keys_none')}</p>
+			{:else}
+				<ul class="key-list">
+					{#each keys as k (k.key_id)}
+						<li class="key-item" class:revoked={k.revoked_at}>
+							<div class="key-info">
+								<strong>{k.device_name || $t('mesh.unknown_device')}</strong>
+								{#if k.key_id === thisKeyId}<span class="signed-badge">{$t('mesh.keys_this_device')}</span>{/if}
+								<span class="key-meta">
+									{k.key_id.slice(0, 12)}… ·
+									{k.revoked_at
+										? $t('mesh.keys_revoked')
+										: $t('mesh.keys_added', { values: { date: new Date(k.created_at).toLocaleDateString() } })}
+								</span>
+							</div>
+							{#if !k.revoked_at}
+								<button class="btn btn-outline btn-danger btn-small" onclick={() => handleRevoke(k.key_id)}>
+									{$t('mesh.keys_revoke')}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if keysError}
+				<p class="error-message">{keysError}</p>
+			{/if}
+		</div>
 
 		<!-- How It Works Card -->
 		<div class="mesh-card mesh-info">
@@ -326,6 +468,74 @@
 </div>
 
 <style>
+	.mesh-disabled {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.75rem;
+	}
+
+	.signed-badge {
+		display: inline-block;
+		margin-inline-start: 0.35rem;
+		padding: 0.05rem 0.4rem;
+		border-radius: var(--radius-sm);
+		background: var(--color-success-bg);
+		color: var(--color-success);
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+
+	.key-info .signed-badge {
+		align-self: flex-start;
+		margin-inline-start: 0;
+	}
+
+	.keys-hint {
+		color: var(--color-text-muted);
+		font-size: 0.85rem;
+		margin: 0 0 0.75rem;
+	}
+
+	.key-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.key-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.5rem 0;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.key-item.revoked {
+		opacity: 0.6;
+	}
+
+	.key-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
+	.key-meta {
+		color: var(--color-text-muted);
+		font-size: 0.75rem;
+		overflow-wrap: anywhere;
+	}
+
+	.btn-small {
+		padding: 0.3rem 0.7rem;
+		font-size: 0.8rem;
+	}
 	.mesh-page {
 		max-width: 700px;
 		margin: 0 auto;

@@ -14,6 +14,12 @@
  * Fragment packet format (type 0x02):
  *   Standard 8-byte header, then payload:
  *   [4 bytes original msgId] [1 byte fragmentIndex] [1 byte totalFragments] [N bytes fragment data]
+ *
+ * Packets larger than one BLE write are split with fragmentPacket() on send and
+ * put back together by a FragmentReassembler on receive (bounded memory,
+ * incomplete sets dropped after a timeout).
+ *
+ * This module has no imports so it can be unit-tested under plain Node.
  */
 
 const PACKET_TYPE_BROADCAST = 0x01;
@@ -27,8 +33,14 @@ const DEFAULT_MAX_PAYLOAD = 174;
 /** Fragment overhead: originalMsgId(4) + index(1) + total(1) = 6 bytes. */
 const FRAGMENT_HEADER_SIZE = 6;
 
-/** Stale fragment timeout in milliseconds. */
-const FRAGMENT_TIMEOUT_MS = 10_000;
+/** Incomplete fragment sets are dropped after this many milliseconds. */
+export const FRAGMENT_TIMEOUT_MS = 15_000;
+/** Most fragments one message may be split into (bounds per-set memory). */
+export const MAX_FRAGMENTS_PER_MESSAGE = 128;
+/** Most incomplete sets buffered at once; the oldest is evicted beyond this. */
+export const MAX_PENDING_FRAGMENT_SETS = 32;
+/** Most bytes buffered across all incomplete sets. */
+export const MAX_BUFFERED_FRAGMENT_BYTES = 512 * 1024;
 
 export type NGMeshMessageType =
 	| 'emergency_ticket'
@@ -50,6 +62,10 @@ export interface NGMeshMessage {
 	ts: number;
 	id: string;
 	data: Record<string, unknown>;
+	/** Signature fields (see signing.ts); absent on unsigned messages. */
+	author_user_id?: number;
+	key_id?: string;
+	sig?: string;
 }
 
 export interface MeshTicketData {
@@ -57,6 +73,8 @@ export interface MeshTicketData {
 	description: string;
 	ticket_type: 'request' | 'offer' | 'emergency_ping';
 	urgency: 'low' | 'medium' | 'high' | 'critical';
+	/** Same UUID as the REST create of this ticket, so the server never duplicates it. */
+	client_id?: string;
 }
 
 export interface MeshCommentData {
@@ -182,7 +200,7 @@ export function validateNGMessage(obj: unknown): NGMeshMessage | null {
 		typeof o.data === 'object' && o.data !== null && !Array.isArray(o.data)
 			? (o.data as Record<string, unknown>)
 			: {};
-	return {
+	const msg: NGMeshMessage = {
 		ng: 1,
 		type: o.type as NGMeshMessageType,
 		community_id: o.community_id,
@@ -191,6 +209,22 @@ export function validateNGMessage(obj: unknown): NGMeshMessage | null {
 		id: o.id,
 		data
 	};
+	// Keep signature fields untouched (relays and the server verify them) but
+	// only when well-formed; the server treats anything else as unsigned anyway
+	if (
+		typeof o.author_user_id === 'number' &&
+		Number.isSafeInteger(o.author_user_id) &&
+		o.author_user_id > 0 &&
+		typeof o.key_id === 'string' &&
+		o.key_id.length <= 64 &&
+		typeof o.sig === 'string' &&
+		o.sig.length <= 200
+	) {
+		msg.author_user_id = o.author_user_id;
+		msg.key_id = o.key_id;
+		msg.sig = o.sig;
+	}
+	return msg;
 }
 
 /** Build a BitChat-compatible binary packet from a payload. */
@@ -253,8 +287,8 @@ export function fragmentPacket(
 	const dataPerFragment = maxPayload - FRAGMENT_HEADER_SIZE;
 	const totalFragments = Math.ceil(packet.length / dataPerFragment);
 
-	if (totalFragments > 255) {
-		throw new Error('Message too large to fragment (> 255 fragments)');
+	if (totalFragments > MAX_FRAGMENTS_PER_MESSAGE) {
+		throw new Error(`Message too large to send over the mesh (> ${MAX_FRAGMENTS_PER_MESSAGE} fragments)`);
 	}
 
 	const fragments: Uint8Array[] = [];
@@ -291,82 +325,117 @@ export function fragmentPacket(
 	return fragments;
 }
 
-interface FragmentBuffer {
+interface FragmentSet {
 	fragments: (Uint8Array | null)[];
 	total: number;
 	received: number;
+	bytes: number;
 	createdAt: number;
 }
 
-const reassemblyBuffers = new Map<string, FragmentBuffer>();
-
 /**
- * Process an incoming fragment packet. Returns the reassembled complete
- * packet when all fragments are received, or null if still waiting.
+ * Reassembles fragment packets (type 0x02) into the original packet.
+ *
+ * Everything here comes from untrusted radios, so memory is bounded: at most
+ * MAX_FRAGMENTS_PER_MESSAGE fragments per set, MAX_PENDING_FRAGMENT_SETS sets
+ * and MAX_BUFFERED_FRAGMENT_BYTES in total (oldest set evicted first).
+ * Incomplete sets are dropped after FRAGMENT_TIMEOUT_MS; duplicate fragments
+ * are ignored; a fragment disagreeing with its set's fragment count drops the set.
  */
-export function defragmentPacket(raw: DataView): Uint8Array | null {
-	const parsed = parseBitchatPacket(raw);
-	if (!parsed) return null;
+export class FragmentReassembler {
+	private sets = new Map<string, FragmentSet>();
+	private bufferedBytes = 0;
+	private readonly now: () => number;
+	private readonly timeoutMs: number;
 
-	// Only handle fragment packets
-	if (parsed.type !== PACKET_TYPE_FRAGMENT) return null;
+	constructor(now: () => number = Date.now, timeoutMs: number = FRAGMENT_TIMEOUT_MS) {
+		this.now = now;
+		this.timeoutMs = timeoutMs;
+	}
 
-	if (parsed.payload.length < FRAGMENT_HEADER_SIZE) return null;
+	/** Number of incomplete sets currently buffered. */
+	get pendingSets(): number {
+		return this.sets.size;
+	}
 
-	// Extract fragment header
-	const originalMsgId = Array.from(parsed.payload.slice(0, 4))
-		.map((b) => b.toString(16).padStart(2, '0'))
-		.join('');
-	const fragmentIndex = parsed.payload[4];
-	const totalFragments = parsed.payload[5];
-	const chunk = parsed.payload.slice(FRAGMENT_HEADER_SIZE);
+	get pendingBytes(): number {
+		return this.bufferedBytes;
+	}
 
-	if (fragmentIndex >= totalFragments || totalFragments === 0) return null;
+	/** Feed one received packet; returns the full packet once all fragments arrived. */
+	push(raw: DataView): Uint8Array | null {
+		const parsed = parseBitchatPacket(raw);
+		if (!parsed || parsed.type !== PACKET_TYPE_FRAGMENT) return null;
+		if (parsed.payload.length <= FRAGMENT_HEADER_SIZE) return null;
 
-	// Clean up stale buffers
-	const now = Date.now();
-	for (const [key, buf] of reassemblyBuffers) {
-		if (now - buf.createdAt > FRAGMENT_TIMEOUT_MS) {
-			reassemblyBuffers.delete(key);
+		const key = Array.from(parsed.payload.subarray(0, 4))
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('');
+		const index = parsed.payload[4];
+		const total = parsed.payload[5];
+		if (total < 2 || total > MAX_FRAGMENTS_PER_MESSAGE || index >= total) return null;
+		// Copy: the DataView may point into a buffer the BLE stack reuses
+		const chunk = parsed.payload.slice(FRAGMENT_HEADER_SIZE);
+
+		this.expire();
+
+		let set = this.sets.get(key);
+		if (set && set.total !== total) {
+			// Conflicting fragment count for the same message: drop the set
+			this.drop(key);
+			set = undefined;
 		}
-	}
+		if (!set) {
+			set = { fragments: new Array(total).fill(null), total, received: 0, bytes: 0, createdAt: this.now() };
+			this.sets.set(key, set);
+			while (this.sets.size > MAX_PENDING_FRAGMENT_SETS) this.dropOldest();
+		}
+		if (set.fragments[index] !== null) return null; // duplicate
 
-	// Get or create buffer
-	let buffer = reassemblyBuffers.get(originalMsgId);
-	if (!buffer) {
-		buffer = {
-			fragments: new Array(totalFragments).fill(null),
-			total: totalFragments,
-			received: 0,
-			createdAt: now
-		};
-		reassemblyBuffers.set(originalMsgId, buffer);
-	}
+		set.fragments[index] = chunk;
+		set.received++;
+		set.bytes += chunk.length;
+		this.bufferedBytes += chunk.length;
+		while (this.bufferedBytes > MAX_BUFFERED_FRAGMENT_BYTES && this.sets.size > 0) {
+			this.dropOldest();
+		}
+		if (!this.sets.has(key) || set.received < set.total) return null;
 
-	// Store fragment (ignore duplicates)
-	if (buffer.fragments[fragmentIndex] === null) {
-		buffer.fragments[fragmentIndex] = chunk;
-		buffer.received++;
-	}
-
-	// Check if complete
-	if (buffer.received === buffer.total) {
-		reassemblyBuffers.delete(originalMsgId);
-
-		// Concatenate all fragments
-		const totalLength = buffer.fragments.reduce((sum, f) => sum + (f?.length ?? 0), 0);
-		const result = new Uint8Array(totalLength);
+		this.drop(key);
+		const result = new Uint8Array(set.bytes);
 		let offset = 0;
-		for (const frag of buffer.fragments) {
-			if (frag) {
-				result.set(frag, offset);
-				offset += frag.length;
-			}
+		for (const frag of set.fragments) {
+			result.set(frag!, offset);
+			offset += frag!.length;
 		}
 		return result;
 	}
 
-	return null;
+	/** Drop incomplete sets older than the timeout. */
+	expire(): void {
+		const now = this.now();
+		for (const [key, set] of this.sets) {
+			if (now - set.createdAt > this.timeoutMs) this.drop(key);
+		}
+	}
+
+	clear(): void {
+		this.sets.clear();
+		this.bufferedBytes = 0;
+	}
+
+	private drop(key: string): void {
+		const set = this.sets.get(key);
+		if (!set) return;
+		this.bufferedBytes -= set.bytes;
+		this.sets.delete(key);
+	}
+
+	private dropOldest(): void {
+		// Map iterates in insertion order, i.e. oldest first
+		const oldest = this.sets.keys().next();
+		if (!oldest.done) this.drop(oldest.value);
+	}
 }
 
 /**
