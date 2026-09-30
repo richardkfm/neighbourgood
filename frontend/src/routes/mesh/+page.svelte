@@ -13,15 +13,13 @@
 		meshIsSupported,
 		connectToMesh,
 		disconnectFromMesh,
-		clearMeshMessages,
-		getMeshMessages,
+		syncMeshMessagesToServer,
 		broadcastHeartbeat,
 		meshRelayEnabled,
 		meshRelayCount,
 		meshAckStatus,
 		toggleRelay
 	} from '$lib/stores/mesh';
-	import { api } from '$lib/api';
 	import type { MeshStatus } from '$lib/stores/mesh';
 	import type { NGMeshMessage } from '$lib/bluetooth/protocol';
 
@@ -81,22 +79,16 @@
 		syncStatus = 'syncing';
 		syncResult = null;
 		try {
-			const result = await api<{ synced: number; duplicates: number; errors: number }>(
-				'/mesh/sync',
-				{
-					method: 'POST',
-					body: { messages },
-					auth: true
-				}
-			);
+			// Batches of 100; synced messages are removed from the queue only if the server reported no errors
+			const result = await syncMeshMessagesToServer();
+			if (!result) {
+				syncStatus = 'idle';
+				return;
+			}
 			syncResult = result;
 			syncStatus = 'done';
 			lastSyncTime = new Date().toLocaleTimeString();
 			sessionStorage.setItem('ng_mesh_last_sync', lastSyncTime);
-			// Clear synced messages if all succeeded or were duplicates
-			if (result.errors === 0) {
-				clearMeshMessages();
-			}
 		} catch (err: any) {
 			syncStatus = 'error';
 			error = err?.message || 'Sync failed';

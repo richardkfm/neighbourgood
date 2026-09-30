@@ -29,6 +29,8 @@ import {
 	type MeshResourceData,
 	type MeshCheckinData
 } from '$lib/bluetooth/protocol';
+import { api } from '$lib/api';
+import type { MeshSyncResult } from '$lib/types';
 import { persistMessages, loadMessages, clearMessages } from '$lib/mesh-db';
 import { saveOfflineTicket, addCommentToTicket, type OfflineTicket, type OfflineTicketComment } from '$lib/mesh-triage-db';
 
@@ -82,19 +84,7 @@ export async function connectToMesh(): Promise<void> {
 		meshDeviceName.set(getDeviceName());
 		meshStatus.set('connected');
 
-		// Recover any persisted messages from a previous session
-		try {
-			const persisted = await loadMessages();
-			if (persisted.length > 0) {
-				meshMessages.update((msgs) => {
-					const existingIds = new Set(msgs.map((m) => m.id));
-					const newMsgs = persisted.filter((m) => !existingIds.has(m.id));
-					return [...msgs, ...newMsgs];
-				});
-			}
-		} catch {
-			// IndexedDB unavailable — continue without recovery
-		}
+		await restoreMeshMessages();
 
 		subscribeToEvents();
 	} catch (err) {
@@ -103,6 +93,64 @@ export async function connectToMesh(): Promise<void> {
 		cleanup();
 		throw err;
 	}
+}
+
+/**
+ * Recover messages persisted to IndexedDB by a previous session, and remember
+ * their IDs so the same messages re-delivered over the mesh are not queued twice.
+ */
+export async function restoreMeshMessages(): Promise<void> {
+	try {
+		const persisted = await loadMessages();
+		if (persisted.length === 0) return;
+		for (const m of persisted) addSeenId(m.id);
+		meshMessages.update((msgs) => {
+			const existingIds = new Set(msgs.map((m) => m.id));
+			const newMsgs = persisted.filter((m) => !existingIds.has(m.id));
+			return newMsgs.length > 0 ? [...msgs, ...newMsgs] : msgs;
+		});
+	} catch {
+		// IndexedDB unavailable — continue without recovery
+	}
+}
+
+/** The server accepts at most this many messages per /mesh/sync request. */
+const MESH_SYNC_BATCH_SIZE = 100;
+
+/**
+ * Upload queued mesh messages to the server in batches (a single request with
+ * more than 100 messages is rejected outright). Messages are only removed from
+ * the queue when the server reported no errors, and only the ones that were
+ * actually sent — anything received while the request was in flight is kept.
+ * Returns null when there was nothing to sync.
+ */
+export async function syncMeshMessagesToServer(): Promise<MeshSyncResult | null> {
+	const sending = get(meshMessages);
+	if (sending.length === 0) return null;
+
+	const total: MeshSyncResult = { synced: 0, duplicates: 0, errors: 0 };
+	for (let i = 0; i < sending.length; i += MESH_SYNC_BATCH_SIZE) {
+		const result = await api<MeshSyncResult>('/mesh/sync', {
+			method: 'POST',
+			body: { messages: sending.slice(i, i + MESH_SYNC_BATCH_SIZE) },
+			auth: true
+		});
+		total.synced += result.synced;
+		total.duplicates += result.duplicates;
+		total.errors += result.errors;
+	}
+
+	if (total.errors === 0) removeMeshMessages(sending.map((m) => m.id));
+	return total;
+}
+
+/** Remove specific messages (e.g. after they were synced) from the queue. */
+export function removeMeshMessages(ids: string[]): void {
+	const drop = new Set(ids);
+	const remaining = get(meshMessages).filter((m) => !drop.has(m.id));
+	meshMessages.set(remaining);
+	persistMessages(remaining).catch(() => {});
+	notifyServiceWorker();
 }
 
 /** Disconnect from the current BitChat node (manual — prevents auto-reconnect). */

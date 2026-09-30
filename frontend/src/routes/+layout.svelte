@@ -12,7 +12,7 @@
 	import { AVAILABLE_LOCALES } from '$lib/i18n';
 	import { setLocale, hydrateLocale, currentLocale } from '$lib/stores/locale';
 	import { isOnline, offlineQueue, queueCount, flushQueue, initOfflineTracking } from '$lib/stores/offline';
-	import { meshMessages, clearMeshMessages, getMeshMessages } from '$lib/stores/mesh';
+	import { clearMeshMessages, getMeshMessages, restoreMeshMessages, syncMeshMessagesToServer } from '$lib/stores/mesh';
 
 	// svelte-i18n is initialised (and its dictionary awaited) in +layout.ts
 	// so the first SSR render never races the locale loader.
@@ -83,6 +83,9 @@
 	onMount(async () => {
 		// ── Sync token from localStorage after SSR hydration ────────────────────
 		syncTokenFromStorage();
+
+		// Messages received over the mesh in a previous session stay queued until synced
+		restoreMeshMessages();
 
 		// ── Service worker registration ───────────────────────────────────────
 		if ('serviceWorker' in navigator) {
@@ -168,15 +171,9 @@
 					});
 				}
 				// Auto-sync mesh messages when coming back online
-				const meshMsgs = getMeshMessages();
-				if (meshMsgs.length > 0) {
-					api<{ synced: number; duplicates: number; errors: number }>(
-						'/mesh/sync',
-						{ method: 'POST', body: { messages: meshMsgs }, auth: true }
-					).then((result) => {
-						if (result.errors === 0) {
-							clearMeshMessages();
-						}
+				if (getMeshMessages().length > 0 && get(token)) {
+					syncMeshMessagesToServer().then((result) => {
+						if (!result) return;
 						const total = result.synced + result.duplicates;
 						if (total > 0) {
 							syncMessage = get(t)('mesh.sync_result', { values: { synced: result.synced, duplicates: result.duplicates, errors: result.errors } });

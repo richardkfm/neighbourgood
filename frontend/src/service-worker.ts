@@ -264,16 +264,28 @@ async function flushMeshQueue(): Promise<void> {
 	if (!authToken) return;
 
 	try {
-		const res = await fetch('/api/mesh/sync', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${authToken}`
-			},
-			body: JSON.stringify({ messages })
-		});
+		// The API accepts at most 100 messages per request. Only wipe the local
+		// queue when every batch succeeded AND the server reported no per-message
+		// errors — an HTTP 200 alone can still mean some messages were rejected.
+		let allOk = true;
+		for (let i = 0; i < messages.length; i += 100) {
+			const res = await fetch('/api/mesh/sync', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${authToken}`
+				},
+				body: JSON.stringify({ messages: messages.slice(i, i + 100) })
+			});
+			if (!res.ok) {
+				allOk = false;
+				break;
+			}
+			const result = await res.json().catch(() => null);
+			if (!result || result.errors !== 0) allOk = false;
+		}
 
-		if (res.ok) {
+		if (allOk) {
 			// Clear IndexedDB on success
 			await clearMeshMessagesFromIDB();
 			// Notify clients

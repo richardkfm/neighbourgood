@@ -15,12 +15,12 @@
 		connectToMesh,
 		disconnectFromMesh,
 		broadcastEmergencyTicket,
-		clearMeshMessages,
+		syncMeshMessagesToServer,
 		getMeshMessages
 	} from '$lib/stores/mesh';
 	import { isBluetoothSupported } from '$lib/bluetooth/connection';
 	import { meshEnabled } from '$lib/stores/mesh-settings';
-	import type { CommunityOut, NGMeshMessage, MeshSyncResult } from '$lib/types';
+	import type { CommunityOut, NGMeshMessage } from '$lib/types';
 	import { t } from 'svelte-i18n';
 
 	interface Ticket {
@@ -134,17 +134,17 @@
 	}
 
 	async function syncMeshMessages() {
-		const msgs = getMeshMessages();
-		if (msgs.length === 0) return;
+		if (getMeshMessages().length === 0) return;
 		syncing = true;
 		try {
-			const result = await api<MeshSyncResult>('/mesh/sync', {
-				method: 'POST',
-				auth: true,
-				body: { messages: msgs }
-			});
-			clearMeshMessages();
+			// Keeps messages in the queue when the server reported per-message errors
+			const result = await syncMeshMessagesToServer();
 			await loadTickets();
+			if (result && result.errors > 0) {
+				error = $t('mesh.sync_result', {
+					values: { synced: result.synced, duplicates: result.duplicates, errors: result.errors }
+				});
+			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to sync mesh messages';
 		} finally {
