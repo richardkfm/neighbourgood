@@ -25,7 +25,13 @@
     "mesh": "Mesh",
     "federation": "Network",
     "bookings": "الحجوزات",
-    "view_profile": "عرض الملف الشخصي"
+    "view_profile": "عرض الملف الشخصي",
+    "skip_to_content": "تخطَّ إلى المحتوى الرئيسي",
+    "more": "المزيد",
+    "quick_nav": "التنقل السريع",
+    "main_nav": "التنقل الرئيسي",
+    "crisis_mode": "وضع الأزمة",
+    "select_language": "اختر اللغة"
   },
   "banner": {
     "update_available": "يتوفر إصدار جديد من NeighbourGood.",
@@ -76,8 +82,8 @@
     "not_set": "Not set",
     "add": "Add",
     "review": "Review",
-    "result": "{count} result",
-    "results": "{count} results"
+    "result": "{count} نتيجة",
+    "results": "{count} نتائج"
   },
   "auth": {
     "login_title": "مرحباً بعودتك",

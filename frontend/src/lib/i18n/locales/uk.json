@@ -25,7 +25,13 @@
     "mesh": "Mesh",
     "federation": "Network",
     "bookings": "Бронювання",
-    "view_profile": "Переглянути профіль"
+    "view_profile": "Переглянути профіль",
+    "skip_to_content": "Перейти до основного вмісту",
+    "more": "Ще",
+    "quick_nav": "Швидка навігація",
+    "main_nav": "Головна навігація",
+    "crisis_mode": "Режим кризи",
+    "select_language": "Обрати мову"
   },
   "banner": {
     "update_available": "Доступна нова версія NeighbourGood.",

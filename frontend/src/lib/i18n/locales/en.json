@@ -25,7 +25,13 @@
     "mesh": "Mesh",
     "federation": "Network",
     "bookings": "Bookings",
-    "view_profile": "View profile"
+    "view_profile": "View profile",
+    "skip_to_content": "Skip to main content",
+    "more": "More",
+    "quick_nav": "Quick navigation",
+    "main_nav": "Main navigation",
+    "crisis_mode": "Crisis mode",
+    "select_language": "Select language"
   },
   "banner": {
     "update_available": "A new version of NeighbourGood is available.",

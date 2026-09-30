@@ -24,7 +24,13 @@
     "events": "Veranstaltungen",
     "federation": "Network",
     "bookings": "Buchungen",
-    "view_profile": "Profil ansehen"
+    "view_profile": "Profil ansehen",
+    "skip_to_content": "Zum Hauptinhalt springen",
+    "more": "Mehr",
+    "quick_nav": "Schnellnavigation",
+    "main_nav": "Hauptnavigation",
+    "crisis_mode": "Krisenmodus",
+    "select_language": "Sprache wählen"
   },
   "banner": {
     "update_available": "Eine neue Version von NeighbourGood ist verfügbar.",

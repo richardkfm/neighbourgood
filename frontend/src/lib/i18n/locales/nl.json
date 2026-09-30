@@ -24,7 +24,13 @@
     "events": "Evenementen",
     "federation": "Network",
     "bookings": "Boekingen",
-    "view_profile": "Profiel bekijken"
+    "view_profile": "Profiel bekijken",
+    "skip_to_content": "Ga naar hoofdinhoud",
+    "more": "Meer",
+    "quick_nav": "Snelle navigatie",
+    "main_nav": "Hoofdnavigatie",
+    "crisis_mode": "Crisismodus",
+    "select_language": "Taal kiezen"
   },
   "banner": {
     "update_available": "Een nieuwe versie van NeighbourGood is beschikbaar.",
@@ -71,7 +77,9 @@
     "resources": "{count} middelen",
     "skills": "{count} vaardigheden",
     "prev": "Prev",
-    "next": "Next"
+    "next": "Next",
+    "result": "{count} resultaat",
+    "results": "{count} resultaten"
   },
   "auth": {
     "login_title": "Welkom terug",

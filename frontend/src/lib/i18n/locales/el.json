@@ -24,7 +24,13 @@
     "events": "Εκδηλώσεις",
     "federation": "Network",
     "bookings": "Κρατήσεις",
-    "view_profile": "Προβολή προφίλ"
+    "view_profile": "Προβολή προφίλ",
+    "skip_to_content": "Μετάβαση στο κυρίως περιεχόμενο",
+    "more": "Περισσότερα",
+    "quick_nav": "Γρήγορη πλοήγηση",
+    "main_nav": "Κύρια πλοήγηση",
+    "crisis_mode": "Λειτουργία κρίσης",
+    "select_language": "Επιλογή γλώσσας"
   },
   "banner": {
     "update_available": "Μια νέα έκδοση του NeighbourGood είναι διαθέσιμη.",
@@ -71,7 +77,9 @@
     "resources": "{count} πόροι",
     "skills": "{count} δεξιότητες",
     "prev": "Prev",
-    "next": "Next"
+    "next": "Next",
+    "result": "{count} αποτέλεσμα",
+    "results": "{count} αποτελέσματα"
   },
   "auth": {
     "login_title": "Καλώς ήρθατε πίσω",

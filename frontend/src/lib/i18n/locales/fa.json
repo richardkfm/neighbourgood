@@ -24,7 +24,13 @@
     "events": "رویدادها",
     "federation": "Network",
     "bookings": "رزروها",
-    "view_profile": "مشاهده نمایه"
+    "view_profile": "مشاهده نمایه",
+    "skip_to_content": "پرش به محتوای اصلی",
+    "more": "بیشتر",
+    "quick_nav": "ناوبری سریع",
+    "main_nav": "ناوبری اصلی",
+    "crisis_mode": "حالت بحران",
+    "select_language": "انتخاب زبان"
   },
   "banner": {
     "update_available": "نسخه جدیدی از NeighbourGood در دسترس است.",

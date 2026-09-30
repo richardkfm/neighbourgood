@@ -25,7 +25,13 @@
     "mesh": "Mesh",
     "federation": "Network",
     "bookings": "Pemesanan",
-    "view_profile": "Lihat profil"
+    "view_profile": "Lihat profil",
+    "skip_to_content": "Lewati ke konten utama",
+    "more": "Lainnya",
+    "quick_nav": "Navigasi cepat",
+    "main_nav": "Navigasi utama",
+    "crisis_mode": "Mode krisis",
+    "select_language": "Pilih bahasa"
   },
   "banner": {
     "update_available": "Versi baru NeighbourGood tersedia.",
@@ -76,8 +82,8 @@
     "not_set": "Not set",
     "add": "Add",
     "review": "Review",
-    "result": "{count} result",
-    "results": "{count} results"
+    "result": "{count} hasil",
+    "results": "{count} hasil"
   },
   "auth": {
     "login_title": "Selamat datang kembali",
