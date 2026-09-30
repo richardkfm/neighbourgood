@@ -284,7 +284,9 @@
     "join_prompt": "Join or create a community to connect with your neighbours.",
     "crisis_badge": "Crisis",
     "you_are_here": "You are here",
-    "view_community": "View community"
+    "view_community": "View community",
+    "make_admin": "Make admin",
+    "admin_made": "Member is now an admin."
   },
   "skills": {
     "title": "تبادل المهارات",

@@ -2,7 +2,7 @@
 
 import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -16,6 +16,8 @@ class Skill(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     category: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     skill_type: Mapped[str] = mapped_column(String(10), nullable=False, index=True)  # "offer" or "request"
+    # Created via /federation/migrate/import; earns no reputation points
+    imported: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     owner_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=False, index=True
     )

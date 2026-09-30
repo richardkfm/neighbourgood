@@ -49,7 +49,8 @@ def test_create_resource_without_community(client, auth_headers):
 def test_filter_resources_by_community(client, auth_headers):
     """GET /resources?community_id= filters correctly."""
     cid1 = _create_community(client, auth_headers, name="Community A")
-    cid2 = _create_community(client, auth_headers, name="Community B", plz="54321")
+    other_owner = _register(client, "other-owner@test.com")
+    cid2 = _create_community(client, other_owner, name="Community B", plz="54321")
 
     # Create one resource in each community
     client.post(
@@ -60,7 +61,7 @@ def test_filter_resources_by_community(client, auth_headers):
     client.post(
         "/resources",
         json={"title": "Other Saw", "category": "tool", "community_id": cid2},
-        headers=auth_headers,
+        headers=other_owner,
     )
 
     # Filter by community

@@ -37,11 +37,16 @@ def _b64url_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * padding)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
+    """Issue a signed JWT. ``token_version`` (claim ``ver``) must match
+    ``User.token_version`` for the token to be accepted, so bumping the
+    user's version invalidates every previously issued token."""
     header = _b64url_encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = _b64url_encode(
-        json.dumps({"sub": str(user_id), "exp": int(expire.timestamp())}).encode()
+        json.dumps(
+            {"sub": str(user_id), "ver": int(token_version), "exp": int(expire.timestamp())}
+        ).encode()
     )
     signature = _b64url_encode(
         hmac.new(
@@ -53,8 +58,23 @@ def create_access_token(user_id: int) -> str:
     return f"{header}.{payload}.{signature}"
 
 
+def issue_token_for_user(user) -> str:
+    """Issue a token bound to the user's current ``token_version``."""
+    return create_access_token(user.id, user.token_version)
+
+
 def decode_access_token(token: str) -> int | None:
     """Return user_id from token, or None if invalid / expired."""
+    claims = decode_access_token_claims(token)
+    return claims[0] if claims else None
+
+
+def decode_access_token_claims(token: str) -> tuple[int, int] | None:
+    """Return ``(user_id, token_version)`` from token, or None if invalid / expired.
+
+    Tokens issued before versioning existed carry no ``ver`` claim and are
+    treated as version 0.
+    """
     try:
         parts = token.split(".")
         if len(parts) != 3:
@@ -80,6 +100,6 @@ def decode_access_token(token: str) -> int | None:
         if datetime.now(timezone.utc).timestamp() > claims.get("exp", 0):
             return None
 
-        return int(claims["sub"])
-    except (KeyError, ValueError, json.JSONDecodeError):
+        return int(claims["sub"]), int(claims.get("ver", 0))
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError):
         return None

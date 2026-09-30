@@ -74,6 +74,7 @@ def test_skill_request_creates_activity(client, auth_headers, community_id):
 def test_booking_creates_activity(client, auth_headers, community_id):
     """Creating a booking generates a resource_borrowed event."""
     borrower = _register(client, "borrower@test.com", "Borrower")
+    client.post(f"/communities/{community_id}/join", headers=borrower)
     r = client.post(
         "/resources", headers=auth_headers,
         json={"title": "Ladder", "category": "tool", "community_id": community_id},
@@ -85,8 +86,8 @@ def test_booking_creates_activity(client, auth_headers, community_id):
         headers=borrower,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-04-01",
-            "end_date": "2026-04-05",
+            "start_date": "2099-04-01",
+            "end_date": "2099-04-05",
         },
     )
 
@@ -99,6 +100,7 @@ def test_booking_creates_activity(client, auth_headers, community_id):
 def test_completed_booking_creates_activity(client, auth_headers, community_id):
     """Completing a booking generates a booking_completed event."""
     borrower = _register(client, "borrower@test.com", "Borrower")
+    client.post(f"/communities/{community_id}/join", headers=borrower)
     r = client.post(
         "/resources", headers=auth_headers,
         json={"title": "Drill", "category": "tool", "community_id": community_id},
@@ -107,12 +109,12 @@ def test_completed_booking_creates_activity(client, auth_headers, community_id):
 
     b = client.post(
         "/bookings", headers=borrower,
-        json={"resource_id": resource_id, "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": resource_id, "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     booking_id = b.json()["id"]
 
     client.patch(f"/bookings/{booking_id}", headers=auth_headers, json={"status": "approved"})
-    client.patch(f"/bookings/{booking_id}", headers=borrower, json={"status": "completed"})
+    client.patch(f"/bookings/{booking_id}", headers=auth_headers, json={"status": "completed"})
 
     res = client.get("/activity")
     events = [e for e in res.json()["items"] if e["event_type"] == "booking_completed"]
@@ -138,13 +140,14 @@ def test_join_community_creates_activity(client, auth_headers):
 def test_filter_by_community(client, auth_headers):
     """Activity can be filtered by community_id."""
     community_id = _create_community(client, auth_headers)
-    second_community_id = _create_community(client, auth_headers, name="Second Community")
+    other_owner = _register(client, "second-owner@test.com", "Second Owner")
+    second_community_id = _create_community(client, other_owner, name="Second Community")
     client.post(
         "/resources", headers=auth_headers,
         json={"title": "Community Drill", "category": "tool", "community_id": community_id},
     )
     client.post(
-        "/resources", headers=auth_headers,
+        "/resources", headers=other_owner,
         json={"title": "Personal Saw", "category": "tool", "community_id": second_community_id},
     )
 

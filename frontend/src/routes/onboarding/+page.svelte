@@ -25,6 +25,7 @@
 	let joining = $state<number | null>(null);
 	let error = $state('');
 	let showCreate = $state(false);
+	let createError = $state('');
 	let newName = $state('');
 	let newPlz = $state('');
 	let newCity = $state('');
@@ -165,6 +166,7 @@
 		if (!newName.trim() || !newPlz.trim() || !newCity.trim()) return;
 		creating = true;
 		error = '';
+		createError = '';
 		try {
 			const created = await api<CommunityOut>('/communities', {
 				method: 'POST',
@@ -180,7 +182,8 @@
 			communityName = created.name;
 			step = 'skills';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Could not create community';
+			// e.g. 409 "leave your current community first" — shown next to the form
+			createError = err instanceof Error ? err.message : 'Could not create community';
 		} finally {
 			creating = false;
 		}
@@ -388,6 +391,9 @@
 			{:else}
 				<div class="create-form fade-in">
 					<h2>Create a new community</h2>
+					{#if createError}
+						<div class="alert alert-error fade-in">{createError}</div>
+					{/if}
 					<form onsubmit={(e) => { e.preventDefault(); createCommunity(); }}>
 						<label>
 							<span>Community Name</span>

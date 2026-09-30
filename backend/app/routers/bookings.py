@@ -11,6 +11,7 @@ from app.dependencies import get_current_user
 from app.models.booking import BOOKING_STATUSES, Booking
 from app.models.resource import Resource
 from app.models.user import User
+from app.utils.authorization import is_community_member, users_share_community
 from app.services.activity import record_activity
 from app.services.notifications import notify_booking_request, notify_booking_status
 from app.services.webhooks import dispatch_event
@@ -40,19 +41,39 @@ def _booking_to_out(b: Booking) -> BookingOut:
     )
 
 
-def _check_date_conflict(
-    db: Session, resource_id: int, start: datetime.date, end: datetime.date, exclude_id: int | None = None
+def _units_exhausted(
+    db: Session,
+    resource: Resource,
+    start: datetime.date,
+    end: datetime.date,
+    exclude_id: int | None = None,
 ) -> bool:
-    """Return True if there is an overlapping approved/pending booking."""
-    q = db.query(Booking).filter(
-        Booking.resource_id == resource_id,
+    """Return True if every unit of the resource is already reserved at some point in [start, end].
+
+    Each pending/approved booking reserves one unit. The number of units a
+    resource can lend at once is ``quantity_available`` (the owner's current
+    stock count, see ``PATCH /resources/{id}/inventory``); bookings do not
+    decrement it, they are counted here per date instead.
+    """
+    capacity = max(resource.quantity_available, 1)
+    q = db.query(Booking.start_date, Booking.end_date).filter(
+        Booking.resource_id == resource.id,
         Booking.status.in_(["pending", "approved"]),
         Booking.start_date <= end,
         Booking.end_date >= start,
     )
     if exclude_id:
         q = q.filter(Booking.id != exclude_id)
-    return q.first() is not None
+    overlapping = q.all()
+    if len(overlapping) < capacity:
+        return False
+    # Peak concurrency inside the requested window is reached on the new
+    # booking's first day or on the start day of one of the overlapping bookings.
+    check_days = {start} | {b_start for b_start, _ in overlapping if b_start > start}
+    return any(
+        sum(1 for b_start, b_end in overlapping if b_start <= day <= b_end) >= capacity
+        for day in check_days
+    )
 
 
 @router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
@@ -71,13 +92,32 @@ def create_booking(
     if resource.owner_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot borrow your own resource")
 
+    # Only members of the resource's community may book it. Personal items
+    # (no community) can be booked by users who share a community with the owner.
+    if resource.community_id is not None:
+        if not is_community_member(db, resource.community_id, current_user.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You must be a member of this resource's community to book it",
+            )
+    elif not users_share_community(db, current_user.id, resource.owner_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must share a community with the owner to book this resource",
+        )
+
     if body.end_date < body.start_date:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="end_date must be >= start_date",
         )
+    if body.start_date < datetime.date.today():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_date must not be in the past",
+        )
 
-    if _check_date_conflict(db, body.resource_id, body.start_date, body.end_date):
+    if _units_exhausted(db, resource, body.start_date, body.end_date):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Dates overlap with an existing booking",
@@ -198,7 +238,7 @@ def update_booking_status(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update booking status. Owners can approve/reject; borrowers can cancel/complete."""
+    """Update booking status. Owners (lenders) can approve/reject/complete; borrowers can cancel."""
     booking = (
         db.query(Booking)
         .options(joinedload(Booking.borrower), joinedload(Booking.resource))
@@ -300,7 +340,9 @@ def _allowed_transitions(current: str, is_owner: bool, is_borrower: bool) -> lis
         if is_borrower:
             transitions.append("cancelled")
     elif current == "approved":
-        if is_owner or is_borrower:
+        # Only the lender confirms the item came back, so a borrower cannot
+        # mark their own booking complete to farm reputation points.
+        if is_owner:
             transitions.append("completed")
         if is_borrower:
             transitions.append("cancelled")

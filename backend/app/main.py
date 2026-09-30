@@ -15,6 +15,7 @@ from app.database import Base, engine
 
 logger = logging.getLogger(__name__)
 from app.middleware.csrf import CsrfMiddleware
+from app.middleware.nul_bytes import NulByteMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.models import Activity, Booking, Community, CommunityMember, CrisisVote, EmergencyTicket, Event, EventAttendee, FederatedResource, FederatedSkill, InstanceSyncLog, Invite, KnownInstance, MeshCheckin, MeshSyncedMessage, Message, RedSkyAlert, Resource, SentAlert, Review, Skill, TelegramLinkToken, User, Webhook  # noqa: F401 – ensure models are registered
 from app.routers import activity, auth, bookings, communities, crisis, events, federation, federation_sync, instance, invites, matching, mesh_sync, messages, resources, reviews, skills, status, users, webhooks
@@ -101,6 +102,7 @@ async def out_of_range_handler(request: Request, exc: Exception) -> JSONResponse
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CsrfMiddleware)
+app.add_middleware(NulByteMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

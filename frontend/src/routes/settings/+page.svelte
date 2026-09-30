@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isLoggedIn, user } from '$lib/stores/auth';
+	import { isLoggedIn, token, user, type UserProfile } from '$lib/stores/auth';
 	import { api } from '$lib/api';
 	import type { Webhook } from '$lib/types';
 	import { meshEnabled } from '$lib/stores/mesh-settings';
@@ -168,7 +168,8 @@
 		passwordForm.loading = true;
 
 		try {
-			await api('/users/me/change-password', {
+			// Changing the password signs out all other sessions; keep this one alive.
+			const changed = await api<{ access_token: string }>('/users/me/change-password', {
 				method: 'POST',
 				body: {
 					current_password: passwordForm.current_password,
@@ -176,6 +177,7 @@
 				},
 				auth: true
 			});
+			token.set(changed.access_token);
 
 			passwordForm.success = true;
 			passwordForm.current_password = '';
@@ -210,7 +212,7 @@
 		emailForm.loading = true;
 
 		try {
-			const updatedUser = await api('/users/me/change-email', {
+			const updatedUser = await api<UserProfile & { access_token: string }>('/users/me/change-email', {
 				method: 'POST',
 				body: {
 					new_email: emailForm.new_email,
@@ -219,6 +221,7 @@
 				auth: true
 			});
 
+			token.set(updatedUser.access_token);
 			user.set(updatedUser);
 			emailForm.success = true;
 			emailForm.new_email = '';

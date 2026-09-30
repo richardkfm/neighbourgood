@@ -23,6 +23,8 @@ class Resource(Base):
     quantity_available: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     # Optional alert threshold – surface a low-stock warning when quantity_available drops to or below this
     reorder_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Created via /federation/migrate/import; earns no reputation points
+    imported: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     community_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("communities.id"), nullable=True, index=True

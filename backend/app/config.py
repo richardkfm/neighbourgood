@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     # refused on sync, so captured packets cannot be replayed indefinitely
     mesh_max_message_age_hours: int = 72
 
+    # Outbound webhooks: allow targets on private/loopback/link-local addresses
+    # (e.g. LAN services). Off by default to prevent SSRF.
+    webhook_allow_private: bool = False
+
     # Telegram bot integration (optional — leave empty to disable)
     telegram_bot_token: str = ""
     telegram_bot_name: str = ""        # Username without @, e.g. "NeighbourGoodBot"

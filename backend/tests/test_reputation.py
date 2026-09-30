@@ -114,6 +114,7 @@ def test_public_reputation_not_found(client):
 def test_reputation_completed_booking(client, auth_headers, community_id):
     """Completed bookings earn points for both lender and borrower."""
     borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    client.post(f"/communities/{community_id}/join", headers=borrower_headers)
     resource_id = _create_resource(client, auth_headers, community_id)
 
     # Create and complete a booking
@@ -122,8 +123,8 @@ def test_reputation_completed_booking(client, auth_headers, community_id):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = booking.json()["id"]
@@ -134,10 +135,10 @@ def test_reputation_completed_booking(client, auth_headers, community_id):
         headers=auth_headers,
         json={"status": "approved"},
     )
-    # Borrower completes
+    # The lender confirms the item came back
     client.patch(
         f"/bookings/{booking_id}",
-        headers=borrower_headers,
+        headers=auth_headers,
         json={"status": "completed"},
     )
 

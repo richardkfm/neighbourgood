@@ -22,8 +22,9 @@ from app.schemas.user import (
     TrustSummary,
     UserProfile,
     UserProfileUpdate,
+    UserProfileWithToken,
 )
-from app.services.auth import hash_password, verify_password
+from app.services.auth import hash_password, issue_token_for_user, verify_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -46,26 +47,43 @@ REPUTATION_LEVELS = [
 
 def _compute_reputation(db: Session, user_id: int) -> dict:
     """Compute reputation score and breakdown for a user."""
-    resources_shared = db.query(Resource).filter(Resource.owner_id == user_id).count()
+    resources_shared = (
+        db.query(Resource)
+        .filter(Resource.owner_id == user_id, Resource.imported.is_(False))
+        .count()
+    )
 
     bookings_completed_lender = (
         db.query(Booking)
         .join(Resource, Resource.id == Booking.resource_id)
-        .filter(Resource.owner_id == user_id, Booking.status == "completed")
+        .filter(
+            Resource.owner_id == user_id,
+            Resource.imported.is_(False),
+            Booking.status == "completed",
+        )
         .count()
     )
 
     bookings_completed_borrower = (
         db.query(Booking)
-        .filter(Booking.borrower_id == user_id, Booking.status == "completed")
+        .join(Resource, Resource.id == Booking.resource_id)
+        .filter(
+            Booking.borrower_id == user_id,
+            Resource.imported.is_(False),
+            Booking.status == "completed",
+        )
         .count()
     )
 
     skills_offered = (
-        db.query(Skill).filter(Skill.owner_id == user_id, Skill.skill_type == "offer").count()
+        db.query(Skill)
+        .filter(Skill.owner_id == user_id, Skill.skill_type == "offer", Skill.imported.is_(False))
+        .count()
     )
     skills_requested = (
-        db.query(Skill).filter(Skill.owner_id == user_id, Skill.skill_type == "request").count()
+        db.query(Skill)
+        .filter(Skill.owner_id == user_id, Skill.skill_type == "request", Skill.imported.is_(False))
+        .count()
     )
 
     breakdown = {
@@ -215,6 +233,11 @@ def compute_owner_trust(db: Session, user_id: int) -> OwnerTrust:
     )
 
 
+def _profile_with_token(user: User) -> UserProfileWithToken:
+    profile = UserProfile.model_validate(user)
+    return UserProfileWithToken(**profile.model_dump(), access_token=issue_token_for_user(user))
+
+
 @router.get("/me", response_model=UserProfile)
 def get_my_profile(current_user: User = Depends(get_current_user)):
     """Return the authenticated user's profile."""
@@ -307,13 +330,17 @@ def get_dashboard_overview(
     )
 
 
-@router.post("/me/change-password", response_model=UserProfile)
+@router.post("/me/change-password", response_model=UserProfileWithToken)
 def change_password(
     body: ChangePassword,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Change the authenticated user's password."""
+    """Change the authenticated user's password.
+
+    Bumps ``token_version`` so every other session is signed out; the response
+    carries a fresh token for the current session.
+    """
     if not verify_password(body.current_password, current_user.hashed_password):
         # 400, not 401: the frontend treats any 401 on an authenticated call as
         # an expired session and logs the user out.
@@ -323,18 +350,23 @@ def change_password(
         )
 
     current_user.hashed_password = hash_password(body.new_password)
+    current_user.token_version += 1
     db.commit()
     db.refresh(current_user)
-    return current_user
+    return _profile_with_token(current_user)
 
 
-@router.post("/me/change-email", response_model=UserProfile)
+@router.post("/me/change-email", response_model=UserProfileWithToken)
 def change_email(
     body: ChangeEmail,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Change the authenticated user's email."""
+    """Change the authenticated user's email (re-authenticated by password).
+
+    Bumps ``token_version`` so other sessions are signed out; the response
+    carries a fresh token for the current session.
+    """
     if not verify_password(body.password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -354,9 +386,10 @@ def change_email(
         )
 
     current_user.email = new_email
+    current_user.token_version += 1
     db.commit()
     db.refresh(current_user)
-    return current_user
+    return _profile_with_token(current_user)
 
 
 @router.get("/me/trust", response_model=TrustSummary)

@@ -37,6 +37,14 @@ class UserPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UserProfileWithToken(UserProfile):
+    """Profile plus a fresh access token (returned after credential changes,
+    which invalidate all previously issued tokens)."""
+
+    access_token: str
+    token_type: str = "bearer"
+
+
 class UserProfileUpdate(BaseModel):
     display_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
     neighbourhood: str | None = Field(None, max_length=100)

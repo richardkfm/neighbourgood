@@ -280,6 +280,21 @@
 		}
 	}
 
+	async function makeAdmin(userId: number) {
+		promotingUser = userId;
+		error = '';
+		actionMsg = '';
+		try {
+			await api(`/communities/${communityId}/members/${userId}/promote`, { method: 'POST', auth: true });
+			actionMsg = $t('communities.admin_made');
+			await loadData();
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to promote';
+		} finally {
+			promotingUser = null;
+		}
+	}
+
 	async function demoteLeader(userId: number) {
 		promotingUser = userId;
 		error = '';
@@ -503,6 +518,7 @@
 			{promotingUser}
 			onpromote={promoteToLeader}
 			ondemote={demoteLeader}
+			onmakeadmin={makeAdmin}
 		/>
 		{/if}
 

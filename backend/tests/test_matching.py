@@ -121,12 +121,11 @@ def test_skill_matching_basic(client, auth_headers):
 def test_skill_matching_different_community(client, auth_headers):
     """Skills in different communities should not match."""
     c1 = _create_community(client, auth_headers, "Community A")
-    c2 = _create_community(client, auth_headers, "Community B")
+    user2_headers = _register_user(client, n=11)
+    c2 = _create_community(client, user2_headers, "Community B")
 
     _create_skill(client, auth_headers, c1["id"], "Need cooking help", "cooking", "request")
 
-    user2_headers = _register_user(client, n=11)
-    _join_community(client, user2_headers, c2["id"])
     _create_skill(client, user2_headers, c2["id"], "Chef available", "cooking", "offer")
 
     # Suggestions for community A should not include the offer from community B

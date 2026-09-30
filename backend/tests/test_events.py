@@ -237,6 +237,7 @@ def test_attend_event_full(client, auth_headers, community_id):
 
     # Second user tries to attend — event full
     other = _register(client, "latecomer@test.com", "Latecomer")
+    client.post(f"/communities/{community_id}/join", headers=other)
     res = client.post(f"/events/{event_id}/attend", headers=other)
     assert res.status_code == 409
 
@@ -318,10 +319,11 @@ def test_search_events(client, auth_headers, community_id):
 
 
 def test_filter_by_community(client, auth_headers, community_id):
-    # Create a second community
+    # Create a second community (owned by another user: one community per user)
+    other_owner = _register(client, "other-owner@test.com", "Other Owner")
     res2 = client.post(
         "/communities",
-        headers=auth_headers,
+        headers=other_owner,
         json={"name": "Other Community", "postal_code": "99999", "city": "Anderstadt"},
     )
     other_community_id = res2.json()["id"]
@@ -329,7 +331,7 @@ def test_filter_by_community(client, auth_headers, community_id):
     client.post("/events", headers=auth_headers, json={
         "title": "Event A", "category": "meetup", "start_at": _future(), "community_id": community_id,
     })
-    client.post("/events", headers=auth_headers, json={
+    client.post("/events", headers=other_owner, json={
         "title": "Event B", "category": "meetup", "start_at": _future(), "community_id": other_community_id,
     })
 

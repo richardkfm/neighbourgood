@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from 'svelte-i18n';
   import type { CommunityMember, UserInfo } from '$lib/types';
 
   let {
@@ -8,6 +9,7 @@
     promotingUser = null,
     onpromote,
     ondemote,
+    onmakeadmin,
   }: {
     members: CommunityMember[];
     isAdmin: boolean;
@@ -15,6 +17,7 @@
     promotingUser?: number | null;
     onpromote: (userId: number) => void;
     ondemote: (userId: number) => void;
+    onmakeadmin: (userId: number) => void;
   } = $props();
 </script>
 
@@ -42,6 +45,9 @@
                 Make Leader
               </button>
             {/if}
+            <button class="btn-tiny" onclick={() => onmakeadmin(m.user.id)} disabled={promotingUser === m.user.id}>
+              {$t('communities.make_admin')}
+            </button>
           {/if}
           <span class="member-date">Joined {new Date(m.joined_at).toLocaleDateString()}</span>
         </div>
