@@ -112,3 +112,7 @@ class TrustSummary(BaseModel):
     skill_reviews: int = 0
     resources_count: int = 0
     skills_count: int = 0
+
+
+class DeleteAccount(BaseModel):
+    password: str = Field(..., min_length=1, max_length=128)

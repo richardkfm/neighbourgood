@@ -1,6 +1,6 @@
 """User profile, reputation, and trust endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
@@ -16,6 +16,7 @@ from app.schemas.user import (
     ChangeEmail,
     ChangePassword,
     DashboardOverview,
+    DeleteAccount,
     OwnerTrust,
     ReputationOut,
     TrustBadge,
@@ -23,7 +24,9 @@ from app.schemas.user import (
     UserProfile,
     UserProfileUpdate,
 )
+from app.services.account_deletion import delete_account, remove_image_files
 from app.services.auth import hash_password, verify_password
+from app.services.notifications import notify_booking_status
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -237,6 +240,28 @@ def update_my_profile(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_account(
+    body: DeleteAccount,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Permanently delete the authenticated user's account (re-authenticates with the password).
+
+    The account is anonymised rather than removed; see ``services/account_deletion.py``
+    for what happens to each kind of data. A wrong password is a 400 (not a 401) so the
+    client does not treat it as an expired session and log the user out.
+    """
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password is incorrect")
+
+    result = delete_account(db, current_user)
+    for email, resource_title in result.cancelled_borrowers:
+        background_tasks.add_task(notify_booking_status, email, resource_title, "cancelled")
+    background_tasks.add_task(remove_image_files, result.image_paths)
 
 
 @router.get("/me/reputation", response_model=ReputationOut)
