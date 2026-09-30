@@ -23,6 +23,7 @@ class ReviewOut(BaseModel):
     booking_id: int | None = None
     skill_id: int | None = None
     review_type: str = "booking"
+    reviewee_role: str | None = None  # "lender" / "borrower" for booking reviews, None for skill reviews
     reviewer_id: int
     reviewee_id: int
     rating: int

@@ -187,6 +187,18 @@ def test_get_user_reviews_filtered_by_skill(client, auth_headers):
     assert reviews[0]["review_type"] == "skill"
 
 
+def test_skill_review_has_no_reviewee_role(client, auth_headers):
+    """Skill reviews carry no lender/borrower role."""
+    other = _register(client, "rolehelper@test.com", "Role Helper")
+    cid = _create_community(client, auth_headers)
+    _join_community(client, other, cid)
+    skill_id = _create_skill(client, other, cid)
+    res = client.post("/reviews/skill", headers=auth_headers, json={"skill_id": skill_id, "rating": 5})
+    assert res.status_code == 201
+    assert res.json()["review_type"] == "skill"
+    assert res.json()["reviewee_role"] is None
+
+
 def test_get_user_reviews_given(client, auth_headers):
     """Filter user reviews to those given by the user."""
     community_id = _create_community(client, auth_headers)
