@@ -31,7 +31,7 @@
 	/* Focus ring + layout tokens shared by every theme */
 	--color-on-error: #ffffff;
 	--color-on-success: #ffffff; /* 5.0:1 on --color-success */
-	--color-on-accent: #ffffff; /* 5.5:1 on --color-accent */
+	--color-on-accent: #ffffff; /* 5.0:1 on --color-accent */
 	--color-on-warning: #ffffff; /* 5.0:1 on --color-warning */
 	--focus-ring: var(--color-primary);
 	--tap-target: 44px;
@@ -93,8 +93,8 @@
 	--color-success-bg: #064e3b;
 	--color-status-dot: #34d399;
 	--color-on-error: #1a0a0a;
-	--color-on-success: #052e16; /* 7.6:1 on the dark-theme success green */
-	--color-on-accent: #1f1206; /* 5.6:1 on the dark-theme accent */
+	--color-on-success: #052e16; /* 7.7:1 on the dark-theme success green */
+	--color-on-accent: #1f1206; /* 6.1:1 on the dark-theme accent */
 	--color-on-warning: #1f1206;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);

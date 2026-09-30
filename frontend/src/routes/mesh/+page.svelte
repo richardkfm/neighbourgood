@@ -411,7 +411,7 @@
 		</div>
 
 		<!-- Offline Triage Link -->
-		<a href="/mesh/triage" class="card mesh-card triage-link">
+		<a href="/mesh/triage" class="card card-interactive mesh-card triage-link">
 			<Icon name="clipboard" size={20} />
 			<div>
 				<strong>{$t('mesh.offline_triage')}</strong>
