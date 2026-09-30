@@ -163,7 +163,7 @@
 	}
 
 	.back-link {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 0.88rem;
 		font-weight: 500;
@@ -276,7 +276,7 @@
 
 	.source {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.loading {

@@ -139,7 +139,7 @@
 
 	.back-link {
 		font-size: 0.85rem;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 
@@ -235,7 +235,7 @@
 		margin-left: auto;
 		font-size: 0.7rem;
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 		padding: 0.1rem 0.5rem;
 		border-radius: 999px;

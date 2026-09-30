@@ -162,7 +162,7 @@
   }
   .btn-vote:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-vote-red { background: var(--color-error); color: white; }
-  .btn-vote-blue { background: var(--color-primary); color: white; }
+  .btn-vote-blue { background: var(--color-primary); color: var(--color-on-primary); }
   .btn-crisis-activate {
     padding: 0.45rem 0.9rem;
     background: var(--color-error);
@@ -179,7 +179,7 @@
   .btn-crisis-deactivate {
     padding: 0.45rem 0.9rem;
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     border: none;
     border-radius: var(--radius);
     font-size: 0.82rem;

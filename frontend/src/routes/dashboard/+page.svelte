@@ -390,7 +390,7 @@
 		height: 44px;
 		border-radius: var(--radius);
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		flex-shrink: 0;
 	}
 
@@ -415,7 +415,7 @@
 	.nudge-btn {
 		padding: 0.5rem 1.2rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border-radius: var(--radius-sm);
 		font-size: 0.88rem;
 		font-weight: 600;
@@ -476,7 +476,7 @@
 
 	.community-arrow {
 		font-size: 1.1rem;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 	}
 
@@ -607,7 +607,7 @@
 	.attention-action {
 		font-size: 0.82rem;
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		white-space: nowrap;
 	}
 
@@ -685,7 +685,7 @@
 	.reputation-score {
 		font-size: 3rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		min-width: 70px;
 		line-height: 1;
 	}
@@ -715,7 +715,7 @@
 		padding: 0.15rem 0.55rem;
 		border-radius: 999px;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		letter-spacing: 0.03em;
 		text-transform: uppercase;
 	}
@@ -767,7 +767,7 @@
 
 	.rep-tier-active {
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border-color: var(--color-primary);
 		font-weight: 600;
 	}
@@ -810,7 +810,7 @@
 	.rep-pts {
 		font-size: 0.78rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		min-width: 28px;
 	}
 

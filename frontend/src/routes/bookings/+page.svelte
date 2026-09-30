@@ -356,7 +356,7 @@
 	}
 
 	.resource-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.booking-meta {
@@ -470,9 +470,9 @@
 		cursor: pointer;
 		border: 1px solid var(--color-primary);
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
-	.btn-review:hover { background: var(--color-primary); color: white; }
+	.btn-review:hover { background: var(--color-primary); color: var(--color-on-primary); }
 
 	.reviewed-badge {
 		font-size: 0.78rem;

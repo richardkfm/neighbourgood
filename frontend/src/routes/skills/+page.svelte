@@ -332,7 +332,7 @@
 	}
 
 	.browse-tab.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border-bottom-color: var(--color-primary);
 		font-weight: 600;
 	}
@@ -347,7 +347,7 @@
 
 	.btn-primary {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		padding: 0.55rem 1.2rem;
@@ -514,7 +514,7 @@
 		background: var(--color-primary-light);
 		padding: 0.15rem 0.55rem;
 		border-radius: 999px;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 	}
 

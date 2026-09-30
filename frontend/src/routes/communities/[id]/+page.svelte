@@ -652,7 +652,7 @@
 	}
 
 	.community-tab.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border-bottom-color: var(--color-primary);
 		font-weight: 600;
 	}
@@ -665,7 +665,7 @@
 	}
 
 	.back-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.header-top {
@@ -702,7 +702,7 @@
 		padding: 0.12rem 0.45rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.description {
@@ -729,7 +729,7 @@
 	.btn-primary {
 		padding: 0.55rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.9rem;
@@ -822,7 +822,7 @@
 		padding: 0.1rem 0.4rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -926,7 +926,7 @@
 
 	.alert-info {
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px solid var(--color-primary);
 	}
 
@@ -964,7 +964,7 @@
 
 	.btn-small:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.resource-grid {
@@ -1017,7 +1017,7 @@
 		font-size: 0.65rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 	}
 
@@ -1210,7 +1210,7 @@
 	.btn-crisis-deactivate {
 		padding: 0.4rem 0.9rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.82rem;
@@ -1287,13 +1287,13 @@
 	}
 
 	.btn-vote-blue {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border-color: var(--color-primary);
 	}
 
 	.btn-vote-blue:hover:not(:disabled) {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	/* ── Emergency tickets ──────────────────── */
@@ -1442,7 +1442,7 @@
 
 	.btn-tiny:hover:not(:disabled) {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.btn-tiny:disabled {
@@ -1511,7 +1511,7 @@
 
 	.timeline-actor {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		white-space: nowrap;
 	}
 

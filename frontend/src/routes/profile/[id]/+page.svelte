@@ -27,7 +27,7 @@
 
 	const BADGE_COLORS: Record<string, string> = {
 		reliable_borrower: 'var(--color-success)',
-		trusted_lender: 'var(--color-primary)',
+		trusted_lender: 'var(--color-primary-text)',
 		skilled_helper: 'var(--color-warning)'
 	};
 
@@ -140,7 +140,7 @@
 		{#if trust.badges.length > 0}
 			<section class="badges-section">
 				{#each trust.badges as badge}
-					<span class="trust-badge" style="--badge-color: {BADGE_COLORS[badge.key] ?? 'var(--color-primary)'}">
+					<span class="trust-badge" style="--badge-color: {BADGE_COLORS[badge.key] ?? 'var(--color-primary-text)'}">
 						<span class="badge-icon">{BADGE_ICONS[badge.key] ?? '🏆'}</span>
 						<span class="badge-label">{badge.label}</span>
 						<span class="badge-desc">{badge.description}</span>
@@ -276,7 +276,7 @@
 		height: 72px;
 		border-radius: 50%;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		font-size: 2rem;
 		font-weight: 700;
 		display: flex;
@@ -307,7 +307,7 @@
 		padding: 0.2rem 0.75rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 		font-size: 0.82rem;
 	}
@@ -424,7 +424,7 @@
 		display: block;
 		font-size: 1.5rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.stat-label {
@@ -456,7 +456,7 @@
 	}
 
 	.browse-tab.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border-bottom-color: var(--color-primary);
 		font-weight: 600;
 	}
@@ -485,7 +485,7 @@
 
 	.review-author {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 
@@ -540,7 +540,7 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 		cursor: pointer;
 		transition: border-color 150ms;

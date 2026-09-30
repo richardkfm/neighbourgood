@@ -111,7 +111,7 @@
 		display: inline-block;
 		padding: 0.55rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.9rem;
@@ -140,7 +140,7 @@
 
 	.btn-secondary:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.loading-text {

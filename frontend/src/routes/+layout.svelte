@@ -708,7 +708,7 @@
 	}
 
 	.nav-link.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 		font-weight: 600;
 	}
@@ -743,7 +743,7 @@
 	}
 
 	.nav-icon-btn:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 		text-decoration: none;
 	}
@@ -765,7 +765,7 @@
 
 	.theme-toggle:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 	}
 
@@ -810,7 +810,7 @@
 	}
 
 	.nav-user-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 
@@ -835,7 +835,7 @@
 		display: inline-flex;
 		align-items: center;
 		background: var(--color-primary);
-		color: white !important;
+		color: var(--color-on-primary) !important;
 		padding: 0.4rem 0.9rem;
 		border-radius: var(--radius-sm);
 		font-size: 0.85rem;
@@ -866,7 +866,7 @@
 		padding: 0.15rem 0.6rem;
 		border-radius: 999px;
 		background: var(--color-primary-hover);
-		color: #fff;
+		color: var(--color-on-primary);
 		font-size: 0.68rem;
 		font-weight: 800;
 		letter-spacing: 0.06em;
@@ -1127,7 +1127,7 @@
 		}
 
 		.bn-item.active {
-			color: var(--color-primary);
+			color: var(--color-primary-text);
 		}
 
 		.bn-item.active svg {
@@ -1241,7 +1241,7 @@
 		align-items: center;
 		gap: 0.35rem;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px solid var(--color-primary);
 		border-radius: var(--radius-sm);
 		padding: 0.3rem 0.7rem;
@@ -1254,7 +1254,7 @@
 
 	.nav-install-btn:hover {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	/* ── Language selector ──────────────────────────────────────────── */
@@ -1310,7 +1310,7 @@
 	}
 
 	.lang-option.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 	}
 

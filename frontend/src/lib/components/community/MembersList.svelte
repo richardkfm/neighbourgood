@@ -97,7 +97,7 @@
     padding: 0.15rem 0.45rem;
     border-radius: 999px;
     background: var(--color-primary-light);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
   .role-badge-leader {
     background: var(--color-warning-bg);
@@ -127,7 +127,7 @@
   .btn-tiny:hover:not(:disabled) {
     background: var(--color-primary-light);
     border-color: var(--color-primary);
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
   .btn-tiny:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

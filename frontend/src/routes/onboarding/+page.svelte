@@ -629,12 +629,12 @@
 
 	.progress-step.done .step-circle {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	.progress-step.current .step-circle {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		box-shadow: 0 0 0 3px var(--color-primary-light);
 	}
 
@@ -653,7 +653,7 @@
 
 	.progress-step.done .step-label,
 	.progress-step.current .step-label {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.progress-step.upcoming .step-label {
@@ -755,7 +755,7 @@
 	.chip:hover:not(:disabled):not(.added) {
 		background: var(--color-primary-light);
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		transform: translateY(-1px);
 		box-shadow: var(--shadow);
 	}
@@ -763,7 +763,7 @@
 	.chip.added {
 		background: var(--color-primary);
 		border-color: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		cursor: default;
 		transform: scale(1.04);
 	}
@@ -805,7 +805,7 @@
 	.btn-add {
 		padding: 0.6rem 1.1rem;
 		background: var(--color-surface);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px solid var(--color-primary);
 		border-radius: var(--radius);
 		font-size: 0.88rem;
@@ -834,7 +834,7 @@
 		width: 100%;
 		padding: 0.85rem 1.5rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 1rem;
@@ -917,7 +917,7 @@
 	.btn-search {
 		padding: 0.65rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.95rem;
@@ -991,7 +991,7 @@
 		padding: 0.15rem 0.5rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.member-count {
@@ -1009,7 +1009,7 @@
 	.btn-join {
 		padding: 0.5rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.88rem;
@@ -1069,7 +1069,7 @@
 		width: 100%;
 		padding: 0.75rem;
 		background: var(--color-surface);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px dashed var(--color-primary);
 		border-radius: var(--radius);
 		font-size: 0.95rem;
@@ -1166,7 +1166,7 @@
 	.btn-primary {
 		padding: 0.5rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.88rem;
@@ -1212,7 +1212,7 @@
 	}
 
 	.skip-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	/* ── Check icon (global needed for :global in Svelte 5) ─ */

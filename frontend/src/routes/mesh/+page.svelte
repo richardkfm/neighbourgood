@@ -624,7 +624,7 @@
 		padding: 0 6px;
 		border-radius: 999px;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		font-size: 0.72rem;
 		font-weight: 700;
 	}
@@ -644,7 +644,7 @@
 
 	.btn-primary {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	.btn-primary:hover {

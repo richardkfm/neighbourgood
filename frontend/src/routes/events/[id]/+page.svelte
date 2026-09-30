@@ -200,7 +200,7 @@
 	.back-link {
 		display: inline-block;
 		margin-bottom: 1rem;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 0.9rem;
 	}
@@ -342,7 +342,7 @@
 
 	.btn-secondary {
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px solid var(--color-border);
 	}
 

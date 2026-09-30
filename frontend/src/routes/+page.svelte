@@ -176,7 +176,7 @@
 
 	.hero-accent {
 		font-style: italic;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.hero-subtitle {
@@ -198,7 +198,7 @@
 		align-items: center;
 		padding: 0.7rem 1.5rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border-radius: var(--radius);
 		font-size: 0.95rem;
 		font-weight: 600;
@@ -230,7 +230,7 @@
 
 	.btn-hero-secondary:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 
@@ -307,7 +307,7 @@
 		align-items: center;
 		gap: 0.6rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border-radius: 999px;
 		padding: 0.55rem 1rem;
 		box-shadow: var(--shadow-md);
@@ -369,7 +369,7 @@
 	}
 
 	.feature-mark {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		align-self: center;
 	}
 
@@ -432,7 +432,7 @@
 
 	.status-text { font-weight: 500; }
 	.status-hint { font-size: 0.8rem; opacity: 0.8; margin-top: 0.15rem; }
-	.mode-blue { color: var(--color-primary); }
+	.mode-blue { color: var(--color-primary-text); }
 	.mode-red { color: var(--color-error); }
 
 	/* ── Responsive ────────────────────────────────────────────────── */

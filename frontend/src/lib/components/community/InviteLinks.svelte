@@ -240,7 +240,7 @@
   .btn-primary {
     padding: 0.5rem 1.1rem;
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
     border: none;
     border-radius: var(--radius);
     font-size: 0.88rem;

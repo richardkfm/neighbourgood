@@ -537,7 +537,7 @@
 	}
 
 	.event-link:hover .event-title {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.event-header {
@@ -571,7 +571,7 @@
 	.event-date {
 		margin: 0;
 		font-size: 0.875rem;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.event-location {
@@ -640,7 +640,7 @@
 
 	.btn-secondary {
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px solid var(--color-border);
 	}
 

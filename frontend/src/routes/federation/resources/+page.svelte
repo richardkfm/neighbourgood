@@ -153,7 +153,7 @@
 	}
 
 	.back-link {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 0.88rem;
 		font-weight: 500;
@@ -217,7 +217,7 @@
 		padding: 0.15rem 0.5rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-transform: capitalize;
 	}
 
@@ -258,7 +258,7 @@
 
 	.source {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.loading {

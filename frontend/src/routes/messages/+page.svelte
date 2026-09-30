@@ -383,7 +383,7 @@
 		align-items: center;
 		gap: 0.4rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius-sm);
 		padding: 0.5rem 1rem;
@@ -469,7 +469,7 @@
 
 	.unread-badge {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		font-size: 0.7rem;
 		font-weight: 700;
 		border-radius: 10px;
@@ -533,7 +533,7 @@
 	}
 
 	.skill-context-link {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 		text-decoration: none;
 		overflow: hidden;
@@ -564,7 +564,7 @@
 	.msg-bubble.sent {
 		align-self: flex-end;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	.msg-bubble.received {
@@ -610,7 +610,7 @@
 
 	.send-btn {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		padding: 0.5rem 1rem;

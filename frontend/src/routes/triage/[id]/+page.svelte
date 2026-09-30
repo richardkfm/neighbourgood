@@ -72,7 +72,7 @@
       case 'open':
         return 'var(--color-warning)';
       case 'in_progress':
-        return 'var(--color-primary)';
+        return 'var(--color-primary-text)';
       case 'resolved':
         return 'var(--color-success)';
       default:
@@ -374,7 +374,7 @@
   }
 
   .breadcrumb a:hover {
-    color: var(--color-primary);
+    color: var(--color-primary-text);
   }
 
   /* State messages */
@@ -545,7 +545,7 @@
 
   .btn-primary {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-on-primary);
   }
 
   .btn-primary:not(:disabled):hover {

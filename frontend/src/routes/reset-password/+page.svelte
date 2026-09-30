@@ -169,7 +169,7 @@
 		min-height: var(--tap-target);
 		padding: 0.6rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 1rem;

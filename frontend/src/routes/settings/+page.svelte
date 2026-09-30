@@ -748,7 +748,7 @@
 
 	.btn-primary {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	.btn-primary:hover:not(:disabled) {

@@ -423,7 +423,7 @@
 	.btn-find {
 		padding: 0.5rem 1rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border-radius: var(--radius);
 		font-size: 0.88rem;
 		font-weight: 600;
@@ -490,7 +490,7 @@
 		padding: 0.12rem 0.45rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.tag-crisis {
@@ -515,7 +515,7 @@
 	.member-count {
 		font-size: 1.75rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		line-height: 1;
 	}
 
@@ -560,7 +560,7 @@
 		display: inline-block;
 		padding: 0.5rem 1.25rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border-radius: var(--radius);
 		font-size: 0.9rem;
 		font-weight: 600;
@@ -644,7 +644,7 @@
 
 	.tag-mine {
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-size: 0.72rem;
 		font-weight: 600;
 		padding: 0.12rem 0.45rem;
@@ -694,7 +694,7 @@
 
 	.btn-page:hover:not(:disabled) {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.btn-page:disabled {
@@ -742,7 +742,7 @@
 		padding: 0.4rem 0.9rem;
 		border-radius: var(--radius-sm);
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 0.85rem;
 		font-weight: 600;
@@ -751,7 +751,7 @@
 
 	.action-link:hover {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		text-decoration: none;
 	}
 
@@ -874,7 +874,7 @@
 
 	:global(.federation-section) .btn-primary {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		display: inline-block;
 	}
 
@@ -890,7 +890,7 @@
 
 	.btn-secondary:hover:not(:disabled) {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	/* Instance grid */
@@ -936,7 +936,7 @@
 
 	.mode-blue {
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.mode-red {

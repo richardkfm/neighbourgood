@@ -211,7 +211,7 @@
 		padding: 0.1rem 0.4rem;
 		border-radius: 999px;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -305,7 +305,7 @@
 		align-items: center;
 		padding: 0.6rem 1.25rem;
 		background: var(--color-primary);
-		color: white !important;
+		color: var(--color-on-primary) !important;
 		border-radius: var(--radius);
 		font-size: 0.9rem;
 		font-weight: 600;
@@ -325,7 +325,7 @@
 		display: inline-block;
 		padding: 0.5rem 1.25rem;
 		background: var(--color-primary);
-		color: white !important;
+		color: var(--color-on-primary) !important;
 		border-radius: var(--radius);
 		font-size: 0.9rem;
 		font-weight: 600;
@@ -354,7 +354,7 @@
 
 	.btn-secondary:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 

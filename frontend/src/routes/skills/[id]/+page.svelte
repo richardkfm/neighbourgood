@@ -396,7 +396,7 @@
 	}
 
 	.back-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.skill-detail {
@@ -484,7 +484,7 @@
 
 	.category-badge {
 		background: var(--color-bg);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.type-badge {
@@ -540,7 +540,7 @@
 		height: 44px;
 		border-radius: 50%;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		font-weight: 600;
 		font-size: 1.1rem;
 		flex-shrink: 0;
@@ -552,7 +552,7 @@
 
 	.owner-name-link {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 1.05rem;
 	}
@@ -592,7 +592,7 @@
 		padding: 0.1rem 0.5rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 		font-size: 0.75rem;
 	}
@@ -604,7 +604,7 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-primary);
 		border-radius: var(--radius);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-size: 0.85rem;
 		font-weight: 500;
 		cursor: pointer;
@@ -613,7 +613,7 @@
 
 	.btn-message-owner:hover {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	/* Review list */
@@ -642,7 +642,7 @@
 
 	.reviewer-name {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 0.9rem;
 	}
@@ -723,7 +723,7 @@
 
 	.btn-primary {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius);
 		padding: 0.5rem 1rem;

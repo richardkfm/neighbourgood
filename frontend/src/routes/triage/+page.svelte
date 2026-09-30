@@ -175,7 +175,7 @@
 	function statusColor(status: string): string {
 		switch (status) {
 			case 'open':        return 'var(--color-warning)';
-			case 'in_progress': return 'var(--color-primary)';
+			case 'in_progress': return 'var(--color-primary-text)';
 			case 'resolved':    return 'var(--color-success)';
 			default:            return 'var(--color-text-muted)';
 		}
@@ -632,7 +632,7 @@
 	.btn-new-ticket {
 		padding: 0.5rem 1.1rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius-sm);
 		font-size: 0.88rem;
@@ -700,7 +700,7 @@
 	.btn-primary {
 		padding: 0.6rem 1.2rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border: none;
 		border-radius: var(--radius-sm);
 		font-size: 0.9rem;
@@ -839,7 +839,7 @@
 		flex-wrap: wrap;
 	}
 
-	.assigned { color: var(--color-primary); }
+	.assigned { color: var(--color-primary-text); }
 	.unassigned { font-style: italic; }
 	.ticket-id { opacity: 0.5; }
 
@@ -862,7 +862,7 @@
 
 	.btn-tiny:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.btn-tiny-success:hover {
@@ -981,7 +981,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-sm);
 		background: var(--color-surface);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		cursor: pointer;
 		transition: all var(--transition-fast);
 	}
@@ -989,7 +989,7 @@
 	.btn-mesh:hover:not(:disabled) {
 		border-color: var(--color-primary);
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	.mesh-dash-link {

@@ -32,7 +32,7 @@
 	}
 
 	function severityColor(severity: string): string {
-		return severity === 'critical' ? 'var(--color-error)' : severity === 'warning' ? 'var(--color-warning)' : 'var(--color-primary)';
+		return severity === 'critical' ? 'var(--color-error)' : severity === 'warning' ? 'var(--color-warning)' : 'var(--color-primary-text)';
 	}
 </script>
 

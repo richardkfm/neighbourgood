@@ -8,8 +8,13 @@
 	--color-text: #2d1b0e;
 	--color-text-muted: #7a5c47;
 	--color-text-subtle: #8f6a52; /* 4.6:1 on --color-bg (was 2.7:1) */
+	/* Primary is split in two so both uses pass WCAG AA in every theme:
+	   --color-primary       = FILL (buttons, badges, active chips) behind --color-on-primary
+	   --color-primary-text  = links and text on the page surfaces */
 	--color-primary: #4f46e5;
 	--color-primary-hover: #4338ca;
+	--color-primary-text: #4f46e5; /* 6.3:1 on white, 6.0:1 on --color-bg */
+	--color-on-primary: #ffffff; /* 6.3:1 on --color-primary */
 	--color-primary-light: #eef2ff;
 	--color-accent: #b5521a; /* 4.9:1 on white; 4.5:1 white-on-accent */
 	--color-accent-light: #fef0e4;
@@ -29,7 +34,7 @@
 	--tap-target: 44px;
 	--bottom-nav-height: 64px;
 	--urgency-low: var(--color-text-muted);
-	--urgency-medium: var(--color-primary);
+	--urgency-medium: var(--color-primary-text);
 	--urgency-high: var(--color-warning);
 	--urgency-critical: var(--color-error);
 
@@ -69,7 +74,9 @@
 	/* Violet primary accent (restored) for dark surfaces — keeps the same brand
 	   hue as the light-mode violet. */
 	--color-primary: #818cf8;
-	--color-primary-hover: #6366f1;
+	--color-primary-hover: #a5b4fc; /* lighter on hover: dark text keeps 9.5:1 */
+	--color-primary-text: #818cf8; /* 5.7:1 on surface, 6.4:1 on bg */
+	--color-on-primary: #0f0f1a; /* 6.4:1 on --color-primary (white would be 3.0:1) */
 	--color-primary-light: #1e1b4b;
 	--color-accent: #e07b33;
 	--color-accent-light: #3a2415;
@@ -107,8 +114,10 @@
 	--color-text: #f5f5f5;
 	--color-text-muted: #b3b3b3;
 	--color-text-subtle: #8f8f8f;
-	--color-primary: #ef4444;
-	--color-primary-hover: #dc2626;
+	--color-primary: #dc2626; /* fill: 4.8:1 with white text */
+	--color-primary-hover: #b91c1c; /* 6.5:1 with white text */
+	--color-primary-text: #fb8b8b; /* text: 6.0:1 on surface, 4.7:1 on raised */
+	--color-on-primary: #ffffff;
 	--color-primary-light: #450a0a;
 	--color-accent: #f59e0b;
 	--color-accent-light: #3a2a08;
@@ -266,7 +275,7 @@ h3, h4, h5, h6 {
 }
 
 a {
-	color: var(--color-primary);
+	color: var(--color-primary-text);
 	text-decoration: none;
 	transition: color var(--transition-fast);
 }
@@ -348,7 +357,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible {
 	padding: 0.6rem 1rem;
 	border-radius: var(--radius-sm);
 	background: var(--color-primary);
-	color: #fff;
+	color: var(--color-on-primary);
 	font-weight: 600;
 	transform: translateY(-200%);
 }
@@ -433,7 +442,7 @@ input[type='checkbox'], input[type='radio'] {
 
 .alert-info {
 	background: var(--color-primary-light);
-	color: var(--color-primary);
+	color: var(--color-primary-text);
 	border: 1px solid var(--color-primary);
 }
 
@@ -450,7 +459,7 @@ input[type='checkbox'], input[type='radio'] {
 	padding: 0.12rem 0.45rem;
 	border-radius: 999px;
 	background: var(--color-primary-light);
-	color: var(--color-primary);
+	color: var(--color-primary-text);
 }
 
 .badge {
