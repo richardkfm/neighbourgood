@@ -19,6 +19,7 @@ from app.models.user import User
 from app.services.activity import record_activity
 from app.services.ai_client import get_ai_client
 from app.services.webhooks import dispatch_event
+from app.services.mode import effective_mode
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ def _exec_search_skill(query: str, community: Community | None, db: Session) -> 
 def _exec_summarize_crisis(community: Community | None, db: Session) -> str:
     if not community:
         return "You need to be in a community to view crisis tickets."
-    if community.mode != "red":
+    if effective_mode(community) != "red":
         return f"<b>{_e(community.name)}</b> is in Blue Sky mode — no active crisis."
     tickets = (
         db.query(EmergencyTicket)
@@ -178,7 +179,7 @@ def _exec_create_request(
 ) -> str:
     if not community:
         return "You need to be in a community to create an emergency request."
-    if community.mode != "red":
+    if effective_mode(community) != "red":
         return (
             f"<b>{_e(community.name)}</b> is in Blue Sky mode. "
             "Emergency requests can only be created during Red Sky (crisis) mode."
@@ -272,7 +273,7 @@ def handle_nl_message(
 ) -> str:
     """Classify *text* and execute the matched intent. Always returns a reply string."""
     ai_client = get_ai_client()
-    community_mode = community.mode if community else "blue"
+    community_mode = effective_mode(community) if community else "blue"
 
     intent_data = _classify_intent(text, community_mode)
     intent = intent_data.get("intent", "help")

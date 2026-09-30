@@ -2,7 +2,8 @@
 
 import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -11,6 +12,13 @@ from app.models.community import Community, CommunityMember
 from app.models.crisis import CrisisVote, EmergencyTicket, TicketComment
 from app.models.user import User
 from app.services.activity import record_activity
+from app.services.crisis_votes import (  # noqa: F401 – apply_vote_threshold re-exported
+    VOTE_THRESHOLD_PCT,
+    apply_vote_threshold,
+    is_noop_vote,
+    set_community_mode,
+)
+from app.services.mode import effective_mode, is_global_red
 from app.services.webhooks import dispatch_event
 from app.utils.authorization import (
     require_admin,
@@ -34,8 +42,6 @@ from app.schemas.crisis import (
 from app.schemas.community import CommunityMemberOut
 
 router = APIRouter(prefix="/communities/{community_id}", tags=["crisis"])
-
-VOTE_THRESHOLD_PCT = 60  # percentage of members needed to trigger mode change
 
 # Urgency levels mapped to integer weights for triage scoring
 _URGENCY_RANK: dict[str, int] = {"low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -71,12 +77,49 @@ def _ticket_to_out(ticket: EmergencyTicket) -> EmergencyTicketOut:
         due_at=ticket.due_at,
         triage_score=_triage_score(ticket),
         assigned_to=ticket.assigned_to,
+        client_id=ticket.client_id,
         created_at=ticket.created_at,
         updated_at=ticket.updated_at,
     )
 
 
+def _crisis_status(db: Session, community: Community) -> CrisisModeStatus:
+    total = (
+        db.query(CommunityMember)
+        .filter(CommunityMember.community_id == community.id)
+        .count()
+    )
+    counts = {"activate": 0, "deactivate": 0}
+    for vote_type in counts:
+        counts[vote_type] = (
+            db.query(CrisisVote)
+            .filter(CrisisVote.community_id == community.id, CrisisVote.vote_type == vote_type)
+            .count()
+        )
+    return CrisisModeStatus(
+        community_id=community.id,
+        mode=community.mode,
+        effective_mode=effective_mode(community),
+        instance_red=is_global_red(),
+        votes_to_activate=counts["activate"],
+        votes_to_deactivate=counts["deactivate"],
+        total_members=total,
+        threshold_pct=VOTE_THRESHOLD_PCT,
+    )
+
+
 # ── Local helpers ─────────────────────────────────────────────────
+
+
+def _ticket_by_client_id(db: Session, author_id: int, client_id: str | None) -> EmergencyTicket | None:
+    if not client_id:
+        return None
+    return (
+        db.query(EmergencyTicket)
+        .options(joinedload(EmergencyTicket.author), joinedload(EmergencyTicket.assigned_to))
+        .filter(EmergencyTicket.author_id == author_id, EmergencyTicket.client_id == client_id)
+        .first()
+    )
 
 
 def _get_community(db: Session, community_id: int) -> Community:
@@ -103,9 +146,8 @@ def toggle_crisis_mode(
     community = _get_community(db, community_id)
     require_admin(db, community_id, current_user.id)
 
-    community.mode = body.mode
-    # Clear existing votes when admin overrides
-    db.query(CrisisVote).filter(CrisisVote.community_id == community_id).delete()
+    # Clears existing votes too: an admin override resets the vote
+    set_community_mode(db, community, body.mode)
     db.commit()
     db.refresh(community)
 
@@ -134,17 +176,7 @@ def toggle_crisis_mode(
             community_id,
         )
 
-    total = (
-        db.query(CommunityMember)
-        .filter(CommunityMember.community_id == community_id)
-        .count()
-    )
-    return CrisisModeStatus(
-        community_id=community_id,
-        mode=community.mode,
-        total_members=total,
-        threshold_pct=VOTE_THRESHOLD_PCT,
-    )
+    return _crisis_status(db, community)
 
 
 @router.get("/crisis/status", response_model=CrisisModeStatus)
@@ -154,103 +186,7 @@ def get_crisis_status(
 ):
     """Get crisis mode status including vote counts."""
     community = _get_community(db, community_id)
-
-    total = (
-        db.query(CommunityMember)
-        .filter(CommunityMember.community_id == community_id)
-        .count()
-    )
-    activate_votes = (
-        db.query(CrisisVote)
-        .filter(
-            CrisisVote.community_id == community_id,
-            CrisisVote.vote_type == "activate",
-        )
-        .count()
-    )
-    deactivate_votes = (
-        db.query(CrisisVote)
-        .filter(
-            CrisisVote.community_id == community_id,
-            CrisisVote.vote_type == "deactivate",
-        )
-        .count()
-    )
-
-    return CrisisModeStatus(
-        community_id=community_id,
-        mode=community.mode,
-        votes_to_activate=activate_votes,
-        votes_to_deactivate=deactivate_votes,
-        total_members=total,
-        threshold_pct=VOTE_THRESHOLD_PCT,
-    )
-
-
-def apply_vote_threshold(
-    db: Session,
-    community_id: int,
-    vote_type: str,
-    actor_id: int,
-    *,
-    commit: bool = True,
-) -> str | None:
-    """Switch the community mode if ``vote_type`` has reached the threshold.
-
-    Returns the new mode ("red"/"blue") when a switch happened, else None.
-    Shared by the REST vote endpoint and the mesh sync endpoint so both
-    honour the same 60% rule. With ``commit=False`` the caller owns the
-    transaction (changes are only flushed).
-    """
-    total_members = (
-        db.query(CommunityMember)
-        .filter(CommunityMember.community_id == community_id)
-        .count()
-    )
-    vote_count = (
-        db.query(CrisisVote)
-        .filter(
-            CrisisVote.community_id == community_id,
-            CrisisVote.vote_type == vote_type,
-        )
-        .count()
-    )
-    threshold_needed = max(1, (total_members * VOTE_THRESHOLD_PCT + 99) // 100)
-    if vote_count < threshold_needed:
-        return None
-
-    new_mode = "red" if vote_type == "activate" else "blue"
-    # Re-fetch the community row with a row-level lock (no-op on SQLite, but
-    # PostgreSQL serialises concurrent voters here) and re-check the mode
-    # under the lock. Without this, two voters who both push the count over
-    # the threshold could each flip the mode and double-log the activity.
-    locked_community = (
-        db.query(Community)
-        .filter(Community.id == community_id)
-        .with_for_update()
-        .first()
-    )
-    if locked_community is None or locked_community.mode == new_mode:
-        return None
-
-    locked_community.mode = new_mode
-    # Clear all votes after mode switch
-    db.query(CrisisVote).filter(CrisisVote.community_id == community_id).delete()
-    if commit:
-        db.commit()
-    else:
-        db.flush()
-
-    label = "Red Sky (crisis)" if new_mode == "red" else "Blue Sky (normal)"
-    record_activity(
-        db,
-        event_type="crisis_mode_changed",
-        summary=f'community vote switched "{locked_community.name}" to {label}',
-        actor_id=actor_id,
-        community_id=community_id,
-        commit=commit,
-    )
-    return new_mode
+    return _crisis_status(db, community)
 
 
 # ── Community vote ────────────────────────────────────────────────
@@ -267,6 +203,14 @@ def cast_crisis_vote(
     """Cast a vote to activate or deactivate crisis mode. One vote per member."""
     community = _get_community(db, community_id)
     require_membership(db, community_id, current_user.id)
+
+    # Votes act on the stored mode: "activate" while red (or "deactivate" while
+    # blue) could never change anything and would linger as a stale vote
+    if is_noop_vote(community.mode, body.vote_type):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Community is already in {'Red' if community.mode == 'red' else 'Blue'} Sky mode",
+        )
 
     # Check for existing vote (replace if different)
     existing = (
@@ -357,6 +301,7 @@ def create_ticket(
     community_id: int,
     body: EmergencyTicketCreate,
     background_tasks: BackgroundTasks,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -365,11 +310,18 @@ def create_ticket(
     require_membership(db, community_id, current_user.id)
 
     # Emergency pings require crisis mode to be active
-    if body.ticket_type == "emergency_ping" and community.mode != "red":
+    if body.ticket_type == "emergency_ping" and effective_mode(community) != "red":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Emergency pings are only available in Red Sky (crisis) mode",
         )
+
+    # Idempotent replay (offline queue, Background Sync, or the mesh copy of the
+    # same ticket already synced): return the existing ticket
+    existing = _ticket_by_client_id(db, current_user.id, body.client_id)
+    if existing is not None:
+        response.status_code = status.HTTP_200_OK
+        return _ticket_to_out(existing)
 
     ticket = EmergencyTicket(
         community_id=community_id,
@@ -379,9 +331,19 @@ def create_ticket(
         description=body.description,
         urgency=body.urgency,
         due_at=body.due_at,
+        client_id=body.client_id,
     )
     db.add(ticket)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent replay with the same client_id won the race
+        db.rollback()
+        existing = _ticket_by_client_id(db, current_user.id, body.client_id)
+        if existing is None:
+            raise
+        response.status_code = status.HTTP_200_OK
+        return _ticket_to_out(existing)
     db.refresh(ticket)
     _ = ticket.author
     _ = ticket.assigned_to

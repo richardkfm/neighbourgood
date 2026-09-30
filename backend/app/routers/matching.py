@@ -16,6 +16,7 @@ from app.services.matching import (
     get_skill_matches,
     get_unmet_needs,
 )
+from app.services.mode import effective_mode
 
 router = APIRouter(prefix="/matching", tags=["matching"])
 
@@ -79,7 +80,7 @@ def unmet_needs(
             detail="Community not found",
         )
 
-    if community.mode != "red":
+    if effective_mode(community) != "red":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unmet needs are only available in Red Sky mode",
