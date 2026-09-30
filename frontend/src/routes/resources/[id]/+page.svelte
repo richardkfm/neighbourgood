@@ -13,6 +13,9 @@
 	let resource: Resource | null = $state(null);
 	let bookings: Booking[] = $state([]);
 	let error = $state('');
+	// Errors from actions on an already-loaded resource (upload, toggle, delete) are
+	// shown inline; `error` replaces the whole page and is only for load failures.
+	let actionError = $state('');
 	let loading = $state(true);
 	let confirmDelete = $state(false);
 
@@ -70,6 +73,7 @@
 
 	async function toggleAvailability() {
 		if (!resource) return;
+		actionError = '';
 		try {
 			resource = await api<Resource>(`/resources/${resource.id}`, {
 				method: 'PATCH',
@@ -77,7 +81,7 @@
 				body: { is_available: !resource.is_available }
 			});
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Update failed';
+			actionError = err instanceof Error ? err.message : 'Update failed';
 		}
 	}
 
@@ -85,20 +89,25 @@
 		if (!resource) return;
 		if (!confirmDelete) { confirmDelete = true; return; }
 		confirmDelete = false;
+		actionError = '';
 		try {
 			await api(`/resources/${resource.id}`, { method: 'DELETE', auth: true });
 			goto('/resources');
 		} catch (err) {
-			error = err instanceof Error ? err.message : $t('common.error');
+			actionError = err instanceof Error ? err.message : $t('common.error');
 		}
 	}
 
 	async function handleImageUpload() {
 		if (!resource || !imageInput?.files?.length) return;
+		actionError = '';
 		try {
 			resource = await apiUpload<Resource>(`/resources/${resource.id}/image`, imageInput.files[0]);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Upload failed';
+			actionError = err instanceof Error ? err.message : 'Upload failed';
+		} finally {
+			// Allow re-selecting the same file after a failed upload
+			if (imageInput) imageInput.value = '';
 		}
 	}
 
@@ -181,6 +190,10 @@
 			<h1>{resource.title}</h1>
 			<p class="meta">Listed {new Date(resource.created_at).toLocaleDateString()}</p>
 		</div>
+
+		{#if actionError}
+			<p class="error" role="alert">{actionError}</p>
+		{/if}
 
 		<div class="detail-grid">
 			<div class="detail-main">
