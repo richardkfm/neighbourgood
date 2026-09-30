@@ -63,14 +63,15 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | Endpoint                                 | Method | Auth | Description                        |
 | ---------------------------------------- | ------ | ---- | ---------------------------------- |
 | `/communities/search`                    | GET    | No   | Search communities (name/PLZ/city) |
-| `/communities`                           | POST   | Yes  | Create a new community             |
+| `/communities`                           | POST   | Yes  | Create a community (409 if already in one) |
 | `/communities/{id}`                      | GET    | No   | Get community details              |
 | `/communities/{id}`                      | PATCH  | Yes  | Update community (admin only)      |
 | `/communities/{id}/join`                 | POST   | Yes  | Join a community                   |
-| `/communities/{id}/leave`                | POST   | Yes  | Leave a community                  |
+| `/communities/{id}/leave`                | POST   | Yes  | Leave a community (409 for the last admin) |
+| `/communities/{id}/members/{user_id}/promote` | POST | Yes | Make a member an admin (community admin only) |
 | `/communities/{id}/members`              | GET    | No   | List community members             |
 | `/communities/my`                        | GET    | Yes  | List your communities              |
-| `/communities/{id}/merge`                | POST   | Yes  | Merge community into another       |
+| `/communities/{id}/merge`                | POST   | Yes  | Merge into another (admin of both, or platform admin) |
 | `/communities/{id}/merge-suggestions`    | GET    | Yes  | Auto-suggest merge candidates      |
 
 ## Skills
@@ -139,4 +140,4 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | Endpoint              | Method | Auth | Description                              |
 | --------------------- | ------ | ---- | ---------------------------------------- |
 | `/export/my-data`     | GET    | Yes  | Export all user data as portable JSON    |
-| `/migrate/import`     | POST   | Yes  | Import resources/skills from export data |
+| `/migrate/import`     | POST   | Yes  | Import resources/skills (max 200 items; imported items earn no reputation) |
