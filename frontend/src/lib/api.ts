@@ -89,7 +89,9 @@ async function handleUnauthorized(): Promise<void> {
 	if (typeof window === 'undefined') return;
 	try {
 		const { logout } = await import('$lib/stores/auth');
-		logout();
+		// An expired session is usually followed by the same person signing in
+		// again; offline data is wiped if a different account signs in instead.
+		await logout({ keepOfflineData: true });
 	} catch {
 		// Auth store not available; fall through to redirect.
 	}
