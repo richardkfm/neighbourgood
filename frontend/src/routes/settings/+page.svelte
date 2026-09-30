@@ -702,7 +702,7 @@
 
 	.btn-danger:hover:not(:disabled) {
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 	}
 
 	.btn-danger:disabled {
@@ -826,7 +826,18 @@
 		}
 
 		.event-grid {
-			grid-template-columns: 1fr 1fr;
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.event-checkbox {
+			min-height: var(--tap-target);
+			overflow-wrap: anywhere;
+		}
+
+		.event-checkbox input[type="checkbox"] {
+			width: 20px;
+			height: 20px;
+			flex-shrink: 0;
 		}
 	}
 </style>

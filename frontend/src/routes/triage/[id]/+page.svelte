@@ -57,13 +57,13 @@
   function urgencyColor(urgency: string): string {
     switch (urgency) {
       case 'critical':
-        return 'var(--color-error)';
+        return 'var(--urgency-critical)';
       case 'high':
-        return 'var(--color-warning)';
+        return 'var(--urgency-high)';
       case 'medium':
-        return 'var(--color-primary)';
+        return 'var(--urgency-medium)';
       default:
-        return 'var(--color-text-muted)';
+        return 'var(--urgency-low)';
     }
   }
 
@@ -181,7 +181,7 @@
       <div class="header-meta">
         <span
           class="badge urgency-badge"
-          style="background-color: {urgencyColor(ticket.urgency)};"
+          style="--u: {urgencyColor(ticket.urgency)}; color: var(--u); background: color-mix(in srgb, var(--u) 14%, transparent); border: 1px solid color-mix(in srgb, var(--u) 45%, transparent);"
         >
           {$t(`crisis.priority.${ticket.urgency}`)}
         </span>

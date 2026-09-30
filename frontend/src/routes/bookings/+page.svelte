@@ -185,7 +185,17 @@
 		</div>
 
 		{#if loading}
-			<p class="loading">{$t('common.loading')}</p>
+			<div class="booking-table" role="status" aria-live="polite" aria-busy="true">
+				<span class="sr-only">{$t('common.loading')}</span>
+				{#each [1, 2, 3] as n (n)}
+					<div class="booking-row" aria-hidden="true">
+						<div class="booking-info">
+							<span class="skeleton" style="height: 1.1rem; width: 55%"></span>
+							<span class="skeleton" style="height: 0.8rem; width: 35%; margin-top: 0.6rem"></span>
+						</div>
+					</div>
+				{/each}
+			</div>
 		{:else if bookings.length === 0}
 			<div class="empty-state">
 				<p>{$t('bookings.no_bookings')}</p>
@@ -211,7 +221,7 @@
 							{/if}
 						</div>
 						<div class="booking-actions">
-							<span class="status" style="color: {statusColor(b.status)}">{b.status}</span>
+							<span class="status status-pill" style="color: {statusColor(b.status)}">{$t(`bookings.status_${b.status}`)}</span>
 							{#if b.status === 'pending' && isOwnerOf(b)}
 								<button class="btn-approve" onclick={() => updateStatus(b.id, 'approved')}>{$t('bookings.approve')}</button>
 								<button class="btn-reject" onclick={() => updateStatus(b.id, 'rejected')}>{$t('bookings.reject')}</button>
@@ -349,10 +359,15 @@
 
 	.booking-meta {
 		display: flex;
-		gap: 0.75rem;
+		flex-wrap: wrap;
+		gap: 0.15rem 0.75rem;
 		font-size: 0.82rem;
 		color: var(--color-text-muted);
 		margin-top: 0.25rem;
+	}
+
+	.dates {
+		white-space: nowrap;
 	}
 
 	.role-tag {
@@ -373,11 +388,8 @@
 		flex-shrink: 0;
 	}
 
-	.status {
-		font-weight: 700;
-		text-transform: capitalize;
-		font-size: 0.85rem;
-		min-width: 70px;
+	.booking-actions .status {
+		margin-inline-end: auto;
 	}
 
 	.btn-approve, .btn-reject, .btn-cancel, .btn-complete {
@@ -409,8 +421,37 @@
 	}
 	.btn-complete:hover { border-color: var(--color-border-hover); }
 
-	.loading {
-		color: var(--color-text-muted);
+	/* Phones: stack the row, let actions wrap full-width with 44px targets */
+	@media (max-width: 600px) {
+		.booking-row {
+			flex-direction: column;
+			flex-wrap: nowrap;
+			gap: 0.75rem;
+		}
+
+		.booking-actions {
+			flex-wrap: wrap;
+			width: 100%;
+			padding-top: 0.75rem;
+			border-top: 1px solid var(--color-border);
+		}
+
+		.btn-approve, .btn-reject, .btn-cancel, .btn-complete, .btn-review {
+			flex: 1;
+			min-height: var(--tap-target);
+			font-size: 0.88rem;
+			font-weight: 600;
+		}
+
+		.filter-bar select {
+			flex: 1;
+			min-width: 0;
+		}
+
+		.result-count {
+			flex-basis: 100%;
+			margin-left: 0;
+		}
 	}
 
 	.empty-state {
@@ -550,6 +591,6 @@
 
 	.btn-cancel-queued:hover {
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 	}
 </style>

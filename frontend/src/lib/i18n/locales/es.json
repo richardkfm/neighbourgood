@@ -25,7 +25,13 @@
     "mesh": "Mesh",
     "federation": "Network",
     "bookings": "Reservas",
-    "view_profile": "Ver perfil"
+    "view_profile": "Ver perfil",
+    "skip_to_content": "Saltar al contenido principal",
+    "more": "Más",
+    "quick_nav": "Navegación rápida",
+    "main_nav": "Navegación principal",
+    "crisis_mode": "Modo crisis",
+    "select_language": "Seleccionar idioma"
   },
   "banner": {
     "update_available": "Hay una nueva versión de NeighbourGood disponible.",
@@ -76,8 +82,8 @@
     "not_set": "Not set",
     "add": "Add",
     "review": "Review",
-    "result": "{count} result",
-    "results": "{count} results"
+    "result": "{count} resultado",
+    "results": "{count} resultados"
   },
   "auth": {
     "login_title": "Bienvenido de nuevo",

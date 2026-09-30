@@ -68,7 +68,7 @@
 				for (const b of bookingsData.items) {
 					const item: BookingItem = {
 						id: b.id,
-						resource_title: b.resource?.title ?? `Resource #${b.resource_id}`,
+						resource_title: b.resource_title ?? b.resource?.title ?? `Resource #${b.resource_id}`,
 						borrower_name: b.borrower?.display_name ?? 'Someone',
 						start_date: b.start_date,
 						end_date: b.end_date,
@@ -469,7 +469,7 @@
 		padding: 0.15rem 0.5rem;
 		border-radius: 999px;
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 		margin-top: 0.3rem;
 	}
 
@@ -832,8 +832,21 @@
 			font-size: 1.5rem;
 		}
 
+		/* 2x2 stat tiles keep the whole overview above the fold on phones */
 		.overview-grid {
-			grid-template-columns: 1fr;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.75rem;
+		}
+
+		.overview-card {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 0.4rem;
+			padding: 1rem;
+		}
+
+		.card-label {
+			font-size: 0.7rem;
 		}
 
 		.nudge-banner {

@@ -39,17 +39,17 @@
 	<p class="subtitle">{$t('auth.login_community')}</p>
 
 	{#if error}
-		<p class="error">{error}</p>
+		<p class="error" role="alert">{error}</p>
 	{/if}
 
 	<form onsubmit={handleSubmit}>
 		<label>
 			<span>{$t('auth.email')}</span>
-			<input type="email" bind:value={email} required />
+			<input type="email" bind:value={email} required autocomplete="email" />
 		</label>
 		<label>
 			<span>{$t('auth.password')}</span>
-			<input type="password" bind:value={password} required />
+			<input type="password" bind:value={password} required autocomplete="current-password" />
 		</label>
 		<button type="submit" disabled={loading}>
 			{loading ? $t('auth.logging_in') : $t('auth.login_btn')}
@@ -119,6 +119,7 @@
 	}
 
 	button {
+		min-height: var(--tap-target);
 		padding: 0.6rem;
 		background: var(--color-primary);
 		color: white;

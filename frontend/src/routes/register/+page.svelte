@@ -46,21 +46,22 @@
 	<p class="subtitle">{$t('auth.register_community')}</p>
 
 	{#if error}
-		<p class="error">{error}</p>
+		<p class="error" role="alert">{error}</p>
 	{/if}
 
 	<form onsubmit={handleSubmit}>
 		<label>
 			<span>{$t('auth.email')}</span>
-			<input type="email" bind:value={email} required />
+			<input type="email" bind:value={email} required autocomplete="email" />
 		</label>
 		<label>
 			<span>{$t('auth.password')}</span>
-			<input type="password" bind:value={password} required minlength="6" />
+			<input type="password" bind:value={password} required minlength="8" autocomplete="new-password" aria-describedby="pw-hint" />
+			<small id="pw-hint" class="hint">{$t('auth.password_hint')}</small>
 		</label>
 		<label>
 			<span>{$t('auth.display_name')}</span>
-			<input type="text" bind:value={displayName} required />
+			<input type="text" bind:value={displayName} required autocomplete="name" />
 		</label>
 		<label>
 			<span>{$t('auth.neighbourhood')}</span>
@@ -119,6 +120,11 @@
 		font-weight: 500;
 	}
 
+	.hint {
+		font-size: 0.78rem;
+		color: var(--color-text-muted);
+	}
+
 	input {
 		padding: 0.5rem 0.75rem;
 		border: 1px solid var(--color-border);
@@ -134,6 +140,7 @@
 	}
 
 	button {
+		min-height: var(--tap-target);
 		padding: 0.6rem;
 		background: var(--color-primary);
 		color: white;

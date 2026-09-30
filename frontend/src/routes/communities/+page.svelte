@@ -494,7 +494,7 @@
 
 	.tag-crisis {
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 	}
 
 	.my-card-desc {

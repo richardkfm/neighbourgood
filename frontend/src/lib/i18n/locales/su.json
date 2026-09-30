@@ -24,7 +24,13 @@
     "events": "Acara",
     "federation": "Network",
     "bookings": "Réservasi",
-    "view_profile": "Tingali profil"
+    "view_profile": "Tingali profil",
+    "skip_to_content": "Liwat ka eusi utama",
+    "more": "Seueur deui",
+    "quick_nav": "Navigasi gancang",
+    "main_nav": "Navigasi utama",
+    "crisis_mode": "Mode krisis",
+    "select_language": "Pilih basa"
   },
   "banner": {
     "update_available": "Vérsi anyar NeighbourGood geus sadia.",

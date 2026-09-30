@@ -1177,7 +1177,7 @@
 	.btn-crisis-activate {
 		padding: 0.4rem 0.9rem;
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 		border: none;
 		border-radius: var(--radius);
 		font-size: 0.82rem;
@@ -1267,7 +1267,7 @@
 
 	.btn-vote-red:hover:not(:disabled) {
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 	}
 
 	.btn-vote-blue {

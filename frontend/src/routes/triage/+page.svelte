@@ -165,10 +165,10 @@
 
 	function urgencyColor(urgency: string): string {
 		switch (urgency) {
-			case 'critical': return 'var(--color-error)';
-			case 'high':     return 'var(--color-warning)';
-			case 'medium':   return 'var(--color-primary)';
-			default:         return 'var(--color-text-muted)';
+			case 'critical': return 'var(--urgency-critical)';
+			case 'high':     return 'var(--urgency-high)';
+			case 'medium':   return 'var(--urgency-medium)';
+			default:         return 'var(--urgency-low)';
 		}
 	}
 
@@ -423,7 +423,7 @@
 					{#each communityMeshTickets as msg (msg.id)}
 						<div class="ticket-card mesh-ticket-card">
 							<div class="ticket-header">
-								<span class="urgency-badge" style="background: {urgencyColor(String(msg.data.urgency ?? 'medium'))}20; color: {urgencyColor(String(msg.data.urgency ?? 'medium'))}; border-color: {urgencyColor(String(msg.data.urgency ?? 'medium'))}40">
+								<span class="urgency-badge" style="--u: {urgencyColor(String(msg.data.urgency ?? 'medium'))}">
 									{String(msg.data.urgency ?? 'medium').toUpperCase()}
 								</span>
 								<span class="via-mesh-badge">mesh</span>
@@ -499,9 +499,9 @@
 			<p class="count-label">{filtered.length !== 1 ? $t('common.results', { values: { count: filtered.length } }) : $t('common.result', { values: { count: filtered.length } })}</p>
 			<div class="ticket-list">
 				{#each filtered as ticket (ticket.id)}
-					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="ticket-card" class:overdue={isOverdue(ticket.due_at)}>
+					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="ticket-card" class:overdue={isOverdue(ticket.due_at)} style="--u: {urgencyColor(ticket.urgency)}">
 						<div class="ticket-header">
-							<span class="urgency-badge" style="background: {urgencyColor(ticket.urgency)}20; color: {urgencyColor(ticket.urgency)}; border-color: {urgencyColor(ticket.urgency)}40">
+							<span class="urgency-badge" style="--u: {urgencyColor(ticket.urgency)}">
 								{ticket.urgency.toUpperCase()}
 							</span>
 							{#if isAdminOrLeader && ticket.triage_score !== undefined}
@@ -600,6 +600,22 @@
 		color: var(--color-text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+	}
+
+	@media (max-width: 600px) {
+		.controls {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.75rem;
+		}
+
+		.control-group {
+			min-width: 0;
+		}
+
+		.btn-new-ticket {
+			min-height: var(--tap-target);
+		}
 	}
 
 	.control-group select {
@@ -721,7 +737,7 @@
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
-		border-left: 4px solid transparent;
+		border-left: 4px solid var(--u, transparent);
 		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 		text-decoration: none;
 		color: inherit;
@@ -749,7 +765,9 @@
 		border-radius: 999px;
 		font-size: 0.72rem;
 		font-weight: 700;
-		border: 1px solid;
+		border: 1px solid color-mix(in srgb, var(--u) 45%, transparent);
+		background: color-mix(in srgb, var(--u) 14%, transparent);
+		color: var(--u);
 		letter-spacing: 0.04em;
 	}
 
@@ -984,7 +1002,7 @@
 	.btn-mesh-disconnect:hover {
 		border-color: var(--color-error);
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 	}
 
 	.btn-mesh-sync {

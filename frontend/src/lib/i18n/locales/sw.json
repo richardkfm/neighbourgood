@@ -25,7 +25,13 @@
     "mesh": "Mesh",
     "federation": "Network",
     "bookings": "Uhifadhi",
-    "view_profile": "Tazama wasifu"
+    "view_profile": "Tazama wasifu",
+    "skip_to_content": "Ruka hadi maudhui makuu",
+    "more": "Zaidi",
+    "quick_nav": "Urambazaji wa haraka",
+    "main_nav": "Urambazaji mkuu",
+    "crisis_mode": "Hali ya dharura",
+    "select_language": "Chagua lugha"
   },
   "banner": {
     "update_available": "Toleo jipya la NeighbourGood linapatikana.",
@@ -76,8 +82,8 @@
     "not_set": "Not set",
     "add": "Add",
     "review": "Review",
-    "result": "{count} result",
-    "results": "{count} results"
+    "result": "Tokeo {count}",
+    "results": "Matokeo {count}"
   },
   "auth": {
     "login_title": "Karibu tena",

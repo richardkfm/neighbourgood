@@ -464,7 +464,7 @@
 
 	.btn-danger:hover {
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 	}
 
 	.status-message {

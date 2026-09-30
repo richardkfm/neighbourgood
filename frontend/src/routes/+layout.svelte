@@ -36,6 +36,8 @@
 	let fedAlerts = $state<FedAlert[]>([]);
 	let fedAlertsDismissed = $state(false);
 
+	const isBrowse = $derived($page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills'));
+
 	function closeMobileMenu() {
 		mobileMenuOpen = false;
 	}
@@ -256,11 +258,13 @@
 	{/if}
 </svelte:head>
 
+<a href="#main" class="skip-link">{$t('nav.skip_to_content')}</a>
+
 {#if langMenuOpen}
 	<button class="mobile-overlay" onclick={closeLangMenu} aria-label={$t('common.close')}></button>
 {/if}
 
-<nav class="main-nav">
+<nav class="main-nav" class:crisis={$platformMode === 'red'} aria-label={$t('nav.main_nav')}>
 	<div class="nav-inner">
 		<a href={$isLoggedIn ? '/dashboard' : '/'} class="nav-brand" onclick={closeMobileMenu}>
 			<span class="brand-icon" aria-hidden="true">
@@ -272,20 +276,25 @@
 			</span>
 			<span class="brand-text">Neighbour<span class="brand-accent">Good</span></span>
 		</a>
+		{#if $platformMode === 'red'}
+			<span class="crisis-pill">{$t('nav.crisis_mode')}</span>
+		{/if}
 
 		<button
 			class="hamburger"
+			class:has-tabs={$isLoggedIn}
 			class:open={mobileMenuOpen}
 			onclick={() => mobileMenuOpen = !mobileMenuOpen}
 			aria-label={$t('nav.toggle_menu')}
 			aria-expanded={mobileMenuOpen}
+			aria-controls="primary-nav-links"
 		>
 			<span class="hamburger-line"></span>
 			<span class="hamburger-line"></span>
 			<span class="hamburger-line"></span>
 		</button>
 
-		<div class="nav-links" class:mobile-open={mobileMenuOpen}>
+		<div class="nav-links" id="primary-nav-links" class:has-tabs={$isLoggedIn} class:mobile-open={mobileMenuOpen}>
 			{#if $isLoggedIn}
 				<a href="/dashboard" class="nav-link" class:active={$page.url.pathname === '/dashboard'} onclick={closeMobileMenu}>{$t('nav.home')}</a>
 				<a href="/resources" class="nav-link" class:active={$page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills')} onclick={closeMobileMenu}>{$t('nav.browse')}</a>
@@ -337,8 +346,8 @@
 				<button
 					class="theme-toggle lang-toggle"
 					onclick={toggleLangMenu}
-					aria-label="Select language"
-					title="Select language / Choisir la langue / Seleccionar idioma"
+					aria-label={$t('nav.select_language')}
+					title={$t('nav.select_language')}
 					aria-expanded={langMenuOpen}
 				>
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -374,7 +383,7 @@
 
 			{#if $isLoggedIn}
 				<div class="nav-user-group">
-					<a href="/settings" class="nav-icon-btn" title={$t('nav.settings')} onclick={closeMobileMenu}>
+					<a href="/settings" class="nav-icon-btn" title={$t('nav.settings')} aria-label={$t('nav.settings')} onclick={closeMobileMenu}>
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
 					</a>
 					{#if $user}
@@ -461,9 +470,44 @@
 	</div>
 {/if}
 
-<div class="page-content fade-in">
+<main id="main" class="page-content fade-in" class:has-tabs={$isLoggedIn} tabindex="-1">
 	{@render children()}
-</div>
+</main>
+
+{#if $isLoggedIn}
+	<nav class="bottom-nav" class:crisis={$platformMode === 'red'} aria-label={$t('nav.quick_nav')}>
+		<a href="/dashboard" class="bn-item" class:active={$page.url.pathname === '/dashboard'} aria-current={$page.url.pathname === '/dashboard' ? 'page' : undefined}>
+			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+			<span>{$t('nav.home')}</span>
+		</a>
+		<a href="/resources" class="bn-item" class:active={isBrowse} aria-current={isBrowse ? 'page' : undefined}>
+			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+			<span>{$t('nav.browse')}</span>
+		</a>
+		{#if $platformMode === 'red'}
+			<a href="/triage" class="bn-item bn-crisis" class:active={$page.url.pathname.startsWith('/triage')} aria-current={$page.url.pathname.startsWith('/triage') ? 'page' : undefined}>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+				<span>{$t('nav.emergency')}</span>
+			</a>
+		{:else}
+			<a href="/bookings" class="bn-item" class:active={$page.url.pathname === '/bookings'} aria-current={$page.url.pathname === '/bookings' ? 'page' : undefined}>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+				<span>{$t('nav.bookings')}</span>
+			</a>
+		{/if}
+		<a href="/messages" class="bn-item" class:active={$page.url.pathname === '/messages'} aria-current={$page.url.pathname === '/messages' ? 'page' : undefined}>
+			<span class="bn-icon">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+				{#if unreadCount > 0}<span class="bn-badge" aria-hidden="true">{unreadCount > 9 ? '9+' : unreadCount}</span>{/if}
+			</span>
+			<span>{$t('nav.messages')}</span>
+		</a>
+		<button class="bn-item" class:active={mobileMenuOpen} onclick={() => (mobileMenuOpen = !mobileMenuOpen)} aria-expanded={mobileMenuOpen} aria-controls="primary-nav-links">
+			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+			<span>{$t('nav.more')}</span>
+		</button>
+	</nav>
+{/if}
 
 <style>
 	.main-nav {
@@ -481,7 +525,8 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 0.75rem 1.5rem;
-		max-width: 1100px;
+		max-width: 1240px;
+		gap: 1rem;
 		margin: 0 auto;
 	}
 
@@ -606,11 +651,11 @@
 		padding: 0 5px;
 		border-radius: 999px;
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 		font-size: 0.7rem;
 		font-weight: 700;
 		line-height: 1;
-		margin-left: 4px;
+		margin-inline-start: 4px;
 		vertical-align: middle;
 	}
 
@@ -677,9 +722,9 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		margin-left: 0.25rem;
-		padding-left: 0.75rem;
-		border-left: 1px solid var(--color-border);
+		margin-inline-start: 0.25rem;
+		padding-inline-start: 0.75rem;
+		border-inline-start: 1px solid var(--color-border);
 	}
 
 	.nav-user {
@@ -733,6 +778,80 @@
 		text-decoration: none;
 		box-shadow: var(--shadow-md);
 		transform: translateY(-1px);
+	}
+
+	/* ── Red Sky identity in the nav ─────────────────────────── */
+
+	.main-nav.crisis {
+		border-top: 3px solid var(--color-primary);
+		border-bottom-color: var(--color-primary);
+	}
+
+	.crisis-pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin-inline-start: 0.75rem;
+		padding: 0.15rem 0.6rem;
+		border-radius: 999px;
+		background: var(--color-primary-hover);
+		color: #fff;
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		white-space: nowrap;
+	}
+
+	.crisis-pill::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	/* Keep every nav item on one line; long display names truncate instead of
+	   wrapping (the Red Sky nav has two extra controls and used to break). */
+	.nav-link,
+	.nav-btn,
+	.nav-user {
+		white-space: nowrap;
+	}
+
+	.nav-user {
+		max-width: 8rem;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.nav-brand {
+		flex-shrink: 0;
+	}
+
+	.nav-links {
+		min-width: 0;
+	}
+
+	@media (max-width: 1040px) and (min-width: 769px) {
+		.nav-inner {
+			padding-inline: 1rem;
+		}
+
+		.nav-link {
+			padding-inline: 0.5rem;
+		}
+
+		.nav-user {
+			display: none;
+		}
+	}
+
+	/* ── Mobile bottom tab bar ───────────────────────────────── */
+
+	.bottom-nav {
+		display: none;
 	}
 
 	/* ── Mobile overlay ──────────────────────────────────────── */
@@ -792,7 +911,7 @@
 		.nav-user-group {
 			margin: 0;
 			padding: 0.5rem 1.5rem;
-			border-left: none;
+			border-inline-start: none;
 			border-top: 1px solid var(--color-border);
 			justify-content: space-between;
 		}
@@ -815,6 +934,159 @@
 		.brand-text {
 			font-size: 1.05rem;
 		}
+
+		/* 44px minimum touch targets in the dropdown */
+		.hamburger {
+			width: var(--tap-target);
+			height: var(--tap-target);
+		}
+
+		.theme-toggle,
+		.nav-icon-btn,
+		.nav-btn {
+			min-width: var(--tap-target);
+			min-height: var(--tap-target);
+		}
+
+		.nav-link {
+			min-height: var(--tap-target);
+			display: flex;
+			align-items: center;
+		}
+
+		/* Signed-in users get the bottom tab bar, so the dropdown becomes
+		   a bottom sheet opened by its "More" tab (thumb reach) and the
+		   top hamburger is redundant. */
+		.hamburger.has-tabs {
+			display: none;
+		}
+
+		.nav-links.has-tabs {
+			position: fixed;
+			top: auto;
+			bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+			max-height: calc(100dvh - var(--bottom-nav-height) - 5rem);
+			overflow-y: auto;
+			border-bottom: none;
+			border-top: 1px solid var(--color-border);
+			border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+			box-shadow: var(--shadow-lg);
+			padding: 0.75rem 0;
+			z-index: 120;
+		}
+
+		.nav-links.has-tabs.mobile-open {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+			animation: slideUp var(--transition) ease-out;
+		}
+
+		.nav-links.has-tabs .nav-link,
+		.nav-links.has-tabs .nav-user-group {
+			flex: 1 1 100%;
+		}
+
+		.nav-links.has-tabs .theme-toggle {
+			margin-block: 0.25rem;
+			margin-inline: 0 0.25rem;
+		}
+
+		.nav-links.has-tabs .nav-link + .theme-toggle {
+			margin-inline-start: 1.5rem;
+		}
+
+		.nav-links.has-tabs .lang-selector {
+			flex-wrap: wrap;
+			margin-inline: 0 1.5rem;
+		}
+
+		.nav-links.has-tabs .lang-menu {
+			flex-basis: 100%;
+		}
+
+		.bottom-nav {
+			display: flex;
+			position: fixed;
+			inset-inline: 0;
+			bottom: 0;
+			z-index: 130;
+			height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+			padding-bottom: env(safe-area-inset-bottom, 0px);
+			background: var(--color-surface);
+			border-top: 1px solid var(--color-border);
+			box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+		}
+
+		.bottom-nav.crisis {
+			border-top: 2px solid var(--color-primary);
+		}
+
+		.bn-item {
+			flex: 1;
+			min-width: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 0.2rem;
+			padding: 0.4rem 0.25rem;
+			background: none;
+			border: none;
+			color: var(--color-text-muted);
+			font-family: inherit;
+			font-size: 0.68rem;
+			font-weight: 600;
+			letter-spacing: 0.01em;
+			text-decoration: none;
+			cursor: pointer;
+			-webkit-tap-highlight-color: transparent;
+		}
+
+		.bn-item span:not(.bn-icon):not(.bn-badge) {
+			max-width: 100%;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.bn-item:hover {
+			text-decoration: none;
+			color: var(--color-text);
+		}
+
+		.bn-item.active {
+			color: var(--color-primary);
+		}
+
+		.bn-item.active svg {
+			stroke-width: 2.4;
+		}
+
+		.bn-crisis:not(.active) {
+			color: var(--color-error);
+		}
+
+		.bn-icon {
+			position: relative;
+			display: inline-flex;
+		}
+
+		.bn-badge {
+			position: absolute;
+			top: -5px;
+			inset-inline-end: -9px;
+			min-width: 16px;
+			height: 16px;
+			padding: 0 4px;
+			border-radius: 999px;
+			background: var(--color-error);
+			color: var(--color-on-error);
+			font-size: 0.62rem;
+			font-weight: 800;
+			line-height: 16px;
+			text-align: center;
+		}
 	}
 
 	.page-content {
@@ -823,9 +1095,17 @@
 		padding: 3.5rem 1.5rem;
 	}
 
+	.page-content:focus {
+		outline: none;
+	}
+
 	@media (max-width: 768px) {
 		.page-content {
 			padding: 2rem 1rem;
+		}
+
+		.page-content.has-tabs {
+			padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 1.5rem);
 		}
 	}
 
@@ -845,7 +1125,7 @@
 	}
 
 	.update-banner-btn {
-		margin-left: auto;
+		margin-inline-start: auto;
 		background: var(--color-accent);
 		color: white;
 		border: none;
@@ -871,6 +1151,17 @@
 	}
 
 	.update-banner-dismiss:hover { opacity: 1; }
+
+	/* Banner dismiss buttons: 44px hit area without growing the banner */
+	.update-banner-dismiss,
+	.crisis-banner-dismiss,
+	.fed-alert-dismiss,
+	.sync-banner-dismiss {
+		min-width: var(--tap-target);
+		min-height: var(--tap-target);
+		margin-block: -0.7rem;
+		margin-inline-end: -0.75rem;
+	}
 
 	/* ── Install button ─────────────────────────────────────────── */
 
@@ -919,7 +1210,7 @@
 	.lang-menu {
 		position: absolute;
 		top: calc(100% + 6px);
-		right: 0;
+		inset-inline-end: 0;
 		z-index: 200;
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
@@ -935,7 +1226,7 @@
 		background: none;
 		border: none;
 		padding: 0.5rem 1rem;
-		text-align: left;
+		text-align: start;
 		font-size: 0.88rem;
 		color: var(--color-text-muted);
 		cursor: pointer;
@@ -1002,7 +1293,7 @@
 	}
 
 	.crisis-banner-link {
-		margin-left: auto;
+		margin-inline-start: auto;
 		font-weight: 600;
 		color: var(--color-error);
 		text-decoration: none;
@@ -1042,7 +1333,7 @@
 	}
 
 	.fed-alert-link {
-		margin-left: auto;
+		margin-inline-start: auto;
 		font-weight: 600;
 		color: var(--color-warning, #92400e);
 		text-decoration: none;
@@ -1082,7 +1373,7 @@
 	}
 
 	.offline-queue-chip {
-		margin-left: auto;
+		margin-inline-start: auto;
 		background: var(--color-warning, #f59e0b);
 		color: white;
 		font-size: 0.75rem;
@@ -1106,7 +1397,7 @@
 	}
 
 	.sync-banner-dismiss {
-		margin-left: auto;
+		margin-inline-start: auto;
 		background: none;
 		border: none;
 		font-size: 1.1rem;

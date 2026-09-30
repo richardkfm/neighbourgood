@@ -222,7 +222,7 @@
 		padding: 0.1rem 0.4rem;
 		border-radius: 999px;
 		background: var(--color-error);
-		color: white;
+		color: var(--color-on-error);
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
