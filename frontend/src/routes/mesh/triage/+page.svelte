@@ -5,6 +5,7 @@
 	import { isOnline } from '$lib/stores/offline';
 	import { t } from 'svelte-i18n';
 	import { loadOfflineTickets, type OfflineTicket } from '$lib/mesh-triage-db';
+	import { meshEnabled, MESH_COMMUNITY_KEY } from '$lib/stores/mesh-settings';
 
 	let tickets = $state<OfflineTicket[]>([]);
 	let loading = $state(true);
@@ -15,8 +16,19 @@
 			goto('/login');
 			return;
 		}
+		if (!$meshEnabled) {
+			loading = false;
+			return;
+		}
+		// Scoped to the community chosen on the mesh page (remembered for offline use)
+		let communityId: number | undefined;
 		try {
-			tickets = await loadOfflineTickets();
+			communityId = Number(localStorage.getItem(MESH_COMMUNITY_KEY)) || undefined;
+		} catch {
+			communityId = undefined;
+		}
+		try {
+			tickets = await loadOfflineTickets(communityId);
 		} catch {
 			// IndexedDB unavailable
 		}
@@ -60,7 +72,12 @@
 		{/if}
 	</header>
 
-	{#if loading}
+	{#if !$meshEnabled}
+		<div class="empty-state">
+			<p>{$t('mesh.disabled_notice')}</p>
+			<a href="/settings">{$t('mesh.enable_in_settings')}</a>
+		</div>
+	{:else if loading}
 		<p class="loading">{$t('common.loading')}</p>
 	{:else if tickets.length === 0}
 		<div class="empty-state">

@@ -143,7 +143,7 @@ def test_duplicate_vote_rejected(client, auth_headers):
     assert res.status_code == 409
 
 
-def test_change_vote(client, auth_headers):
+def test_change_vote_to_noop_rejected(client, auth_headers):
     c = _create_community(client, auth_headers)
     cid = c["id"]
 
@@ -161,8 +161,9 @@ def test_change_vote(client, auth_headers):
         headers=auth_headers,
         json={"vote_type": "deactivate"},
     )
-    assert res.status_code == 200
-    assert res.json()["vote_type"] == "deactivate"
+    # While blue, "deactivate" is a no-op vote: 409, and the earlier vote stays
+    assert res.status_code == 409
+    assert client.get(f"/communities/{cid}/crisis/status").json()["votes_to_activate"] == 1
 
 
 def test_retract_vote(client, auth_headers):

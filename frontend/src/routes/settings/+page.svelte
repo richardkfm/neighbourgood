@@ -201,7 +201,8 @@
 				body: { password: deleteForm.password },
 				auth: true
 			});
-			logout();
+			// Also wipes this device's offline crisis data (mesh queue, triage store)
+			await logout();
 			await goto('/');
 		} catch (err) {
 			deleteForm.error = err instanceof Error ? err.message : $t('settings.delete_failed');

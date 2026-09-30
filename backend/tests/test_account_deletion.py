@@ -4,6 +4,7 @@ import datetime
 
 from sqlalchemy import text
 
+from app.models.mesh import MeshDeviceKey
 from app.models.activity import Activity
 from app.models.booking import Booking
 from app.models.community import Community, CommunityMember
@@ -545,3 +546,30 @@ def test_full_scenario_leaves_no_foreign_key_violations(client, auth_headers, db
 
     assert _delete(client, auth_headers).status_code == 204
     assert _fk_violations(db) == []
+
+
+def test_deletion_rechecks_crisis_vote_threshold(client, auth_headers, db):
+    """Four members, two 'activate' votes: below 60%. Once one member deletes their account, 2 of 3 is enough."""
+    cid = _community(client, auth_headers)
+    voters = [_register(client, f"voter{i}@example.com", f"Voter {i}") for i in (1, 2)]
+    leaving = _register(client, "leaving@example.com", "Leaving")
+    for headers in (*voters, leaving):
+        assert client.post(f"/communities/{cid}/join", headers=headers).status_code in (200, 201)
+    for headers in voters:
+        res = client.post(f"/communities/{cid}/crisis/vote", headers=headers, json={"vote_type": "activate"})
+        assert res.status_code in (200, 201), res.text
+    assert client.get(f"/communities/{cid}/crisis/status").json()["mode"] == "blue"
+
+    assert _delete(client, leaving).status_code == 204
+    assert client.get(f"/communities/{cid}/crisis/status").json()["mode"] == "red"
+
+
+def test_deletion_revokes_mesh_signing_keys(client, auth_headers, db):
+    me = _me(client, auth_headers)
+    db.add(MeshDeviceKey(user_id=me["id"], key_id="k" * 43, public_key="p" * 124, device_name="phone"))
+    db.commit()
+
+    assert _delete(client, auth_headers).status_code == 204
+    db.expire_all()
+    key = db.query(MeshDeviceKey).filter(MeshDeviceKey.key_id == "k" * 43).one()
+    assert key.revoked_at is not None

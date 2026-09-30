@@ -14,10 +14,11 @@ from app.config import settings
 from app.database import Base, engine
 
 logger = logging.getLogger(__name__)
+from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.middleware.csrf import CsrfMiddleware
 from app.middleware.nul_bytes import NulByteMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
-from app.models import Activity, Booking, Community, CommunityMember, CrisisVote, EmergencyTicket, Event, EventAttendee, FederatedResource, FederatedSkill, InstanceSyncLog, Invite, KnownInstance, MeshCheckin, MeshSyncedMessage, Message, PasswordResetToken, RedSkyAlert, Resource, SentAlert, Review, Skill, TelegramLinkToken, User, Webhook  # noqa: F401 – ensure models are registered
+from app.models import Activity, Booking, Community, CommunityMember, CrisisVote, EmergencyTicket, Event, EventAttendee, FederatedResource, FederatedSkill, InstanceSyncLog, Invite, KnownInstance, MeshCheckin, MeshDeviceKey, MeshSyncedMessage, PasswordResetToken, Message, RedSkyAlert, Resource, SentAlert, Review, Skill, TelegramLinkToken, User, Webhook  # noqa: F401 – ensure models are registered
 from app.routers import activity, auth, bookings, communities, crisis, events, federation, federation_sync, instance, invites, matching, mesh_sync, messages, resources, reviews, skills, status, users, webhooks
 from app.routers import telegram as telegram_router
 
@@ -99,6 +100,9 @@ async def out_of_range_handler(request: Request, exc: Exception) -> JSONResponse
     return JSONResponse(status_code=422, content={"detail": "Value out of range"})
 
 
+# Innermost, so its receive() wrapper feeds the endpoint directly: an oversized
+# streamed body then surfaces as 413 instead of a generic body-parsing error
+app.add_middleware(BodySizeLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CsrfMiddleware)

@@ -3,8 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { api } from '$lib/api';
-	import { isOnline, enqueueRequest } from '$lib/stores/offline';
-	import { token } from '$lib/stores/auth';
+	import { isOnline } from '$lib/stores/offline';
 	import { get } from 'svelte/store';
 	import {
 		meshStatus,
@@ -94,33 +93,34 @@
 		if (!selectedCommunityId || !newTicketTitle.trim()) return;
 		creatingTicket = true;
 		error = '';
+		// One ID for both copies: the mesh broadcast (synced by whoever relays it)
+		// and the queued REST create resolve to the same ticket on the server
+		const clientId = crypto.randomUUID();
 		try {
-			const msg = await broadcastEmergencyTicket(
+			await broadcastEmergencyTicket(
 				selectedCommunityId,
 				$user?.display_name ?? 'Unknown',
 				{
 					title: newTicketTitle,
 					description: newTicketDesc,
 					ticket_type: newTicketType as 'request' | 'offer' | 'emergency_ping',
-					urgency: newTicketUrgency as 'low' | 'medium' | 'high' | 'critical'
+					urgency: newTicketUrgency as 'low' | 'medium' | 'high' | 'critical',
+					client_id: clientId
 				}
 			);
-			// Also enqueue for server sync when internet returns
-			enqueueRequest(
-				{
-					method: 'POST',
-					path: `/communities/${selectedCommunityId}/tickets`,
-					body: {
-						ticket_type: newTicketType,
-						title: newTicketTitle,
-						description: newTicketDesc,
-						urgency: newTicketUrgency
-					},
-					authToken: get(token),
-					label: `Emergency ticket: ${newTicketTitle}`
+			// Also send (or queue, while offline) the REST create
+			await api(`/communities/${selectedCommunityId}/tickets`, {
+				method: 'POST',
+				auth: true,
+				body: {
+					ticket_type: newTicketType,
+					title: newTicketTitle,
+					description: newTicketDesc,
+					urgency: newTicketUrgency,
+					client_id: clientId
 				},
-				{ meshSent: true }
-			);
+				offline: { label: `Emergency ticket: ${newTicketTitle}` }
+			});
 			showNewTicketForm = false;
 			newTicketTitle = '';
 			newTicketDesc = '';
@@ -185,6 +185,11 @@
 		return due_at !== null && new Date(due_at) < new Date();
 	}
 
+	/** Red when the community or the whole instance is in Red Sky. */
+	function effectiveMode(c: CommunityOut): string {
+		return c.effective_mode ?? c.mode ?? 'blue';
+	}
+
 	async function loadCommunities() {
 		loadingCommunities = true;
 		try {
@@ -192,9 +197,9 @@
 			communities = data ?? [];
 			if (communities.length > 0) {
 				// Prefer a community that is actually in Red Sky
-				const initial = communities.find((c) => c.mode === 'red') ?? communities[0];
+				const initial = communities.find((c) => effectiveMode(c) === 'red') ?? communities[0];
 				selectedCommunityId = initial.id;
-				selectedCommunityMode = initial.mode ?? 'blue';
+				selectedCommunityMode = effectiveMode(initial);
 				await loadTickets();
 			}
 		} catch {
@@ -211,11 +216,11 @@
 		tickets = [];
 		myRole = 'member';
 		try {
-			// Use the member-accessible tickets endpoint. The API defaults to 20 items
-			// (newest first), which would hide older critical tickets during a crisis,
-			// so ask for the maximum page size.
+			// Use the member-accessible tickets endpoint in the server's triage order
+			// (urgency, age and the overdue escalation), with the maximum page size so
+			// older critical tickets are not cut off during a crisis.
 			const data = await api<{ items: Ticket[]; total: number }>(
-				`/communities/${selectedCommunityId}/tickets?limit=100`,
+				`/communities/${selectedCommunityId}/tickets?limit=100&sort=priority_desc`,
 				{ auth: true }
 			);
 			tickets = data.items ?? [];
@@ -232,7 +237,7 @@
 			}
 
 			const selectedCommunity = communities.find(c => c.id === selectedCommunityId);
-			selectedCommunityMode = selectedCommunity?.mode ?? 'blue';
+			selectedCommunityMode = selectedCommunity ? effectiveMode(selectedCommunity) : 'blue';
 		} catch {
 			error = 'Failed to load tickets.';
 		} finally {
@@ -266,7 +271,9 @@
 					ticket_type: newTicketType,
 					title: newTicketTitle,
 					description: newTicketDesc,
-					urgency: newTicketUrgency
+					urgency: newTicketUrgency,
+					// Replays of a queued create return the same ticket
+					client_id: crypto.randomUUID()
 				},
 				offline: { label: `Emergency ticket: ${newTicketTitle}` }
 			});
@@ -287,23 +294,15 @@
 
 	const isAdminOrLeader = $derived(myRole === 'admin' || myRole === 'leader');
 
+	// Keeps the server's triage order (overdue tickets escalate to the top)
 	let filtered = $derived(
-		tickets
-			.filter((t) => {
-				if (filterUrgency && t.urgency !== filterUrgency) return false;
-				if (filterStatus === '') {
-					return t.status !== 'resolved';
-				}
-				return t.status === filterStatus;
-			})
-			.sort((a, b) => {
-				// Sort by urgency first, then by creation date
-				const urgencyRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-				const aRank = urgencyRank[a.urgency] ?? 4;
-				const bRank = urgencyRank[b.urgency] ?? 4;
-				if (aRank !== bRank) return aRank - bRank;
-				return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-			})
+		tickets.filter((t) => {
+			if (filterUrgency && t.urgency !== filterUrgency) return false;
+			if (filterStatus === '') {
+				return t.status !== 'resolved';
+			}
+			return t.status === filterStatus;
+		})
 	);
 
 	onMount(async () => {
@@ -341,7 +340,7 @@
 				<label for="community-select">{$t('crisis.filter_community')}</label>
 				<select id="community-select" bind:value={selectedCommunityId} onchange={onCommunityChange}>
 					{#each communities as c}
-						<option value={c.id}>{c.name}{c.mode === 'red' ? ' 🔴' : ''}</option>
+						<option value={c.id}>{c.name}{effectiveMode(c) === 'red' ? ' 🔴' : ''}</option>
 					{/each}
 				</select>
 			</div>
@@ -504,6 +503,9 @@
 							<span class="urgency-badge" style="--u: {urgencyColor(ticket.urgency)}">
 								{ticket.urgency.toUpperCase()}
 							</span>
+							{#if ticket.status !== 'resolved' && isOverdue(ticket.due_at)}
+								<span class="overdue-badge">{$t('crisis.overdue')}</span>
+							{/if}
 							{#if isAdminOrLeader && ticket.triage_score !== undefined}
 								<span class="score-badge" title="Triage score">{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
 							{/if}
@@ -769,6 +771,16 @@
 		background: color-mix(in srgb, var(--u) 14%, transparent);
 		color: var(--u);
 		letter-spacing: 0.04em;
+	}
+
+	.overdue-badge {
+		font-size: 0.7rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		padding: 0.1rem 0.45rem;
+		border-radius: var(--radius-sm);
+		background: var(--color-error-bg);
+		color: var(--color-error);
 	}
 
 	.score-badge {

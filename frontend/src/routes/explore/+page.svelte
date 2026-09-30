@@ -88,7 +88,7 @@
 							{#if level === 'high'}
 								<span class="badge-active">{$t('explore.active_badge')}</span>
 							{/if}
-							{#if c.mode === 'red'}
+							{#if (c.effective_mode ?? c.mode) === 'red'}
 								<span class="badge-crisis">{$t('explore.crisis_badge')}</span>
 							{/if}
 						</div>

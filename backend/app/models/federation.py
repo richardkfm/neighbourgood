@@ -51,6 +51,8 @@ class RedSkyAlert(Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     severity: Mapped[str] = mapped_column(String(20), default="warning", nullable=False)  # info, warning, critical
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Chosen by the sender; after this the alert counts as inactive (null = legacy, no expiry)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )
@@ -67,6 +69,7 @@ class SentAlert(Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     severity: Mapped[str] = mapped_column(String(20), default="warning", nullable=False)
     sent_by_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

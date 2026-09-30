@@ -45,6 +45,7 @@ from app.models.community import Community, CommunityMember
 from app.models.crisis import CrisisVote, EmergencyTicket
 from app.models.event import Event, EventAttendee
 from app.models.invite import Invite
+from app.models.mesh import MeshDeviceKey
 from app.models.mesh_checkin import MeshCheckin
 from app.models.message import Message
 from app.models.password_reset import PasswordResetToken
@@ -54,6 +55,7 @@ from app.models.skill import Skill
 from app.models.user import User
 from app.models.webhook import TelegramLinkToken, Webhook
 from app.services.auth import hash_password
+from app.services.crisis_votes import handle_member_removed
 
 DELETED_DISPLAY_NAME = "Deleted user"
 DELETED_LISTING_TITLE = "Deleted listing"
@@ -136,8 +138,11 @@ def _leave_communities(db: Session, user: User) -> None:
         )
         if not remaining:
             community.is_active = False
-        elif was_admin and not any(m.role == "admin" for m in remaining):
+            continue
+        if was_admin and not any(m.role == "admin" for m in remaining):
             remaining[0].role = "admin"  # longest-standing member takes over
+        # The smaller membership may now reach the crisis-vote threshold
+        handle_member_removed(db, community_id, user.id, commit=False)
 
 
 def _delete_events(db: Session, user: User) -> None:
@@ -196,6 +201,11 @@ def delete_account(db: Session, user: User) -> DeletionResult:
         Activity.actor_id == user.id, Activity.event_type.notin_(_KEPT_ACTIVITY_TYPES)
     ).delete(synchronize_session=False)
     db.query(MeshCheckin).filter(MeshCheckin.user_id == user.id).delete(synchronize_session=False)
+    # Revoked (not deleted) so signatures made with these keys stop verifying
+    db.query(MeshDeviceKey).filter(
+        MeshDeviceKey.user_id == user.id, MeshDeviceKey.revoked_at.is_(None)
+    ).update({MeshDeviceKey.revoked_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)},
+             synchronize_session=False)
     db.query(PasswordResetToken).filter(PasswordResetToken.user_id == user.id).delete(
         synchronize_session=False
     )

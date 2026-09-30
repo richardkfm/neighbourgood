@@ -4,12 +4,14 @@ import datetime
 import json
 import logging
 import secrets
+from typing import Annotated
 from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import AfterValidator, BaseModel, Field, HttpUrl, model_validator
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -24,6 +26,7 @@ from app.models.resource import Resource
 from app.models.review import Review
 from app.models.skill import Skill
 from app.models.user import User
+from app.schemas.common import UTCDateTime
 from app.schemas.resource import VALID_CATEGORIES, VALID_CONDITIONS
 from app.schemas.skill import VALID_SKILL_CATEGORIES, VALID_SKILL_TYPES
 from app.utils.net import is_safe_url as _is_safe_url
@@ -62,6 +65,24 @@ class InstanceAdd(BaseModel):
     url: HttpUrl
 
 
+ALERT_DEFAULT_DURATION_HOURS = 48
+ALERT_MAX_DURATION_HOURS = 336  # two weeks
+
+
+def _utcnow() -> datetime.datetime:
+    return datetime.datetime.utcnow()
+
+
+def _naive_utc(value: datetime.datetime) -> datetime.datetime:
+    if value.tzinfo is not None:
+        value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return value
+
+
+# Accepts aware or naive (UTC) input, stores naive UTC, serialises with "Z"
+AlertDateTime = Annotated[UTCDateTime, AfterValidator(_naive_utc)]
+
+
 class AlertOut(BaseModel):
     id: int
     source_instance_url: str
@@ -69,16 +90,26 @@ class AlertOut(BaseModel):
     title: str
     description: str
     severity: str
+    # False once dismissed by an admin or past expires_at
     is_active: bool
-    created_at: datetime.datetime
+    expires_at: UTCDateTime | None = None
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="after")
+    def _expire(self):
+        if self.expires_at is not None and self.expires_at <= _utcnow():
+            self.is_active = False
+        return self
 
 
 class AlertCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
     description: str = Field("", max_length=5000)
     severity: str = Field("warning", pattern="^(info|warning|critical)$")
+    # How long receivers show the alert as active
+    duration_hours: int = Field(ALERT_DEFAULT_DURATION_HOURS, ge=1, le=ALERT_MAX_DURATION_HOURS)
 
 
 _ALERT_UID_PATTERN = "^[A-Za-z0-9_-]{16,64}$"
@@ -105,6 +136,8 @@ class PublishedAlert(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
     description: str = Field("", max_length=5000)
     severity: str = Field(..., pattern="^(info|warning|critical)$")
+    # Optional so alerts from senders predating expiry still verify
+    expires_at: AlertDateTime | None = None
 
 
 class DataExport(BaseModel):
@@ -270,14 +303,30 @@ def _fetch_instance_info(base_url: str) -> dict | None:
 
 @router.get("/alerts", response_model=list[AlertOut])
 def list_alerts(
-    active_only: bool = Query(True, description="Only show active alerts"),
+    active_only: bool = Query(True, description="Only show active (not dismissed, not expired) alerts"),
     db: Session = Depends(get_db),
 ):
     """List Red Sky alerts received from other instances."""
     query = db.query(RedSkyAlert).order_by(RedSkyAlert.created_at.desc())
     if active_only:
-        query = query.filter(RedSkyAlert.is_active.is_(True))
+        query = query.filter(
+            RedSkyAlert.is_active.is_(True),
+            or_(RedSkyAlert.expires_at.is_(None), RedSkyAlert.expires_at > _utcnow()),
+        )
     return query.all()
+
+
+@router.get("/alerts/{alert_id}", response_model=AlertOut)
+def get_alert(
+    alert_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """A single received alert (any logged-in user), including dismissed or expired ones."""
+    alert = db.query(RedSkyAlert).filter(RedSkyAlert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    return alert
 
 
 @router.post("/alerts/send", response_model=dict)
@@ -302,6 +351,7 @@ def broadcast_alert(
         description=body.description,
         severity=body.severity,
         sent_by_id=current_user.id,
+        expires_at=_utcnow() + datetime.timedelta(hours=body.duration_hours),
     )
     db.add(sent_alert)
     db.commit()
@@ -313,6 +363,7 @@ def broadcast_alert(
         "title": body.title,
         "description": body.description,
         "severity": body.severity,
+        "expires_at": sent_alert.expires_at.isoformat() + "Z",
     }
 
     instances = db.query(KnownInstance).filter(KnownInstance.is_reachable.is_(True)).all()
@@ -391,6 +442,11 @@ def receive_alert(body: AlertReceive, db: Session = Depends(get_db)):
             detail="Alert could not be verified with its source instance",
         )
 
+    # The sender picks the duration; never keep an alert active longer than
+    # the maximum a sender may choose, and give legacy alerts the default
+    now = _utcnow()
+    latest = now + datetime.timedelta(hours=ALERT_MAX_DURATION_HOURS)
+    expires_at = published.expires_at or now + datetime.timedelta(hours=ALERT_DEFAULT_DURATION_HOURS)
     alert = RedSkyAlert(
         source_instance_url=known.url,
         source_alert_uid=published.alert_uid,
@@ -398,6 +454,7 @@ def receive_alert(body: AlertReceive, db: Session = Depends(get_db)):
         title=published.title,
         description=published.description,
         severity=published.severity,
+        expires_at=min(expires_at, latest),
     )
     db.add(alert)
     try:

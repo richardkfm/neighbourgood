@@ -8,7 +8,6 @@ import {
 	isBluetoothSupported,
 	scanForBitchatNode,
 	connectToNode,
-	disconnect as bleDisconnect,
 	forgetDevice,
 	hasLastDevice,
 	reconnectToLastDevice,
@@ -22,18 +21,29 @@ import {
 	decodeNGMessageWithTTL,
 	createNGMessage,
 	createBitchatPacket,
+	fragmentPacket,
+	isFragmentPacket,
+	FragmentReassembler,
 	validateNGMessage,
 	type NGMeshMessage,
-	type NGMeshMessageType,
 	type MeshTicketData,
 	type MeshVoteData,
 	type MeshResourceData,
 	type MeshCheckinData
 } from '$lib/bluetooth/protocol';
 import { api } from '$lib/api';
+import { user } from '$lib/stores/auth';
 import type { MeshSyncResult } from '$lib/types';
 import { putMessage, deleteMessages, loadMessages, clearMessages } from '$lib/mesh-db';
-import { saveOfflineTicket, addCommentToTicket, type OfflineTicket, type OfflineTicketComment } from '$lib/mesh-triage-db';
+import {
+	saveOfflineTicket,
+	addCommentToTicket,
+	deleteOfflineTickets,
+	clearOfflineTickets,
+	type OfflineTicket,
+	type OfflineTicketComment
+} from '$lib/mesh-triage-db';
+import { signMeshMessage } from '$lib/mesh-keys';
 
 export type MeshStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'reconnecting';
 
@@ -55,17 +65,25 @@ export const meshRelayCount = writable<number>(0);
 /** Ack status for sent messages: message ID → 'pending' | 'acked' */
 export const meshAckStatus = writable<Map<string, 'pending' | 'acked'>>(new Map());
 
-const ACK_TIMEOUT_MS = 30_000;
-
 // Deduplication: track seen message IDs (sliding window of last 500)
 const seenIds = new Set<string>();
 const MAX_SEEN = 500;
+
+/** Puts fragmented packets (larger than one BLE write) back together. */
+const reassembler = new FragmentReassembler();
 
 let unsubMessage: (() => void) | null = null;
 let unsubDisconnect: (() => void) | null = null;
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_BASE_DELAY_MS = 1000;
+
+/** Heartbeats announce this device to nearby peers while the mesh page is open. */
+export const HEARTBEAT_INTERVAL_MS = 30_000;
+let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+// Messages that are persisted server-side get signed; heartbeats/acks are not synced
+const UNSIGNED_TYPES = new Set(['heartbeat', 'ack']);
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 
@@ -126,15 +144,17 @@ const MESH_SYNC_BATCH_SIZE = 100;
 /**
  * Upload queued mesh messages to the server in batches (a single request with
  * more than 100 messages is rejected outright). Only the messages that were
- * actually sent and not rejected by the server are removed from the queue —
+ * actually sent and not reported as failed are removed from the queue —
  * anything received while the request was in flight, and anything the server
- * reported as failed, is kept. Returns null when there was nothing to sync.
+ * reported as failed, is kept. Confirmed tickets are also removed from the
+ * offline triage view (they are on the server now). Returns null when there
+ * was nothing to sync.
  */
 export async function syncMeshMessagesToServer(): Promise<MeshSyncResult | null> {
 	const sending = get(meshMessages);
 	if (sending.length === 0) return null;
 
-	const total: MeshSyncResult = { synced: 0, duplicates: 0, errors: 0 };
+	const total: MeshSyncResult = { synced: 0, verified: 0, duplicates: 0, errors: 0, rejected: 0 };
 	const failed = new Set<string>();
 	let lastBatchEnd = 0;
 	try {
@@ -146,8 +166,10 @@ export async function syncMeshMessagesToServer(): Promise<MeshSyncResult | null>
 				auth: true
 			});
 			total.synced += result.synced;
+			total.verified = (total.verified ?? 0) + (result.verified ?? 0);
 			total.duplicates += result.duplicates;
 			total.errors += result.errors;
+			total.rejected = (total.rejected ?? 0) + (result.rejected ?? 0);
 			if (result.errors > 0) {
 				if (result.failed_ids) {
 					result.failed_ids.forEach((id) => failed.add(id));
@@ -161,7 +183,11 @@ export async function syncMeshMessagesToServer(): Promise<MeshSyncResult | null>
 	} finally {
 		// Even if a later batch failed (network/HTTP error), drop what was confirmed
 		const confirmed = sending.slice(0, lastBatchEnd).filter((m) => !failed.has(m.id));
-		if (confirmed.length > 0) removeMeshMessages(confirmed.map((m) => m.id));
+		if (confirmed.length > 0) {
+			removeMeshMessages(confirmed.map((m) => m.id));
+			const tickets = confirmed.filter((m) => m.type === 'emergency_ticket').map((m) => m.id);
+			deleteOfflineTickets(tickets).catch(() => {});
+		}
 	}
 	return total;
 }
@@ -176,36 +202,40 @@ export function removeMeshMessages(ids: string[]): void {
 
 /** Disconnect from the current BitChat node (manual — prevents auto-reconnect). */
 export function disconnectFromMesh(): void {
+	stopHeartbeat();
 	forgetDevice();
 	meshStatus.set('disconnected');
 	meshDeviceName.set(null);
 	cleanup();
 }
 
-/** Send an NG message through the BLE mesh. */
-export async function sendViaMesh(msg: NGMeshMessage): Promise<void> {
-	const packet = encodeNGMessage(msg);
-	await sendMessage(packet);
-	// Track our own message to avoid processing it as incoming
-	addSeenId(msg.id);
+/** Write one packet, split into MTU-sized fragments when it does not fit one write. */
+async function sendPacket(packet: Uint8Array): Promise<void> {
+	for (const part of fragmentPacket(packet)) {
+		await sendMessage(part);
+	}
+}
 
-	// Track ack status for non-heartbeat, non-ack messages
-	if (msg.type !== 'heartbeat' && msg.type !== 'ack') {
+/**
+ * Send an NG message through the BLE mesh. Messages the server will store are
+ * signed with this browser's key first, so relays cannot alter them and the
+ * server attributes them to their author. Returns the message as sent.
+ */
+export async function sendViaMesh(msg: NGMeshMessage): Promise<NGMeshMessage> {
+	const outgoing = UNSIGNED_TYPES.has(msg.type) ? msg : await signMeshMessage(msg, get(user)?.id);
+	await sendPacket(encodeNGMessage(outgoing));
+	// Track our own message to avoid processing it as incoming
+	addSeenId(outgoing.id);
+
+	// Track ack status for non-heartbeat, non-ack messages (stays 'pending' until acked)
+	if (!UNSIGNED_TYPES.has(outgoing.type)) {
 		meshAckStatus.update((m) => {
 			const next = new Map(m);
-			next.set(msg.id, 'pending');
+			next.set(outgoing.id, 'pending');
 			return next;
 		});
-		// Timeout: mark as unacknowledged after 30s
-		setTimeout(() => {
-			meshAckStatus.update((m) => {
-				if (m.get(msg.id) === 'pending') {
-					// Leave as pending — UI can show it
-				}
-				return m;
-			});
-		}, ACK_TIMEOUT_MS);
 	}
+	return outgoing;
 }
 
 /** Broadcast an emergency ticket through the mesh. */
@@ -214,9 +244,7 @@ export async function broadcastEmergencyTicket(
 	senderName: string,
 	ticket: MeshTicketData
 ): Promise<NGMeshMessage> {
-	const msg = createNGMessage('emergency_ticket', communityId, senderName, ticket as unknown as Record<string, unknown>);
-	await sendViaMesh(msg);
-	return msg;
+	return sendViaMesh(createNGMessage('emergency_ticket', communityId, senderName, { ...ticket }));
 }
 
 /** Broadcast a crisis vote through the mesh. */
@@ -225,9 +253,7 @@ export async function broadcastCrisisVote(
 	senderName: string,
 	vote: MeshVoteData
 ): Promise<NGMeshMessage> {
-	const msg = createNGMessage('crisis_vote', communityId, senderName, vote as unknown as Record<string, unknown>);
-	await sendViaMesh(msg);
-	return msg;
+	return sendViaMesh(createNGMessage('crisis_vote', communityId, senderName, { ...vote }));
 }
 
 /** Broadcast a resource request through the mesh. */
@@ -236,9 +262,7 @@ export async function broadcastResourceRequest(
 	senderName: string,
 	resource: MeshResourceData
 ): Promise<NGMeshMessage> {
-	const msg = createNGMessage('resource_request', communityId, senderName, resource as unknown as Record<string, unknown>);
-	await sendViaMesh(msg);
-	return msg;
+	return sendViaMesh(createNGMessage('resource_request', communityId, senderName, { ...resource }));
 }
 
 /** Broadcast a resource offer through the mesh. */
@@ -247,9 +271,7 @@ export async function broadcastResourceOffer(
 	senderName: string,
 	resource: MeshResourceData
 ): Promise<NGMeshMessage> {
-	const msg = createNGMessage('resource_offer', communityId, senderName, resource as unknown as Record<string, unknown>);
-	await sendViaMesh(msg);
-	return msg;
+	return sendViaMesh(createNGMessage('resource_offer', communityId, senderName, { ...resource }));
 }
 
 /** Broadcast a location check-in through the mesh. */
@@ -258,9 +280,7 @@ export async function broadcastCheckin(
 	senderName: string,
 	checkin: MeshCheckinData
 ): Promise<NGMeshMessage> {
-	const msg = createNGMessage('location_checkin', communityId, senderName, checkin as unknown as Record<string, unknown>);
-	await sendViaMesh(msg);
-	return msg;
+	return sendViaMesh(createNGMessage('location_checkin', communityId, senderName, { ...checkin }));
 }
 
 /** Broadcast a heartbeat to announce presence. */
@@ -268,8 +288,28 @@ export async function broadcastHeartbeat(
 	communityId: number,
 	senderName: string
 ): Promise<void> {
-	const msg = createNGMessage('heartbeat', communityId, senderName, {});
-	await sendViaMesh(msg);
+	await sendViaMesh(createNGMessage('heartbeat', communityId, senderName, {}));
+}
+
+/**
+ * Announce this device now and then every HEARTBEAT_INTERVAL_MS until
+ * stopHeartbeat() (or a disconnect). Restarting replaces the previous timer.
+ */
+export function startHeartbeat(communityId: number, senderName: string): void {
+	stopHeartbeat();
+	const beat = () => {
+		if (get(meshStatus) !== 'connected') return;
+		broadcastHeartbeat(communityId, senderName).catch(() => {});
+	};
+	beat();
+	heartbeatTimer = setInterval(beat, HEARTBEAT_INTERVAL_MS);
+}
+
+export function stopHeartbeat(): void {
+	if (heartbeatTimer) {
+		clearInterval(heartbeatTimer);
+		heartbeatTimer = null;
+	}
 }
 
 /** Clear all stored mesh messages (e.g. after syncing to server). */
@@ -278,6 +318,21 @@ export function clearMeshMessages(): void {
 	clearMessages().catch(() => {});
 	// Notify service worker that the queue is now empty
 	notifyServiceWorker();
+}
+
+/**
+ * Forget everything mesh-related on this device (on logout), so the next user
+ * of the browser neither sees nor syncs the previous user's mesh data.
+ */
+export async function clearAllMeshData(): Promise<void> {
+	disconnectFromMesh();
+	meshMessages.set([]);
+	meshPeers.set(new Set());
+	meshAckStatus.set(new Map());
+	meshRelayCount.set(0);
+	seenIds.clear();
+	reassembler.clear();
+	await Promise.allSettled([clearMessages(), clearOfflineTickets()]);
 }
 
 /** Get current mesh messages snapshot. */
@@ -297,81 +352,90 @@ export function getRelayCount(): number {
 
 // ── Internals ─────────────────────────────────────────────────────────────────
 
+function handlePacket(raw: DataView): void {
+	let data = raw;
+	if (isFragmentPacket(raw)) {
+		const full = reassembler.push(raw);
+		if (!full) return; // waiting for more fragments (or dropped)
+		data = new DataView(full.buffer, full.byteOffset, full.byteLength);
+	}
+
+	const decoded = decodeNGMessageWithTTL(data);
+	if (!decoded) return; // Not an NG message, ignore
+
+	const { message: msg, ttl } = decoded;
+
+	// Deduplicate
+	if (seenIds.has(msg.id)) return;
+	addSeenId(msg.id);
+
+	if (msg.type === 'ack') {
+		// Process incoming ack — mark our sent message as acknowledged
+		const ackFor = msg.data?.ack_for;
+		if (typeof ackFor === 'string') {
+			meshAckStatus.update((m) => {
+				if (m.has(ackFor)) {
+					const next = new Map(m);
+					next.set(ackFor, 'acked');
+					return next;
+				}
+				return m;
+			});
+		}
+	} else if (msg.type === 'heartbeat') {
+		meshPeers.update((peers) => {
+			const next = new Set(peers);
+			next.add(msg.sender_name);
+			return next;
+		});
+	} else {
+		meshMessages.update((msgs) => [...msgs, msg]);
+		// Persist to IndexedDB (fire-and-forget, one row per message)
+		putMessage(msg).catch(() => {});
+		notifyServiceWorker();
+
+		// Persist emergency tickets/comments to offline triage DB
+		if (msg.type === 'emergency_ticket') {
+			const data = msg.data;
+			const ticket: OfflineTicket = {
+				id: msg.id,
+				community_id: msg.community_id,
+				sender_name: msg.sender_name,
+				title: String(data.title || ''),
+				description: String(data.description || ''),
+				ticket_type: (data.ticket_type as OfflineTicket['ticket_type']) || 'request',
+				urgency: (data.urgency as OfflineTicket['urgency']) || 'medium',
+				ts: msg.ts,
+				comments: []
+			};
+			saveOfflineTicket(ticket).catch(() => {});
+		} else if (msg.type === 'ticket_comment') {
+			const data = msg.data;
+			const comment: OfflineTicketComment = {
+				id: msg.id,
+				sender_name: msg.sender_name,
+				body: String(data.body || ''),
+				ts: msg.ts
+			};
+			const ticketId = data.ticket_mesh_id;
+			if (typeof ticketId === 'string' && ticketId) {
+				addCommentToTicket(ticketId, comment).catch(() => {});
+			}
+		}
+
+		// Auto-send ack for non-heartbeat messages
+		sendAck(msg.community_id, msg.id);
+	}
+
+	// Multi-hop relay: re-broadcast with decremented TTL if enabled (skip acks)
+	if (get(meshRelayEnabled) && ttl > 1 && msg.type !== 'ack') {
+		relayMessage(msg, ttl - 1);
+	}
+}
+
 function subscribeToEvents(): void {
 	// Subscribe to incoming BLE messages
-	unsubMessage = onMessage((data: DataView) => {
-		const decoded = decodeNGMessageWithTTL(data);
-		if (!decoded) return; // Not an NG message, ignore
-
-		const { message: msg, ttl } = decoded;
-
-		// Deduplicate
-		if (seenIds.has(msg.id)) return;
-		addSeenId(msg.id);
-
-		if (msg.type === 'ack') {
-			// Process incoming ack — mark our sent message as acknowledged
-			const ackFor = msg.data?.ack_for as string;
-			if (ackFor) {
-				meshAckStatus.update((m) => {
-					if (m.has(ackFor)) {
-						const next = new Map(m);
-						next.set(ackFor, 'acked');
-						return next;
-					}
-					return m;
-				});
-			}
-		} else if (msg.type === 'heartbeat') {
-			meshPeers.update((peers) => {
-				const next = new Set(peers);
-				next.add(msg.sender_name);
-				return next;
-			});
-		} else {
-			meshMessages.update((msgs) => [...msgs, msg]);
-			// Persist to IndexedDB (fire-and-forget, one row per message)
-			putMessage(msg).catch(() => {});
-			notifyServiceWorker();
-
-			// Persist emergency tickets/comments to offline triage DB
-			if (msg.type === 'emergency_ticket') {
-				const data = msg.data;
-				const ticket: OfflineTicket = {
-					id: msg.id,
-					community_id: msg.community_id,
-					sender_name: msg.sender_name,
-					title: String(data.title || ''),
-					description: String(data.description || ''),
-					ticket_type: (data.ticket_type as OfflineTicket['ticket_type']) || 'request',
-					urgency: (data.urgency as OfflineTicket['urgency']) || 'medium',
-					ts: msg.ts,
-					comments: [],
-				};
-				saveOfflineTicket(ticket).catch(() => {});
-			} else if (msg.type === 'ticket_comment') {
-				const data = msg.data;
-				const comment: OfflineTicketComment = {
-					id: msg.id,
-					sender_name: msg.sender_name,
-					body: String(data.body || ''),
-					ts: msg.ts,
-				};
-				const ticketId = data.ticket_mesh_id as string;
-				if (ticketId) {
-					addCommentToTicket(ticketId, comment).catch(() => {});
-				}
-			}
-
-			// Auto-send ack for non-heartbeat messages
-			sendAck(msg.community_id, msg.id);
-		}
-
-		// Multi-hop relay: re-broadcast with decremented TTL if enabled (skip acks)
-		if (get(meshRelayEnabled) && ttl > 1 && msg.type !== 'ack') {
-			relayMessage(msg, ttl - 1);
-		}
-	});
+	unsubMessage = onMessage(handlePacket);
 
 	// Handle unexpected disconnection — attempt auto-reconnect
 	unsubDisconnect = onDisconnect(() => {
@@ -433,14 +497,14 @@ function cleanup(): void {
 		unsubDisconnect();
 		unsubDisconnect = null;
 	}
+	reassembler.clear();
 }
 
 /** Send an acknowledgment for a received message. */
 async function sendAck(communityId: number, ackForId: string): Promise<void> {
 	try {
 		const ackMsg = createNGMessage('ack', communityId, 'system', { ack_for: ackForId });
-		const packet = encodeNGMessage(ackMsg);
-		await sendMessage(packet);
+		await sendPacket(encodeNGMessage(ackMsg));
 		addSeenId(ackMsg.id);
 	} catch {
 		// Ack send failed — not critical
@@ -450,10 +514,10 @@ async function sendAck(communityId: number, ackForId: string): Promise<void> {
 /** Re-broadcast a received message with decremented TTL for multi-hop relay. */
 async function relayMessage(msg: NGMeshMessage, newTtl: number): Promise<void> {
 	try {
+		// Relayed unchanged, signature included, so the server can still verify it
 		const json = 'ng:' + JSON.stringify(msg);
 		const payloadBytes = new TextEncoder().encode(json);
-		const packet = createBitchatPacket(payloadBytes, newTtl);
-		await sendMessage(packet);
+		await sendPacket(createBitchatPacket(payloadBytes, newTtl));
 		meshRelayCount.update((n) => n + 1);
 	} catch {
 		// Relay failed silently — not critical

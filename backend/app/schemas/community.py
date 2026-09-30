@@ -1,9 +1,19 @@
 """Pydantic schemas for communities (neighbourhood groups)."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.schemas.user import UserPublic
 from app.schemas.common import UTCDateTime
+from app.services.mode import is_global_red
+
+
+class _EffectiveModeMixin(BaseModel):
+    """Derives ``effective_mode`` from the stored ``mode`` and the instance mode."""
+
+    @model_validator(mode="after")
+    def _derive_effective_mode(self):
+        self.effective_mode = "red" if is_global_red() or self.mode == "red" else "blue"
+        return self
 
 
 class CommunityCreate(BaseModel):
@@ -35,7 +45,7 @@ class CommunityMemberOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CommunityOut(BaseModel):
+class CommunityOut(_EffectiveModeMixin):
     id: int
     name: str
     description: str | None
@@ -44,7 +54,10 @@ class CommunityOut(BaseModel):
     country_code: str
     primary_language: str | None = None
     is_active: bool
+    # Stored per-community mode (toggles and votes change it)
     mode: str = "blue"
+    # What the community behaves as: "red" also while the instance is in Red Sky
+    effective_mode: str = "blue"
     latitude: float | None = None
     longitude: float | None = None
     member_count: int = 0
@@ -55,7 +68,7 @@ class CommunityOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CommunityMapItem(BaseModel):
+class CommunityMapItem(_EffectiveModeMixin):
     id: int
     name: str
     city: str
@@ -66,6 +79,7 @@ class CommunityMapItem(BaseModel):
     resource_count: int = 0
     skill_count: int = 0
     mode: str = "blue"
+    effective_mode: str = "blue"
     latitude: float | None = None
     longitude: float | None = None
 

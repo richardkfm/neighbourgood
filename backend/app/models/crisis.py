@@ -34,6 +34,9 @@ class CrisisVote(Base):
 
 class EmergencyTicket(Base):
     __tablename__ = "emergency_tickets"
+    __table_args__ = (
+        UniqueConstraint("author_id", "client_id", name="uq_emergency_ticket_author_client_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     community_id: Mapped[int] = mapped_column(
@@ -58,6 +61,9 @@ class EmergencyTicket(Base):
     )
     # Optional deadline for SLA tracking; drives triage score age bonus
     due_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
+    # Client-generated UUID shared by the REST create and the mesh broadcast of
+    # the same ticket, so replays through either path never duplicate it
+    client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

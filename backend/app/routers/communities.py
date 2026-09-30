@@ -13,6 +13,7 @@ from app.models.resource import Resource
 from app.models.skill import Skill
 from app.models.user import User
 from app.services.activity import record_activity
+from app.services.crisis_votes import handle_member_removed
 from app.services.webhooks import dispatch_event
 from app.utils.authorization import (
     get_active_community_membership,
@@ -99,7 +100,7 @@ def get_communities_for_map(db: Session = Depends(get_db)):
             resource_count=resource_counts.get(c.id, 0),
             skill_count=skill_counts.get(c.id, 0),
             mode=c.mode,
-            latitude=c.latitude,
+                latitude=c.latitude,
             longitude=c.longitude,
         )
         for c in communities
@@ -432,7 +433,10 @@ def leave_community(
             )
 
     db.delete(membership)
-    db.commit()
+    db.flush()
+    # The member's vote no longer counts, and fewer members can mean the
+    # remaining votes now reach the 60% threshold
+    handle_member_removed(db, community_id, current_user.id)
 
 
 @router.post("/{community_id}/members/{user_id}/promote", response_model=CommunityMemberOut)

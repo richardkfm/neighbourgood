@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CrisisStatus } from '$lib/types';
+  import { t } from 'svelte-i18n';
 
   let {
     communityId,
@@ -22,14 +23,18 @@
     onvote: (voteType: string) => void;
     ontoggle: (newMode: string) => void;
   } = $props();
+
+  // What the community behaves as (red whenever the instance is red); toggles
+  // and votes act on the stored mode underneath
+  const effectiveMode = $derived(crisisStatus.effective_mode ?? crisisStatus.mode);
 </script>
 
 <section class="crisis-section slide-up">
   <div class="crisis-header">
-    <div class="crisis-indicator" class:crisis-red={crisisStatus.mode === 'red'}>
+    <div class="crisis-indicator" class:crisis-red={effectiveMode === 'red'}>
       <span class="crisis-dot"></span>
       <span class="crisis-label">
-        {crisisStatus.mode === 'red' ? 'Red Sky (Crisis)' : 'Blue Sky (Normal)'}
+        {effectiveMode === 'red' ? 'Red Sky (Crisis)' : 'Blue Sky (Normal)'}
       </span>
     </div>
     {#if showToggle && isAdmin}
@@ -45,6 +50,14 @@
     {/if}
   </div>
 
+  {#if crisisStatus.instance_red}
+    <p class="instance-red-note" role="note">
+      {$t('crisis.instance_red_notice', {
+        values: { mode: crisisStatus.mode === 'red' ? $t('crisis.mode_red') : $t('crisis.mode_blue') }
+      })}
+    </p>
+  {/if}
+
   {#if isMember && !showToggle}
     <div class="vote-section">
       <div class="vote-bar">
@@ -54,12 +67,16 @@
           <span class="vote-threshold">Threshold: {crisisStatus.threshold_pct}% of {crisisStatus.total_members} members</span>
         </div>
         <div class="vote-actions">
-          <button class="btn-vote btn-vote-red" onclick={() => onvote('activate')} disabled={votingCrisis}>
-            Vote to Activate
-          </button>
-          <button class="btn-vote btn-vote-blue" onclick={() => onvote('deactivate')} disabled={votingCrisis}>
-            Vote to Deactivate
-          </button>
+          <!-- Only the vote that can change the stored mode ("activate" while red is a no-op) -->
+          {#if crisisStatus.mode !== 'red'}
+            <button class="btn-vote btn-vote-red" onclick={() => onvote('activate')} disabled={votingCrisis}>
+              Vote to Activate
+            </button>
+          {:else}
+            <button class="btn-vote btn-vote-blue" onclick={() => onvote('deactivate')} disabled={votingCrisis}>
+              Vote to Deactivate
+            </button>
+          {/if}
         </div>
       </div>
     </div>
@@ -67,6 +84,14 @@
 </section>
 
 <style>
+  .instance-red-note {
+    margin: 0.75rem 0 0;
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    font-size: 0.85rem;
+  }
   .crisis-section {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
