@@ -49,6 +49,11 @@ Results of a full QA pass (Blue Sky and Red Sky/mesh), a UI/UX review, and follo
 - Reworked phone layouts for bookings, messages (list/thread), resources, dashboard and settings; RTL uses logical CSS properties
 - Auth forms: autocomplete attributes, announced errors, password rules hint
 
+### Docs
+
+- **CLAUDE.md brought up to date with the actual codebase** — corrected version/test-count banner, marked Security Phase 4b (rate limiting, account lockout, CSRF protection) as implemented, expanded the i18n language list to the actual 12 locales, added missing `/events` and `/mesh` routers and `Event`/mesh/federation-sync models to the reference tables, extended the version history table, and fixed the test file count/list
+- **README.md** — removed a stray `### Local Development` heading inside the "Useful Docker commands" code block
+
 ### Tests
 
 - 3 new test files (`test_blue_sky_qa.py`, `test_redsky_qa.py`, `test_security_hardening.py`) and updated federation, mesh and Telegram tests (521 tests total)
