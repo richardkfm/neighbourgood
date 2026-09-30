@@ -26,7 +26,7 @@ def test_create_resource(client, auth_headers, community_id):
     assert data["title"] == "Electric Drill"
     assert data["category"] == "tool"
     assert data["is_available"] is True
-    assert data["owner"]["email"] == "test@example.com"
+    assert data["owner"]["display_name"] == "Test User"
 
 
 def test_create_resource_invalid_category(client, auth_headers, community_id):

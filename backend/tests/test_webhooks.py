@@ -124,3 +124,40 @@ def test_delete_webhook_other_user(client, auth_headers):
 def test_webhooks_unauthenticated(client):
     res = client.get("/webhooks")
     assert res.status_code == 403
+
+
+def test_user_webhook_receives_community_events_for_members(client, auth_headers, community_id, monkeypatch):
+    """resource.shared / skill.created carry no target users; members' webhooks must still fire."""
+    from app.services import webhooks as webhook_service
+
+    delivered = []
+    monkeypatch.setattr(
+        webhook_service,
+        "_deliver_webhook",
+        lambda url, secret, event_type, payload: delivered.append((url, event_type)),
+    )
+
+    client.post(
+        "/webhooks",
+        headers=auth_headers,
+        json={"url": "https://example.com/member", "secret": "supersecret1", "event_types": ["resource.shared"]},
+    )
+    outsider = client.post(
+        "/auth/register",
+        json={"email": "out@test.com", "password": "Password123", "display_name": "Outsider"},
+    ).json()["access_token"]
+    client.post(
+        "/webhooks",
+        headers={"Authorization": f"Bearer {outsider}"},
+        json={"url": "https://example.com/outsider", "secret": "supersecret1", "event_types": ["resource.shared"]},
+    )
+
+    res = client.post(
+        "/resources",
+        headers=auth_headers,
+        json={"title": "Drill", "category": "tool", "community_id": community_id},
+    )
+    assert res.status_code == 201
+
+    assert ("https://example.com/member", "resource.shared") in delivered
+    assert all(url != "https://example.com/outsider" for url, _ in delivered)

@@ -65,6 +65,8 @@ def test_rate_limit_store_upload_bucket():
 def test_rate_limit_store_general_bucket_allows_limit():
     from app.middleware.rate_limit import RateLimitStore, _GENERAL_LIMIT
 
+    from app.middleware.rate_limit import _GENERAL_LIMIT
+
     store = RateLimitStore()
     for _ in range(_GENERAL_LIMIT):
         allowed, _ = store.check_and_record("1.2.3.4", "/resources")
@@ -302,3 +304,18 @@ def test_csrf_middleware_blocks_wrong_origin(client, monkeypatch):
     )
     assert res.status_code == 403
     assert "Origin" in res.json()["detail"]
+
+
+def test_rate_limit_store_viewing_images_is_not_an_upload():
+    from app.middleware.rate_limit import RateLimitStore
+
+    store = RateLimitStore()
+    for _ in range(30):
+        allowed, _ = store.check_and_record("1.2.3.4", "/resources/1/image", "GET")
+        assert allowed
+    # uploads keep their own, stricter bucket
+    for _ in range(10):
+        allowed, _ = store.check_and_record("1.2.3.4", "/resources/1/image", "POST")
+        assert allowed
+    allowed, _ = store.check_and_record("1.2.3.4", "/resources/1/image", "POST")
+    assert not allowed

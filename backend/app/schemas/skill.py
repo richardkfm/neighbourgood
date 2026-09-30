@@ -1,10 +1,9 @@
 """Pydantic schemas for skill exchange listings."""
 
-import datetime
-
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.user import OwnerTrust, UserProfile
+from app.schemas.user import OwnerTrust, UserPublic
+from app.schemas.common import UTCDateTime
 
 VALID_SKILL_CATEGORIES = [
     "tutoring",
@@ -36,6 +35,8 @@ VALID_SKILL_TYPES = ["offer", "request"]
 
 
 class SkillCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     title: str = Field(..., min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     category: str = Field(..., max_length=50)
@@ -58,6 +59,8 @@ class SkillCreate(BaseModel):
 
 
 class SkillUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     category: str | None = Field(None, max_length=50)
@@ -86,10 +89,10 @@ class SkillOut(BaseModel):
     skill_type: str
     owner_id: int
     community_id: int | None
-    owner: UserProfile
+    owner: UserPublic
     owner_trust: OwnerTrust | None = None
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

@@ -1,13 +1,14 @@
 """Pydantic schemas for in-app messaging."""
 
-import datetime
-
 from pydantic import BaseModel, Field
 
 from app.schemas.user import UserProfile
+from app.schemas.common import UTCDateTime
 
 
 class MessageCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     recipient_id: int
     booking_id: int | None = None
     skill_id: int | None = None
@@ -24,7 +25,7 @@ class MessageOut(BaseModel):
     skill_id: int | None
     body: str
     is_read: bool
-    created_at: datetime.datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
@@ -47,7 +48,7 @@ class ConversationSummary(BaseModel):
     """Summary of a conversation with another user."""
     partner: UserProfile
     last_message_body: str
-    last_message_at: datetime.datetime
+    last_message_at: UTCDateTime
     unread_count: int
 
 

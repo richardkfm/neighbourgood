@@ -25,10 +25,12 @@ _UPLOAD_LIMIT = 10
 _GENERAL_LIMIT = 200
 
 
-def _bucket(path: str) -> str:
+def _bucket(path: str, method: str = "POST") -> str:
     if path in _AUTH_ENDPOINTS:
         return "auth"
-    if path.endswith("/image"):
+    # Only uploads count against the upload limit; viewing an image (GET) is
+    # ordinary browsing and a listing page loads many images at once.
+    if path.endswith("/image") and method.upper() not in ("GET", "HEAD", "OPTIONS"):
         return "upload"
     return "general"
 
@@ -48,12 +50,12 @@ class RateLimitStore:
         self._windows: dict[tuple[str, str], list[float]] = defaultdict(list)
         self._last_cleanup = time.monotonic()
 
-    def check_and_record(self, ip: str, path: str) -> tuple[bool, int]:
+    def check_and_record(self, ip: str, path: str, method: str = "POST") -> tuple[bool, int]:
         """Return ``(allowed, retry_after_seconds)``.
 
         Records the request if allowed; does NOT record if rejected.
         """
-        b = _bucket(path)
+        b = _bucket(path, method)
         limit = _limit_for_bucket(b)
         key = (ip, b)
         now = time.monotonic()
@@ -123,7 +125,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         ip = _client_ip(request)
         path = request.url.path
 
-        allowed, retry_after = _store.check_and_record(ip, path)
+        allowed, retry_after = _store.check_and_record(ip, path, request.method)
         if not allowed:
             return Response(
                 content='{"detail":"Too many requests. Please slow down."}',

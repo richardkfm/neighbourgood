@@ -6,7 +6,8 @@
 export interface UserInfo {
 	id: number;
 	display_name: string;
-	email: string;
+	/** Only present on the signed-in user and message contacts; public payloads omit it. */
+	email?: string;
 	neighbourhood?: string | null;
 	role?: string;
 	language_code?: string;
@@ -133,7 +134,7 @@ export interface ActivityOut {
 	summary: string;
 	actor_id: number;
 	community_id: number | null;
-	actor: { id: number; display_name: string; email: string };
+	actor: { id: number; display_name: string };
 	created_at: string;
 }
 

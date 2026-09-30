@@ -54,8 +54,8 @@ def test_borrower_reviews_lender(client, auth_headers, community_id):
     data = res.json()
     assert data["rating"] == 5
     assert data["comment"] == "Great lender!"
-    assert data["reviewer"]["email"] == "borrower@test.com"
-    assert data["reviewee"]["email"] == "test@example.com"
+    assert data["reviewer"]["display_name"] == "Borrower"
+    assert data["reviewee"]["display_name"] == "Test User"
 
 
 def test_lender_reviews_borrower(client, auth_headers, community_id):
@@ -70,8 +70,8 @@ def test_lender_reviews_borrower(client, auth_headers, community_id):
     )
     assert res.status_code == 201
     data = res.json()
-    assert data["reviewer"]["email"] == "test@example.com"
-    assert data["reviewee"]["email"] == "borrower@test.com"
+    assert data["reviewer"]["display_name"] == "Test User"
+    assert data["reviewee"]["display_name"] == "Borrower"
 
 
 def test_both_parties_can_review(client, auth_headers, community_id):

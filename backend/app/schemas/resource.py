@@ -1,10 +1,9 @@
 """Pydantic schemas for resources."""
 
-import datetime
-
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.user import OwnerTrust, UserProfile
+from app.schemas.user import OwnerTrust, UserPublic
+from app.schemas.common import UTCDateTime
 
 VALID_CATEGORIES = [
     "tool", "vehicle", "electronics", "furniture",
@@ -26,6 +25,8 @@ CATEGORY_META = {
 
 
 class ResourceCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     title: str = Field(..., min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     category: str = Field(..., max_length=50)
@@ -50,6 +51,8 @@ class ResourceCreate(BaseModel):
 
 
 class ResourceUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     category: str | None = Field(None, max_length=50)
@@ -87,14 +90,14 @@ class ResourceOut(BaseModel):
     is_available: bool
     owner_id: int
     community_id: int | None = None
-    owner: UserProfile
+    owner: UserPublic
     owner_trust: OwnerTrust | None = None
     quantity_total: int
     quantity_available: int
     reorder_threshold: int | None = None
     low_stock: bool
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

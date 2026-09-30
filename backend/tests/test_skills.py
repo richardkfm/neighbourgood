@@ -55,7 +55,7 @@ def test_create_skill_offer(client, auth_headers, community_id):
     assert data["title"] == "Python Tutoring"
     assert data["category"] == "tutoring"
     assert data["skill_type"] == "offer"
-    assert data["owner"]["email"] == "test@example.com"
+    assert data["owner"]["display_name"] == "Test User"
 
 
 def test_create_skill_request(client, auth_headers, community_id):

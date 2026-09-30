@@ -7,11 +7,13 @@ from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_current_user_optional
+from app.models.booking import Booking
 from app.models.community import CommunityMember
 from app.models.resource import Resource
 from app.models.user import User
@@ -19,6 +21,7 @@ from app.routers.users import compute_owner_trust
 from app.services.activity import record_activity
 from app.services.file_upload import ALLOWED_EXTENSIONS, ALLOWED_IMAGE_TYPES, validate_image_magic
 from app.services.webhooks import dispatch_event
+from app.utils.authorization import require_active_membership
 from app.schemas.resource import (
     CATEGORY_META,
     VALID_CATEGORIES,
@@ -148,6 +151,8 @@ def create_resource(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Invalid condition. Must be one of: {VALID_CONDITIONS}",
         )
+    if body.community_id is not None:
+        require_active_membership(db, body.community_id, current_user.id)
 
     resource = Resource(
         title=body.title,
@@ -255,13 +260,31 @@ def delete_resource(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
     if resource.owner_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your resource")
-    if resource.image_path:
+    active_bookings = (
+        db.query(Booking.id)
+        .filter(Booking.resource_id == resource_id, Booking.status.in_(["pending", "approved"]))
+        .first()
+    )
+    if active_bookings:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This resource has pending or approved bookings. Resolve them first, or mark it unavailable instead.",
+        )
+    image_path = resource.image_path
+    db.delete(resource)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This resource has booking history and cannot be deleted. Mark it unavailable instead.",
+        )
+    if image_path:
         try:
-            os.remove(resource.image_path)
+            os.remove(image_path)
         except OSError:
             pass
-    db.delete(resource)
-    db.commit()
 
 
 # ── Inventory management ───────────────────────────────────────────

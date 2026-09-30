@@ -13,6 +13,9 @@
 	let resource: Resource | null = $state(null);
 	let bookings: Booking[] = $state([]);
 	let error = $state('');
+	// Errors from actions on an already-loaded resource (upload, toggle, delete) are
+	// shown inline; `error` replaces the whole page and is only for load failures.
+	let actionError = $state('');
 	let loading = $state(true);
 	let confirmDelete = $state(false);
 
@@ -49,11 +52,20 @@
 
 	async function loadBookings(resourceId: number) {
 		try {
+			// The calendar endpoint is per month; fetch this month and next so a
+			// booking for the coming weeks is not hidden when it crosses a boundary.
 			const now = new Date();
-			const res = await api<Booking[]>(
-				`/bookings/resource/${resourceId}/calendar?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
+			const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+			const months = [now, next];
+			const results = await Promise.all(
+				months.map((d) =>
+					api<Booking[]>(
+						`/bookings/resource/${resourceId}/calendar?month=${d.getMonth() + 1}&year=${d.getFullYear()}`
+					)
+				)
 			);
-			bookings = res;
+			const seen = new Set<number>();
+			bookings = results.flat().filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
 		} catch {
 			bookings = [];
 		}
@@ -61,6 +73,7 @@
 
 	async function toggleAvailability() {
 		if (!resource) return;
+		actionError = '';
 		try {
 			resource = await api<Resource>(`/resources/${resource.id}`, {
 				method: 'PATCH',
@@ -68,7 +81,7 @@
 				body: { is_available: !resource.is_available }
 			});
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Update failed';
+			actionError = err instanceof Error ? err.message : 'Update failed';
 		}
 	}
 
@@ -76,20 +89,25 @@
 		if (!resource) return;
 		if (!confirmDelete) { confirmDelete = true; return; }
 		confirmDelete = false;
+		actionError = '';
 		try {
 			await api(`/resources/${resource.id}`, { method: 'DELETE', auth: true });
 			goto('/resources');
 		} catch (err) {
-			error = err instanceof Error ? err.message : $t('common.error');
+			actionError = err instanceof Error ? err.message : $t('common.error');
 		}
 	}
 
 	async function handleImageUpload() {
 		if (!resource || !imageInput?.files?.length) return;
+		actionError = '';
 		try {
 			resource = await apiUpload<Resource>(`/resources/${resource.id}/image`, imageInput.files[0]);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Upload failed';
+			actionError = err instanceof Error ? err.message : 'Upload failed';
+		} finally {
+			// Allow re-selecting the same file after a failed upload
+			if (imageInput) imageInput.value = '';
 		}
 	}
 
@@ -172,6 +190,10 @@
 			<h1>{resource.title}</h1>
 			<p class="meta">Listed {new Date(resource.created_at).toLocaleDateString()}</p>
 		</div>
+
+		{#if actionError}
+			<p class="error" role="alert">{actionError}</p>
+		{/if}
 
 		<div class="detail-grid">
 			<div class="detail-main">

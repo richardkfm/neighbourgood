@@ -32,6 +32,16 @@ def require_membership(
     return member
 
 
+def require_active_membership(
+    db: Session, community_id: int, user_id: int
+) -> CommunityMember:
+    """404 if the community does not exist or is inactive/merged, 403 if the user is not a member."""
+    community = require_community(db, community_id)
+    if not community.is_active or community.merged_into_id is not None:
+        raise HTTPException(status_code=404, detail="Community not found")
+    return require_membership(db, community_id, user_id)
+
+
 def require_admin(
     db: Session, community_id: int, user_id: int
 ) -> CommunityMember:

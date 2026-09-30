@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { isLoggedIn, user } from '$lib/stores/auth';
@@ -91,11 +91,23 @@
 		});
 	}
 
-	onMount(async () => {
+	// Reload whenever the :id param changes (e.g. following a reviewer link from
+	// one profile to another) – the route component is reused, so onMount alone
+	// would leave the previous user's data on screen.
+	let loadedFor: number | null = null;
+	async function loadProfile() {
+		trust = null;
+		error = '';
+		loading = true;
+		activeTab = 'received';
 		await loadTrust();
-		await loadReviews();
+		await loadReviews(true);
 		loading = false;
-	});
+	}
+	$: if (browser && userId && userId !== loadedFor) {
+		loadedFor = userId;
+		loadProfile();
+	}
 </script>
 
 <svelte:head>

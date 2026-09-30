@@ -23,6 +23,8 @@ from app.models.resource import Resource
 from app.models.review import Review
 from app.models.skill import Skill
 from app.models.user import User
+from app.schemas.resource import VALID_CATEGORIES, VALID_CONDITIONS
+from app.schemas.skill import VALID_SKILL_CATEGORIES, VALID_SKILL_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -464,24 +466,33 @@ def import_user_data(
     created_resources = 0
     created_skills = 0
 
+    def _text(value, default: str | None, limit: int) -> str | None:
+        if not isinstance(value, str) or not value.strip():
+            return default
+        return value.strip()[:limit]
+
     for r in body.resources:
+        category = r.get("category")
+        condition = r.get("condition")
         resource = Resource(
-            title=r.get("title", "Imported Resource"),
-            description=r.get("description"),
-            category=r.get("category", "other"),
-            condition=r.get("condition"),
-            is_available=r.get("is_available", True),
+            title=_text(r.get("title"), "Imported Resource", 200),
+            description=_text(r.get("description"), None, 5000),
+            category=category if category in VALID_CATEGORIES else "other",
+            condition=condition if condition in VALID_CONDITIONS else None,
+            is_available=bool(r.get("is_available", True)),
             owner_id=current_user.id,
         )
         db.add(resource)
         created_resources += 1
 
     for s in body.skills:
+        category = s.get("category")
+        skill_type = s.get("skill_type")
         skill = Skill(
-            title=s.get("title", "Imported Skill"),
-            description=s.get("description"),
-            category=s.get("category", "other"),
-            skill_type=s.get("skill_type", "offer"),
+            title=_text(s.get("title"), "Imported Skill", 200),
+            description=_text(s.get("description"), None, 5000),
+            category=category if category in VALID_SKILL_CATEGORIES else "other",
+            skill_type=skill_type if skill_type in VALID_SKILL_TYPES else "offer",
             owner_id=current_user.id,
         )
         db.add(skill)

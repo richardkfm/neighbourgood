@@ -70,14 +70,13 @@
 	<div class="filters">
 		<select bind:value={filterCategory} onchange={applyFilters}>
 			<option value="">{$t('resources.all_categories')}</option>
-			<option value="tools">{$t('resources.categories.tools')}</option>
+			<option value="tool">{$t('resources.categories.tool')}</option>
+			<option value="vehicle">{$t('resources.categories.vehicle')}</option>
 			<option value="electronics">{$t('resources.categories.electronics')}</option>
 			<option value="furniture">{$t('resources.categories.furniture')}</option>
 			<option value="food">{$t('resources.categories.food')}</option>
 			<option value="clothing">{$t('resources.categories.clothing')}</option>
-			<option value="kitchen">{$t('resources.categories.kitchen')}</option>
-			<option value="garden">{$t('resources.categories.garden')}</option>
-			<option value="books">{$t('resources.categories.books')}</option>
+			<option value="skill">{$t('resources.categories.skill')}</option>
 			<option value="other">{$t('resources.categories.other')}</option>
 		</select>
 

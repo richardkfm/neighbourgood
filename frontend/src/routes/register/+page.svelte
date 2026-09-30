@@ -3,6 +3,8 @@
 	import { api } from '$lib/api';
 	import { token, user } from '$lib/stores/auth';
 	import type { UserProfile } from '$lib/stores/auth';
+	import { currentLocale } from '$lib/stores/locale';
+	import { get } from 'svelte/store';
 	import { t } from 'svelte-i18n';
 
 	let email = $state('');
@@ -24,13 +26,22 @@
 					email,
 					password,
 					display_name: displayName,
-					neighbourhood: neighbourhood || null
+					neighbourhood: neighbourhood || null,
+					language_code: get(currentLocale)
 				}
 			});
 			token.set(res.access_token);
 
 			const profile = await api<UserProfile>('/users/me', { auth: true });
 			user.set(profile);
+
+			// Resume an invite the visitor opened before signing up
+			const pendingInvite = sessionStorage.getItem('ng_pending_invite');
+			if (pendingInvite) {
+				sessionStorage.removeItem('ng_pending_invite');
+				goto(`/invites/${encodeURIComponent(pendingInvite)}`);
+				return;
+			}
 
 			goto('/onboarding');
 		} catch (err) {

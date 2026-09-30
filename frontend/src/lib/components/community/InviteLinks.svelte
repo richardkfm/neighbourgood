@@ -50,9 +50,18 @@
 
   function copyLink(code: string) {
     const url = `${window.location.origin}/invites/${code}`;
-    navigator.clipboard.writeText(url);
-    copiedCode = code;
-    setTimeout(() => { copiedCode = ''; }, 2000);
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(url).then(
+        () => {
+          copiedCode = code;
+          setTimeout(() => { copiedCode = ''; }, 2000);
+        },
+        () => window.prompt('Copy this invite link:', url)
+      );
+    } else {
+      // The Clipboard API needs a secure context; plain-http instances fall back to a prompt
+      window.prompt('Copy this invite link:', url);
+    }
   }
 
   function formatExpiry(expiresAt: string | null): string {
