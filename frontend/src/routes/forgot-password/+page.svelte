@@ -1,74 +1,63 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
-	import { token, user } from '$lib/stores/auth';
-	import type { UserProfile } from '$lib/stores/auth';
-	import { hydrateLocale } from '$lib/stores/locale';
 	import { t } from 'svelte-i18n';
 
 	let email = $state('');
-	let password = $state('');
 	let error = $state('');
 	let loading = $state(false);
+	let sent = $state(false);
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		error = '';
 		loading = true;
-
 		try {
-			const res = await api<{ access_token: string }>('/auth/login', {
-				method: 'POST',
-				body: { email, password }
-			});
-			token.set(res.access_token);
-
-			const profile = await api<UserProfile>('/users/me', { auth: true });
-			user.set(profile);
-			hydrateLocale(profile.language_code);
-
-			// Resume an invite the visitor opened before signing in
-			const pendingInvite = sessionStorage.getItem('ng_pending_invite');
-			if (pendingInvite) {
-				sessionStorage.removeItem('ng_pending_invite');
-				goto(`/invites/${encodeURIComponent(pendingInvite)}`);
-				return;
-			}
-
-			goto('/dashboard');
+			await api('/auth/password-reset/request', { method: 'POST', body: { email } });
+			sent = true;
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Login failed';
+			error = err instanceof Error ? err.message : $t('common.error');
 		} finally {
 			loading = false;
 		}
 	}
 </script>
 
-<div class="auth-page">
-	<h1>{$t('auth.login_title')}</h1>
-	<p class="subtitle">{$t('auth.login_community')}</p>
+<svelte:head>
+	<title>{$t('auth.forgot_title')} - NeighbourGood</title>
+</svelte:head>
 
-	{#if error}
-		<p class="error" role="alert">{error}</p>
+<div class="auth-page">
+	<h1>{$t('auth.forgot_title')}</h1>
+
+	{#if sent}
+		<p class="success" role="status">{$t('auth.forgot_sent')}</p>
+	{:else}
+		<p class="subtitle">{$t('auth.forgot_subtitle')}</p>
+
+		{#if error}
+			<p class="error" role="alert">{error}</p>
+		{/if}
+
+		<form onsubmit={handleSubmit}>
+			<div class="field">
+				<label for="forgot-email">{$t('auth.email')}</label>
+				<input
+					id="forgot-email"
+					type="email"
+					bind:value={email}
+					required
+					maxlength="254"
+					autocomplete="email"
+					disabled={loading}
+				/>
+			</div>
+			<button type="submit" disabled={loading}>
+				{loading ? $t('auth.forgot_sending') : $t('auth.forgot_submit')}
+			</button>
+		</form>
 	{/if}
 
-	<form onsubmit={handleSubmit}>
-		<label>
-			<span>{$t('auth.email')}</span>
-			<input type="email" bind:value={email} required autocomplete="email" />
-		</label>
-		<label>
-			<span>{$t('auth.password')}</span>
-			<input type="password" bind:value={password} required autocomplete="current-password" />
-		</label>
-		<button type="submit" disabled={loading}>
-			{loading ? $t('auth.logging_in') : $t('auth.login_btn')}
-		</button>
-	</form>
-
-	<p class="forgot"><a href="/forgot-password">{$t('auth.forgot_password')}</a></p>
-
-	<p class="switch">{$t('auth.no_account')} <a href="/register">{$t('nav.signup')}</a></p>
+	<p class="switch"><a href="/login">{$t('auth.back_to_login')}</a></p>
 </div>
 
 <style>
@@ -105,18 +94,19 @@
 		gap: 1rem;
 	}
 
-	label {
+	.field {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
 	}
 
-	label span {
+	label {
 		font-size: 0.85rem;
 		font-weight: 500;
 	}
 
 	input {
+		min-height: var(--tap-target);
 		padding: 0.5rem 0.75rem;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
@@ -160,23 +150,25 @@
 		margin-bottom: 1rem;
 	}
 
-	.forgot {
-		text-align: center;
-		margin-top: 0.75rem;
-		font-size: 0.9rem;
-	}
-
-	.forgot a {
-		display: inline-flex;
-		align-items: center;
-		min-height: var(--tap-target);
-		padding-inline: 0.5rem;
+	.success {
+		color: var(--color-success);
+		background: var(--color-success-bg);
+		padding: 0.75rem 1rem;
+		border-radius: var(--radius);
+		font-size: 0.95rem;
+		line-height: 1.5;
 	}
 
 	.switch {
 		text-align: center;
-		margin-top: 0.5rem;
+		margin-top: 1.5rem;
 		font-size: 0.9rem;
-		color: var(--color-text-muted);
+	}
+
+	.switch a {
+		display: inline-flex;
+		align-items: center;
+		min-height: var(--tap-target);
+		padding-inline: 0.5rem;
 	}
 </style>

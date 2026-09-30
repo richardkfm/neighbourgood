@@ -41,6 +41,13 @@
 	let hasReviewed = $state(false);
 	let confirmDelete = $state(false);
 
+	// Edit form (owner only)
+	const EDIT_CATEGORIES = ['tutoring', 'repairs', 'cooking', 'languages', 'music', 'gardening', 'tech', 'crafts', 'fitness', 'other'];
+	let editing = $state(false);
+	let editSaving = $state(false);
+	let editError = $state('');
+	let editForm = $state({ title: '', description: '', category: 'other', skill_type: 'offer' });
+
 	const isOwner = $derived(
 		$isLoggedIn && skill !== null && $user?.id === skill.owner_id
 	);
@@ -131,6 +138,47 @@
 		}
 	}
 
+	function startEdit() {
+		if (!skill) return;
+		editForm = {
+			title: skill.title,
+			description: skill.description ?? '',
+			category: skill.category,
+			skill_type: skill.skill_type
+		};
+		editError = '';
+		editing = true;
+	}
+
+	function cancelEdit() {
+		editing = false;
+		editError = '';
+	}
+
+	async function saveEdit(e: Event) {
+		e.preventDefault();
+		if (!skill) return;
+		editError = '';
+		editSaving = true;
+		try {
+			skill = await api<Skill>(`/skills/${skill.id}`, {
+				method: 'PATCH',
+				auth: true,
+				body: {
+					title: editForm.title,
+					description: editForm.description.trim() || null,
+					category: editForm.category,
+					skill_type: editForm.skill_type
+				}
+			});
+			editing = false;
+		} catch (err) {
+			editError = err instanceof Error ? err.message : $_('skills.edit_failed');
+		} finally {
+			editSaving = false;
+		}
+	}
+
 	function startConversation(ownerId: number, skillId: number) {
 		goto(`/messages?partner=${ownerId}&skill=${skillId}`);
 	}
@@ -166,14 +214,61 @@
 
 		<div class="detail-grid">
 			<div class="detail-main">
-				<div class="section-card">
-					<h3>About</h3>
-					{#if skill.description}
-						<p>{skill.description}</p>
-					{:else}
-						<p class="no-description">No description added yet.</p>
-					{/if}
-				</div>
+				{#if editing && isOwner}
+					<form class="section-card edit-form" onsubmit={saveEdit} aria-labelledby="edit-skill-heading">
+						<h3 id="edit-skill-heading">{$_('skills.edit_title')}</h3>
+
+						{#if editError}
+							<p class="error" role="alert">{editError}</p>
+						{/if}
+
+						<div class="field">
+							<label for="edit-skill-title">{$_('skills.title_label')}</label>
+							<input id="edit-skill-title" type="text" bind:value={editForm.title} required maxlength="200" disabled={editSaving} />
+						</div>
+
+						<div class="field">
+							<label for="edit-skill-description">{$_('skills.description_label')}</label>
+							<textarea id="edit-skill-description" bind:value={editForm.description} rows="4" maxlength="5000" disabled={editSaving}></textarea>
+						</div>
+
+						<div class="field-row">
+							<div class="field">
+								<label for="edit-skill-category">{$_('skills.category_label')}</label>
+								<select id="edit-skill-category" bind:value={editForm.category} disabled={editSaving}>
+									{#each EDIT_CATEGORIES as cat}
+										<option value={cat}>{$_('skills.categories.' + cat)}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="field">
+								<label for="edit-skill-type">{$_('skills.type_label')}</label>
+								<select id="edit-skill-type" bind:value={editForm.skill_type} disabled={editSaving}>
+									<option value="offer">{$_('skills.type_offering')}</option>
+									<option value="request">{$_('skills.type_seeking')}</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="form-actions">
+							<button type="submit" class="btn-primary" disabled={editSaving}>
+								{editSaving ? $_('skills.edit_saving') : $_('skills.edit_save')}
+							</button>
+							<button type="button" class="btn-secondary" onclick={cancelEdit} disabled={editSaving}>
+								{$_('common.cancel')}
+							</button>
+						</div>
+					</form>
+				{:else}
+					<div class="section-card">
+						<h3>About</h3>
+						{#if skill.description}
+							<p>{skill.description}</p>
+						{:else}
+							<p class="no-description">No description added yet.</p>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Reviews Section -->
 				<div class="section-card">
@@ -273,6 +368,9 @@
 					<div class="section-card owner-panel">
 						<h3>{$_('skills.manage')}</h3>
 						<div class="owner-actions">
+							<button class="btn-secondary" onclick={startEdit} disabled={editing}>
+								{$_('skills.edit_btn')}
+							</button>
 							{#if confirmDelete}
 								<span class="confirm-text">{$_('common.confirm_delete')}</span>
 								<button class="btn-danger" onclick={deleteSkill}>{$_('common.delete')}</button>
@@ -670,6 +768,94 @@
 		display: flex;
 		gap: 0.75rem;
 		flex-wrap: wrap;
+	}
+
+	.owner-actions button {
+		display: inline-flex;
+		align-items: center;
+		min-height: var(--tap-target);
+	}
+
+	.btn-secondary {
+		padding: 0.5rem 1rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		background: var(--color-surface);
+		color: var(--color-text);
+		cursor: pointer;
+		font-size: 0.9rem;
+	}
+
+	.btn-secondary:hover:not(:disabled) {
+		border-color: var(--color-primary);
+	}
+
+	.btn-secondary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* Edit form */
+	.edit-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.edit-form h3 {
+		margin-bottom: 0;
+	}
+
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.field label {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.field-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 0.75rem;
+	}
+
+	@media (max-width: 480px) {
+		.field-row {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.edit-form input,
+	.edit-form select,
+	.edit-form textarea {
+		width: 100%;
+		min-width: 0;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		font-size: 0.9rem;
+		background: var(--color-surface);
+		color: var(--color-text);
+	}
+
+	.edit-form input,
+	.edit-form select {
+		min-height: var(--tap-target);
+	}
+
+	.edit-form .form-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.edit-form .btn-primary {
+		min-height: var(--tap-target);
 	}
 
 	.btn-danger {

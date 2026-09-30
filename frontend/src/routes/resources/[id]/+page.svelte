@@ -30,6 +30,23 @@
 	// Image upload
 	let imageInput: HTMLInputElement;
 
+	// Edit form (owner only)
+	const EDIT_CATEGORIES = ['tool', 'vehicle', 'electronics', 'furniture', 'food', 'clothing', 'skill', 'other'];
+	const EDIT_CONDITIONS = ['new', 'good', 'fair', 'worn'];
+	let editing = $state(false);
+	let editSaving = $state(false);
+	let editError = $state('');
+	let editImageInput: HTMLInputElement | undefined = $state();
+	let imageVersion = $state(0);
+	let editForm = $state({
+		title: '',
+		description: '',
+		category: 'tool',
+		condition: '',
+		is_available: true,
+		reorder_threshold: null as number | null
+	});
+
 	const isOwner = $derived(
 		$isLoggedIn && resource !== null && $user?.id === resource.owner_id
 	);
@@ -108,6 +125,69 @@
 		} finally {
 			// Allow re-selecting the same file after a failed upload
 			if (imageInput) imageInput.value = '';
+		}
+	}
+
+	function startEdit() {
+		if (!resource) return;
+		editForm = {
+			title: resource.title,
+			description: resource.description ?? '',
+			category: resource.category,
+			condition: resource.condition ?? '',
+			is_available: resource.is_available,
+			reorder_threshold: resource.reorder_threshold
+		};
+		editError = '';
+		editing = true;
+	}
+
+	function cancelEdit() {
+		editing = false;
+		editError = '';
+	}
+
+	async function saveEdit(e: Event) {
+		e.preventDefault();
+		if (!resource) return;
+		editError = '';
+		editSaving = true;
+		const trust = resource.owner_trust;
+		const threshold = editForm.reorder_threshold as number | string | null | undefined;
+		try {
+			const updated = await api<Resource>(`/resources/${resource.id}`, {
+				method: 'PATCH',
+				auth: true,
+				body: {
+					title: editForm.title,
+					description: editForm.description.trim() || null,
+					category: editForm.category,
+					condition: editForm.condition || null,
+					is_available: editForm.is_available,
+					reorder_threshold: threshold === null || threshold === undefined || threshold === '' ? null : Number(threshold)
+				}
+			});
+			// The PATCH response does not carry the owner's trust summary; keep what we had.
+			resource = { ...updated, owner_trust: trust };
+
+			const file = editImageInput?.files?.[0];
+			if (file) {
+				try {
+					const withImage = await apiUpload<Resource>(`/resources/${resource.id}/image`, file);
+					resource = { ...withImage, owner_trust: trust };
+					imageVersion = Date.now();
+				} catch (err) {
+					// The text changes are already saved; keep the form open so the photo can be retried.
+					const reason = err instanceof Error ? err.message : '';
+					editError = `${$t('resources.edit_image_failed')}${reason ? `: ${reason}` : ''}`;
+					return;
+				}
+			}
+			editing = false;
+		} catch (err) {
+			editError = err instanceof Error ? err.message : $t('resources.edit_failed');
+		} finally {
+			editSaving = false;
 		}
 	}
 
@@ -199,18 +279,110 @@
 			<div class="detail-main">
 				{#if resource.image_url && $bandwidth !== 'low'}
 					<div class="detail-image">
-						<img src="/api{resource.image_url}" alt={resource.title} />
+						<img src="/api{resource.image_url}{imageVersion ? `?v=${imageVersion}` : ''}" alt={resource.title} />
 					</div>
 				{/if}
 
-				<div class="section-card">
-					<h3>About this item</h3>
-					{#if resource.description}
-						<p>{resource.description}</p>
-					{:else}
-						<p class="no-description">The owner hasn't added a description yet.</p>
-					{/if}
-				</div>
+				{#if editing && isOwner}
+					<form class="section-card edit-form" onsubmit={saveEdit} aria-labelledby="edit-resource-heading">
+						<h3 id="edit-resource-heading">{$t('resources.edit_title')}</h3>
+
+						{#if editError}
+							<p class="error" role="alert">{editError}</p>
+						{/if}
+
+						<div class="field">
+							<label for="edit-title">{$t('resources.title_label')}</label>
+							<input id="edit-title" type="text" bind:value={editForm.title} required maxlength="200" disabled={editSaving} />
+						</div>
+
+						<div class="field">
+							<label for="edit-description">{$t('resources.description_label')}</label>
+							<textarea id="edit-description" bind:value={editForm.description} rows="4" maxlength="5000" disabled={editSaving}></textarea>
+						</div>
+
+						<div class="field-row">
+							<div class="field">
+								<label for="edit-category">{$t('resources.category')}</label>
+								<select id="edit-category" bind:value={editForm.category} disabled={editSaving}>
+									{#each EDIT_CATEGORIES as cat}
+										<option value={cat}>{$t('resources.categories.' + cat)}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="field">
+								<label for="edit-condition">{$t('resources.condition')}</label>
+								<select id="edit-condition" bind:value={editForm.condition} disabled={editSaving}>
+									<option value="">{$t('resources.edit_condition_none')}</option>
+									{#each EDIT_CONDITIONS as cond}
+										<option value={cond}>{$t('resources.conditions.' + cond)}</option>
+									{/each}
+								</select>
+							</div>
+						</div>
+
+						<div class="field">
+							<label for="edit-threshold">{$t('resources.edit_threshold_label')}</label>
+							<input
+								id="edit-threshold"
+								type="number"
+								min="0"
+								step="1"
+								inputmode="numeric"
+								bind:value={editForm.reorder_threshold}
+								aria-describedby="edit-threshold-hint"
+								disabled={editSaving}
+							/>
+							<small id="edit-threshold-hint" class="hint">{$t('resources.edit_threshold_hint')}</small>
+						</div>
+
+						<label class="check-row" for="edit-available">
+							<input id="edit-available" type="checkbox" bind:checked={editForm.is_available} disabled={editSaving} />
+							<span>{$t('resources.edit_available_label')}</span>
+						</label>
+
+						<div class="field">
+							<label for="edit-image">{$t('resources.edit_image_label')}</label>
+							{#if resource.image_url && $bandwidth !== 'low'}
+								<img
+									class="edit-image-preview"
+									src="/api{resource.image_url}{imageVersion ? `?v=${imageVersion}` : ''}"
+									alt={$t('resources.edit_image_current')}
+								/>
+							{:else if !resource.image_url}
+								<p class="hint">{$t('resources.edit_image_none')}</p>
+							{/if}
+							<input
+								id="edit-image"
+								class="file-input"
+								type="file"
+								accept="image/jpeg,image/png,image/webp,image/gif"
+								bind:this={editImageInput}
+								aria-describedby="edit-image-hint"
+								disabled={editSaving}
+							/>
+							<small id="edit-image-hint" class="hint">{$t('resources.edit_image_hint')}</small>
+						</div>
+
+						<div class="form-actions">
+							<button type="submit" class="btn-primary" disabled={editSaving}>
+								{editSaving ? $t('resources.edit_saving') : $t('resources.edit_save')}
+							</button>
+							<button type="button" class="btn-secondary" onclick={cancelEdit} disabled={editSaving}>
+								{$t('common.cancel')}
+							</button>
+						</div>
+					</form>
+				{:else}
+					<div class="section-card">
+						<h3>About this item</h3>
+						{#if resource.description}
+							<p>{resource.description}</p>
+						{:else}
+							<p class="no-description">The owner hasn't added a description yet.</p>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Booking section -->
 				{#if isOwner || bookings.length > 0}
@@ -331,6 +503,9 @@
 					<div class="section-card owner-panel">
 						<h3>Manage Resource</h3>
 						<div class="owner-actions">
+							<button class="btn-secondary" onclick={startEdit} disabled={editing}>
+								{$t('common.edit')}
+							</button>
 							<button class="btn-secondary" onclick={toggleAvailability}>
 								{resource.is_available ? 'Mark Unavailable' : 'Mark Available'}
 							</button>
@@ -598,6 +773,13 @@
 		flex-wrap: wrap;
 	}
 
+	.owner-actions button,
+	.owner-actions .upload-btn {
+		display: inline-flex;
+		align-items: center;
+		min-height: var(--tap-target);
+	}
+
 	.btn-primary {
 		padding: 0.55rem 1.2rem;
 		background: var(--color-primary);
@@ -653,6 +835,109 @@
 	.btn-danger:hover {
 		background: var(--color-error);
 		color: var(--color-on-error);
+	}
+
+	/* Edit form */
+	.edit-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
+
+	.edit-form h3 {
+		margin-bottom: 0;
+	}
+
+	.field {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.field label,
+	.check-row span {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.field-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		gap: 0.75rem;
+	}
+
+	@media (max-width: 480px) {
+		.field-row {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	.edit-form input:not([type='checkbox']),
+	.edit-form select {
+		min-height: var(--tap-target);
+	}
+
+	.edit-form select {
+		width: 100%;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		font-size: 0.9rem;
+		background: var(--color-surface);
+		color: var(--color-text);
+	}
+
+	.check-row {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: 0.75rem;
+		min-height: var(--tap-target);
+		cursor: pointer;
+	}
+
+	.check-row input[type='checkbox'] {
+		width: 22px;
+		min-width: 22px;
+		height: 22px;
+		padding: 0;
+		accent-color: var(--color-primary);
+		cursor: pointer;
+	}
+
+	.file-input {
+		padding: 0.5rem 0.75rem;
+	}
+
+	.edit-image-preview {
+		max-width: 100%;
+		max-height: 200px;
+		object-fit: cover;
+		border-radius: var(--radius);
+		border: 1px solid var(--color-border);
+		align-self: flex-start;
+	}
+
+	.hint {
+		font-size: 0.8rem;
+		color: var(--color-text-muted);
+		margin: 0;
+	}
+
+	.edit-form .form-actions {
+		flex-wrap: wrap;
+	}
+
+	.edit-form .btn-primary,
+	.edit-form .btn-secondary {
+		min-height: var(--tap-target);
+	}
+
+	.btn-secondary:disabled,
+	.btn-primary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	/* Booking list */

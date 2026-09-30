@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isLoggedIn, user } from '$lib/stores/auth';
+	import { isLoggedIn, user, logout } from '$lib/stores/auth';
 	import { api } from '$lib/api';
 	import type { Webhook } from '$lib/types';
 	import { meshEnabled } from '$lib/stores/mesh-settings';
@@ -37,6 +37,15 @@
 		url: '',
 		secret: '',
 		event_types: [] as string[],
+		error: '',
+		loading: false
+	});
+
+	let exportState = $state({ loading: false, error: '', success: false });
+
+	let deleteForm = $state({
+		confirming: false,
+		password: '',
 		error: '',
 		loading: false
 	});
@@ -142,6 +151,61 @@
 			webhookForm.event_types = webhookForm.event_types.filter(e => e !== event);
 		} else {
 			webhookForm.event_types = [...webhookForm.event_types, event];
+		}
+	}
+
+	async function downloadMyData() {
+		exportState.loading = true;
+		exportState.error = '';
+		exportState.success = false;
+		try {
+			const data = await api<unknown>('/federation/export/my-data', { auth: true });
+			const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `neighbourgood-data-${new Date().toISOString().slice(0, 10)}.json`;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			URL.revokeObjectURL(url);
+			exportState.success = true;
+		} catch (err) {
+			exportState.error = err instanceof Error ? err.message : $t('settings.export_failed');
+		} finally {
+			exportState.loading = false;
+		}
+	}
+
+	function beginDelete() {
+		deleteForm.confirming = true;
+		deleteForm.error = '';
+		deleteForm.password = '';
+	}
+
+	function cancelDelete() {
+		deleteForm.confirming = false;
+		deleteForm.error = '';
+		deleteForm.password = '';
+	}
+
+	async function handleDeleteAccount(e: Event) {
+		e.preventDefault();
+		if (!deleteForm.password) return;
+		deleteForm.error = '';
+		deleteForm.loading = true;
+		try {
+			// A wrong password comes back as a 400, so the session stays intact.
+			await api('/users/me', {
+				method: 'DELETE',
+				body: { password: deleteForm.password },
+				auth: true
+			});
+			logout();
+			await goto('/');
+		} catch (err) {
+			deleteForm.error = err instanceof Error ? err.message : $t('settings.delete_failed');
+			deleteForm.loading = false;
 		}
 	}
 
@@ -477,6 +541,90 @@
 			</button>
 		</form>
 	</div>
+
+	<hr class="section-divider" />
+
+	<div class="settings-section">
+		<h2>{$t('settings.export_title')}</h2>
+		<p class="section-desc">{$t('settings.export_desc')}</p>
+
+		{#if exportState.error}
+			<div class="alert alert-error" role="alert">{exportState.error}</div>
+		{:else if exportState.success}
+			<div class="alert alert-success" role="status">{$t('settings.export_done')}</div>
+		{/if}
+
+		<button
+			type="button"
+			class="btn btn-primary"
+			onclick={downloadMyData}
+			disabled={exportState.loading}
+		>
+			{exportState.loading ? $t('settings.exporting') : $t('settings.export_btn')}
+		</button>
+	</div>
+
+	<hr class="section-divider" />
+
+	<div class="settings-section danger-zone" aria-labelledby="danger-zone-heading">
+		<h2 id="danger-zone-heading">{$t('settings.danger_zone')}</h2>
+		<h3 class="danger-title">{$t('settings.delete_title')}</h3>
+		<p class="section-desc">{$t('settings.delete_desc')}</p>
+
+		<p class="consequences-title">{$t('settings.delete_consequences_title')}</p>
+		<ul class="consequences">
+			<li>{$t('settings.delete_consequence_listings')}</li>
+			<li>{$t('settings.delete_consequence_bookings')}</li>
+			<li>{$t('settings.delete_consequence_communities')}</li>
+			<li>{$t('settings.delete_consequence_kept')}</li>
+		</ul>
+
+		{#if deleteForm.confirming}
+			<form class="form delete-confirm" onsubmit={handleDeleteAccount}>
+				<h3 class="danger-title">{$t('settings.delete_confirm_heading')}</h3>
+				<p class="section-desc">{$t('settings.delete_confirm_hint')}</p>
+
+				{#if deleteForm.error}
+					<div class="alert alert-error" role="alert">{deleteForm.error}</div>
+				{/if}
+
+				<div class="form-group">
+					<label for="delete-password">{$t('settings.delete_password_label')}</label>
+					<input
+						id="delete-password"
+						type="password"
+						bind:value={deleteForm.password}
+						required
+						maxlength="128"
+						autocomplete="current-password"
+						disabled={deleteForm.loading}
+					/>
+				</div>
+
+				<div class="delete-actions">
+					<button
+						type="submit"
+						class="btn btn-danger-solid"
+						disabled={deleteForm.loading || !deleteForm.password}
+					>
+						{deleteForm.loading ? $t('settings.deleting') : $t('settings.delete_confirm_btn')}
+					</button>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={cancelDelete}
+						disabled={deleteForm.loading}
+					>
+						{$t('common.cancel')}
+					</button>
+				</div>
+			</form>
+		{:else}
+			<button type="button" class="btn btn-danger-outline" onclick={beginDelete}>
+				{$t('settings.delete_begin')}
+			</button>
+		{/if}
+	</div>
 </div>
 
 <style>
@@ -605,9 +753,88 @@
 		transform: translateY(-2px);
 	}
 
+	.btn {
+		min-height: var(--tap-target);
+	}
+
 	.btn:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
+	}
+
+	.btn-secondary {
+		background: var(--color-surface);
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
+	}
+
+	.btn-secondary:hover:not(:disabled) {
+		border-color: var(--color-primary);
+	}
+
+	.btn-danger-outline {
+		background: none;
+		border: 1px solid var(--color-error);
+		color: var(--color-error);
+	}
+
+	.btn-danger-outline:hover:not(:disabled) {
+		background: var(--color-error);
+		color: var(--color-on-error);
+	}
+
+	.btn-danger-solid {
+		background: var(--color-error);
+		color: var(--color-on-error);
+	}
+
+	.btn-danger-solid:hover:not(:disabled) {
+		box-shadow: var(--shadow-md);
+	}
+
+	.danger-zone {
+		border: 1px solid var(--color-error);
+		border-radius: var(--radius);
+		padding: 0 1.25rem 1.25rem;
+	}
+
+	.danger-zone h2 {
+		color: var(--color-error);
+	}
+
+	.danger-title {
+		font-size: 1rem;
+		font-weight: 600;
+		margin: 0 0 0.5rem 0;
+		color: var(--color-text);
+	}
+
+	.consequences-title {
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin: 0 0 0.25rem 0;
+		color: var(--color-text-muted);
+	}
+
+	.consequences {
+		margin: 0 0 1.25rem 0;
+		padding-inline-start: 1.25rem;
+		font-size: 0.9rem;
+		color: var(--color-text-muted);
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.delete-confirm {
+		border-top: 1px solid var(--color-border);
+		padding-top: 1.25rem;
+	}
+
+	.delete-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
 	}
 
 	.alert {
