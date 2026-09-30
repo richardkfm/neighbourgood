@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     # Uploads
     upload_dir: str = "uploads"
     max_image_size: int = 5 * 1024 * 1024  # 5 MB
+    # Largest accepted request body (JSON etc.); multipart uploads get max_image_size
+    max_request_body_bytes: int = 1024 * 1024  # 1 MB
 
     # Email / SMTP (optional – logs to console when unconfigured)
     smtp_host: str = ""
