@@ -192,6 +192,7 @@
 	async function toggleCrisisMode(newMode: string) {
 		togglingCrisis = true;
 		error = '';
+		actionMsg = '';
 		try {
 			crisisStatus = await api<CrisisStatus>(`/communities/${communityId}/crisis/toggle`, {
 				method: 'POST', auth: true, body: { mode: newMode }
@@ -210,6 +211,7 @@
 	async function castVote(voteType: string) {
 		votingCrisis = true;
 		error = '';
+		actionMsg = '';
 		try {
 			await api(`/communities/${communityId}/crisis/vote`, {
 				method: 'POST', auth: true, body: { vote_type: voteType },
@@ -266,6 +268,7 @@
 	async function promoteToLeader(userId: number) {
 		promotingUser = userId;
 		error = '';
+		actionMsg = '';
 		try {
 			await api(`/communities/${communityId}/leaders/${userId}`, { method: 'POST', auth: true });
 			actionMsg = 'User promoted to leader!';
@@ -280,6 +283,7 @@
 	async function demoteLeader(userId: number) {
 		promotingUser = userId;
 		error = '';
+		actionMsg = '';
 		try {
 			await api(`/communities/${communityId}/leaders/${userId}`, { method: 'DELETE', auth: true });
 			actionMsg = 'User demoted from leader.';
