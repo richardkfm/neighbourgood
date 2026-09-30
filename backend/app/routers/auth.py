@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -32,11 +33,13 @@ def get_csrf_token():
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(body: UserRegister, db: Session = Depends(get_db)):
     """Create a new user account and return a JWT token."""
-    if db.query(User).filter(User.email == body.email).first():
+    # Emails are case-insensitive: store and compare them lowercased.
+    email = body.email.lower()
+    if db.query(User).filter(func.lower(User.email) == email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     user = User(
-        email=body.email,
+        email=email,
         hashed_password=hash_password(body.password),
         display_name=body.display_name,
         neighbourhood=body.neighbourhood,
@@ -66,7 +69,7 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
             headers={"Retry-After": str(retry_after)},
         )
 
-    user = db.query(User).filter(User.email == body.email).first()
+    user = db.query(User).filter(func.lower(User.email) == body.email.lower()).first()
 
     # Unified failure path — do not distinguish "no such user" from "wrong password"
     if not user or not verify_password(body.password, user.hashed_password):

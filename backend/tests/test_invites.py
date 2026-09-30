@@ -128,8 +128,8 @@ def test_redeem_invite(client, auth_headers):
 
     # Verify membership
     members = client.get(f"/communities/{community_id}/members")
-    emails = [m["user"]["email"] for m in members.json()]
-    assert "joiner@test.com" in emails
+    names = [m["user"]["display_name"] for m in members.json()]
+    assert "Joiner" in names
 
 
 def test_redeem_invite_already_member(client, auth_headers):

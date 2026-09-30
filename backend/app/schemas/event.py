@@ -1,10 +1,9 @@
 """Pydantic schemas for community events."""
 
-import datetime
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from pydantic import BaseModel, Field, field_validator
-
-from app.schemas.user import UserProfile
+from app.schemas.common import InputDateTime, UTCDateTime
+from app.schemas.user import UserPublic
 
 VALID_EVENT_CATEGORIES = [
     "meetup",
@@ -32,14 +31,22 @@ EVENT_CATEGORY_META = {
 
 
 class EventCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     title: str = Field(..., min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     category: str = Field(..., max_length=50)
-    start_at: datetime.datetime
-    end_at: datetime.datetime | None = None
+    start_at: InputDateTime
+    end_at: InputDateTime | None = None
     location: str | None = Field(None, max_length=300)
     max_attendees: int | None = Field(None, ge=1, le=10000)
     community_id: int
+
+    @model_validator(mode="after")
+    def end_not_before_start(self):
+        if self.end_at is not None and self.end_at < self.start_at:
+            raise ValueError("end_at must not be before start_at")
+        return self
 
     @field_validator("category")
     @classmethod
@@ -50,13 +57,21 @@ class EventCreate(BaseModel):
 
 
 class EventUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     title: str | None = Field(None, min_length=1, max_length=200)
     description: str | None = Field(None, max_length=5000)
     category: str | None = Field(None, max_length=50)
-    start_at: datetime.datetime | None = None
-    end_at: datetime.datetime | None = None
+    start_at: InputDateTime | None = None
+    end_at: InputDateTime | None = None
     location: str | None = Field(None, max_length=300)
     max_attendees: int | None = Field(None, ge=1, le=10000)
+
+    @model_validator(mode="after")
+    def end_not_before_start(self):
+        if self.start_at is not None and self.end_at is not None and self.end_at < self.start_at:
+            raise ValueError("end_at must not be before start_at")
+        return self
 
     @field_validator("category")
     @classmethod
@@ -79,17 +94,17 @@ class EventOut(BaseModel):
     title: str
     description: str | None
     category: str
-    start_at: datetime.datetime
-    end_at: datetime.datetime | None
+    start_at: UTCDateTime
+    end_at: UTCDateTime | None
     location: str | None
     max_attendees: int | None
     organizer_id: int
     community_id: int
-    organizer: UserProfile
+    organizer: UserPublic
     attendee_count: int
     is_attending: bool
     attendees: list[EventAttendeeProfile] | None = None
-    created_at: datetime.datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

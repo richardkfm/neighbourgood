@@ -175,7 +175,7 @@ def test_my_activity(client, auth_headers, community_id):
 
     res = client.get("/activity/my", headers=auth_headers)
     assert res.status_code == 200
-    assert all(e["actor"]["email"] == "test@example.com" for e in res.json()["items"])
+    assert all(e["actor"]["display_name"] == "Test User" for e in res.json()["items"])
 
 
 def test_my_activity_requires_auth(client):

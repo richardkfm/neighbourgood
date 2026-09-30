@@ -1,10 +1,9 @@
 """Pydantic schemas for community activity feed."""
 
-import datetime
-
 from pydantic import BaseModel
 
-from app.schemas.user import UserProfile
+from app.schemas.user import UserPublic
+from app.schemas.common import UTCDateTime
 
 
 class ActivityOut(BaseModel):
@@ -13,8 +12,8 @@ class ActivityOut(BaseModel):
     summary: str
     actor_id: int
     community_id: int | None
-    actor: UserProfile
-    created_at: datetime.datetime
+    actor: UserPublic
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

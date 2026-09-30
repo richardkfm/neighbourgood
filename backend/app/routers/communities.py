@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.dependencies import get_current_user
+from app.models.activity import Activity
 from app.models.community import Community, CommunityMember
+from app.models.event import Event
 from app.models.resource import Resource
 from app.models.skill import Skill
 from app.models.user import User
@@ -454,6 +456,8 @@ def merge_communities(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot merge a community into itself")
     if source.merged_into_id is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Source community is already merged")
+    if target.merged_into_id is not None or not target.is_active:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Target community is no longer active")
 
     # Check that the user is admin of the source community
     source_membership = (
@@ -474,6 +478,12 @@ def merge_communities(
                 role="member",
             )
             db.add(new_member)
+
+    # Move the source community's content so it stays visible to the merged group
+    for model in (Resource, Skill, Event, Activity):
+        db.query(model).filter(model.community_id == source.id).update(
+            {model.community_id: target.id}, synchronize_session=False
+        )
 
     # Mark source as merged
     source.merged_into_id = target.id

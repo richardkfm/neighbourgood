@@ -1,9 +1,12 @@
 """Pydantic schemas for user profiles."""
 
-import datetime
 import re
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, EmailStr, Field, StringConstraints, field_validator
+
+from app.schemas.common import UTCDateTime
 
 
 class UserProfile(BaseModel):
@@ -14,13 +17,28 @@ class UserProfile(BaseModel):
     role: str
     telegram_chat_id: str | None = None
     language_code: str = "en"
-    created_at: datetime.datetime
+    created_at: UTCDateTime
+
+    model_config = {"from_attributes": True}
+
+
+class UserPublic(BaseModel):
+    """Public view of a user, safe to embed in responses other users (or guests) can read.
+
+    Deliberately omits email, Telegram chat id and language preference.
+    """
+
+    id: int
+    display_name: str
+    neighbourhood: str | None = None
+    role: str = "member"
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
 
 class UserProfileUpdate(BaseModel):
-    display_name: str | None = Field(None, min_length=1, max_length=100)
+    display_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)] | None = None
     neighbourhood: str | None = Field(None, max_length=100)
     language_code: str | None = Field(None, max_length=10)
 
@@ -80,7 +98,7 @@ class TrustSummary(BaseModel):
     user_id: int
     display_name: str
     neighbourhood: str | None
-    member_since: datetime.datetime
+    member_since: UTCDateTime
     reputation_level: str
     reputation_score: int
     average_rating: float

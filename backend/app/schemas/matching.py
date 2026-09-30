@@ -1,8 +1,7 @@
 """Pydantic schemas for the smart matching service."""
 
-import datetime
-
 from pydantic import BaseModel, Field
+from app.schemas.common import UTCDateTime
 
 
 class MatchSuggestion(BaseModel):
@@ -23,7 +22,7 @@ class UnmetNeed(BaseModel):
     title: str = Field(max_length=200)
     ticket_type: str
     urgency: str
-    created_at: datetime.datetime
+    created_at: UTCDateTime
     offer_count: int  # how many matching offers exist
 
     model_config = {"from_attributes": True}

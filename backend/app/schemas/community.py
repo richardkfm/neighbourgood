@@ -1,33 +1,36 @@
 """Pydantic schemas for communities (neighbourhood groups)."""
 
-import datetime
-
 from pydantic import BaseModel, Field
 
-from app.schemas.user import UserProfile
+from app.schemas.user import UserPublic
+from app.schemas.common import UTCDateTime
 
 
 class CommunityCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     name: str = Field(..., min_length=1, max_length=150)
     description: str | None = Field(None, max_length=5000)
     postal_code: str = Field(..., min_length=1, max_length=20)
     city: str = Field(..., min_length=1, max_length=150)
     country_code: str = Field("DE", max_length=5)
     primary_language: str | None = Field(None, max_length=10)
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(None, ge=-90, le=90)
+    longitude: float | None = Field(None, ge=-180, le=180)
 
 
 class CommunityUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     name: str | None = Field(None, min_length=1, max_length=150)
     description: str | None = Field(None, max_length=5000)
 
 
 class CommunityMemberOut(BaseModel):
     id: int
-    user: UserProfile
+    user: UserPublic
     role: str
-    joined_at: datetime.datetime
+    joined_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
@@ -45,9 +48,9 @@ class CommunityOut(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     member_count: int = 0
-    created_by: UserProfile
+    created_by: UserPublic
     merged_into_id: int | None = None
-    created_at: datetime.datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

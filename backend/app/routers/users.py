@@ -315,8 +315,10 @@ def change_password(
 ):
     """Change the authenticated user's password."""
     if not verify_password(body.current_password, current_user.hashed_password):
+        # 400, not 401: the frontend treats any 401 on an authenticated call as
+        # an expired session and logs the user out.
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
         )
 
@@ -335,18 +337,23 @@ def change_email(
     """Change the authenticated user's email."""
     if not verify_password(body.password, current_user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password is incorrect",
         )
 
-    existing_user = db.query(User).filter(User.email == body.new_email).first()
+    new_email = body.new_email.lower()
+    existing_user = (
+        db.query(User)
+        .filter(sqlfunc.lower(User.email) == new_email, User.id != current_user.id)
+        .first()
+    )
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Email already in use",
         )
 
-    current_user.email = body.new_email
+    current_user.email = new_email
     db.commit()
     db.refresh(current_user)
     return current_user
