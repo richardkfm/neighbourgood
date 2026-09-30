@@ -275,7 +275,8 @@ def test_mesh_checkin_rejects_out_of_range_coordinates(client, auth_headers, com
         _mesh_msg("location_checkin", community_id, {**d, "status": "safe"}) for d in bad
     ]
     res = client.post("/mesh/sync", headers=auth_headers, json={"messages": msgs})
-    assert res.json() == {"synced": 0, "duplicates": 0, "errors": 3}
+    assert {k: res.json()[k] for k in ("synced", "duplicates", "errors")} == {"synced": 0, "duplicates": 0, "errors": 3}
+    assert len(res.json()["failed_ids"]) == 3
     ok = _mesh_msg("location_checkin", community_id, {"lat": -90, "lng": 180, "status": "safe"})
     res = client.post("/mesh/sync", headers=auth_headers, json={"messages": [ok]})
     assert res.json()["synced"] == 1
@@ -369,6 +370,27 @@ def test_telegram_created_request_is_logged_in_activity_feed(
     assert any("via Telegram" in a["summary"] for a in feed["items"])
 
 
+def test_mesh_comment_before_its_ticket_in_same_batch_still_syncs(
+    client, auth_headers, community_id
+):
+    ticket_id = str(uuid.uuid4())
+    comment = _mesh_msg(
+        "ticket_comment", community_id, {"ticket_mesh_id": ticket_id, "body": "on my way"}
+    )
+    ticket = _mesh_msg("emergency_ticket", community_id, {"title": "Help"}, ticket_id)
+    res = client.post("/mesh/sync", headers=auth_headers, json={"messages": [comment, ticket]})
+    assert res.json()["synced"] == 2
+    assert res.json()["failed_ids"] == []
+
+
+def test_mesh_sync_reports_failed_ids(client, auth_headers, community_id):
+    bad = _mesh_msg("emergency_ticket", community_id, {"title": ""})
+    good = _mesh_msg("emergency_ticket", community_id, {"title": "ok"})
+    res = client.post("/mesh/sync", headers=auth_headers, json={"messages": [bad, good]})
+    assert res.json()["failed_ids"] == [bad["id"]]
+    assert res.json()["synced"] == 1
+
+
 # ── Mesh: payload hygiene ─────────────────────────────────────────────
 
 
@@ -389,7 +411,7 @@ def test_mesh_heartbeat_cannot_squat_a_real_message_id(
         headers=h2,
         json={"messages": [_mesh_msg("emergency_ticket", community_id, {"title": "Real"}, shared)]},
     )
-    assert r.json() == {"synced": 1, "duplicates": 0, "errors": 0}
+    assert r.json()["synced"] == 1 and r.json()["errors"] == 0
 
 
 def test_mesh_rejects_blank_or_non_string_text_and_bad_envelope(
@@ -401,7 +423,8 @@ def test_mesh_rejects_blank_or_non_string_text_and_bad_envelope(
         _mesh_msg("resource_offer", community_id, {"title": " "}),
     ]
     res = client.post("/mesh/sync", headers=auth_headers, json={"messages": msgs})
-    assert res.json() == {"synced": 0, "duplicates": 0, "errors": 3}
+    assert {k: res.json()[k] for k in ("synced", "duplicates", "errors")} == {"synced": 0, "duplicates": 0, "errors": 3}
+    assert len(res.json()["failed_ids"]) == 3
     bad_version = {**_mesh_msg("heartbeat", community_id), "ng": 2}
     empty_id = {**_mesh_msg("heartbeat", community_id), "id": ""}
     for bad in (bad_version, empty_id):

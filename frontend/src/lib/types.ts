@@ -213,6 +213,8 @@ export interface MeshSyncResult {
 	synced: number;
 	duplicates: number;
 	errors: number;
+	/** Mesh IDs of the messages the server rejected (absent on older servers). */
+	failed_ids?: string[];
 }
 
 export interface EventAttendeeProfile {

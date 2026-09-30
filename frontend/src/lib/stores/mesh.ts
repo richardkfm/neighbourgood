@@ -22,6 +22,7 @@ import {
 	decodeNGMessageWithTTL,
 	createNGMessage,
 	createBitchatPacket,
+	validateNGMessage,
 	type NGMeshMessage,
 	type NGMeshMessageType,
 	type MeshTicketData,
@@ -31,7 +32,7 @@ import {
 } from '$lib/bluetooth/protocol';
 import { api } from '$lib/api';
 import type { MeshSyncResult } from '$lib/types';
-import { persistMessages, loadMessages, clearMessages } from '$lib/mesh-db';
+import { putMessage, deleteMessages, loadMessages, clearMessages } from '$lib/mesh-db';
 import { saveOfflineTicket, addCommentToTicket, type OfflineTicket, type OfflineTicketComment } from '$lib/mesh-triage-db';
 
 export type MeshStatus = 'disconnected' | 'scanning' | 'connecting' | 'connected' | 'reconnecting';
@@ -101,7 +102,12 @@ export async function connectToMesh(): Promise<void> {
  */
 export async function restoreMeshMessages(): Promise<void> {
 	try {
-		const persisted = await loadMessages();
+		// Re-validate: rows persisted by an older build may be malformed
+		const persisted = (await loadMessages())
+			.map((m) => validateNGMessage(m))
+			.filter((m): m is NGMeshMessage => m !== null)
+			// IndexedDB returns rows ordered by ID; restore arrival order
+			.sort((a, b) => a.ts - b.ts);
 		if (persisted.length === 0) return;
 		for (const m of persisted) addSeenId(m.id);
 		meshMessages.update((msgs) => {
@@ -119,37 +125,52 @@ const MESH_SYNC_BATCH_SIZE = 100;
 
 /**
  * Upload queued mesh messages to the server in batches (a single request with
- * more than 100 messages is rejected outright). Messages are only removed from
- * the queue when the server reported no errors, and only the ones that were
- * actually sent — anything received while the request was in flight is kept.
- * Returns null when there was nothing to sync.
+ * more than 100 messages is rejected outright). Only the messages that were
+ * actually sent and not rejected by the server are removed from the queue —
+ * anything received while the request was in flight, and anything the server
+ * reported as failed, is kept. Returns null when there was nothing to sync.
  */
 export async function syncMeshMessagesToServer(): Promise<MeshSyncResult | null> {
 	const sending = get(meshMessages);
 	if (sending.length === 0) return null;
 
 	const total: MeshSyncResult = { synced: 0, duplicates: 0, errors: 0 };
-	for (let i = 0; i < sending.length; i += MESH_SYNC_BATCH_SIZE) {
-		const result = await api<MeshSyncResult>('/mesh/sync', {
-			method: 'POST',
-			body: { messages: sending.slice(i, i + MESH_SYNC_BATCH_SIZE) },
-			auth: true
-		});
-		total.synced += result.synced;
-		total.duplicates += result.duplicates;
-		total.errors += result.errors;
+	const failed = new Set<string>();
+	let lastBatchEnd = 0;
+	try {
+		for (let i = 0; i < sending.length; i += MESH_SYNC_BATCH_SIZE) {
+			const batch = sending.slice(i, i + MESH_SYNC_BATCH_SIZE);
+			const result = await api<MeshSyncResult>('/mesh/sync', {
+				method: 'POST',
+				body: { messages: batch },
+				auth: true
+			});
+			total.synced += result.synced;
+			total.duplicates += result.duplicates;
+			total.errors += result.errors;
+			if (result.errors > 0) {
+				if (result.failed_ids) {
+					result.failed_ids.forEach((id) => failed.add(id));
+				} else {
+					// Older server without per-message results: keep the whole batch
+					batch.forEach((m) => failed.add(m.id));
+				}
+			}
+			lastBatchEnd = i + batch.length;
+		}
+	} finally {
+		// Even if a later batch failed (network/HTTP error), drop what was confirmed
+		const confirmed = sending.slice(0, lastBatchEnd).filter((m) => !failed.has(m.id));
+		if (confirmed.length > 0) removeMeshMessages(confirmed.map((m) => m.id));
 	}
-
-	if (total.errors === 0) removeMeshMessages(sending.map((m) => m.id));
 	return total;
 }
 
 /** Remove specific messages (e.g. after they were synced) from the queue. */
 export function removeMeshMessages(ids: string[]): void {
 	const drop = new Set(ids);
-	const remaining = get(meshMessages).filter((m) => !drop.has(m.id));
-	meshMessages.set(remaining);
-	persistMessages(remaining).catch(() => {});
+	meshMessages.set(get(meshMessages).filter((m) => !drop.has(m.id)));
+	deleteMessages(ids).catch(() => {});
 	notifyServiceWorker();
 }
 
@@ -308,13 +329,10 @@ function subscribeToEvents(): void {
 				return next;
 			});
 		} else {
-			meshMessages.update((msgs) => {
-				const updated = [...msgs, msg];
-				// Persist to IndexedDB (fire-and-forget)
-				persistMessages(updated).catch(() => {});
-				notifyServiceWorker();
-				return updated;
-			});
+			meshMessages.update((msgs) => [...msgs, msg]);
+			// Persist to IndexedDB (fire-and-forget, one row per message)
+			putMessage(msg).catch(() => {});
+			notifyServiceWorker();
 
 			// Persist emergency tickets/comments to offline triage DB
 			if (msg.type === 'emergency_ticket') {

@@ -144,12 +144,53 @@ export function decodeNGMessageWithTTL(raw: DataView): DecodedNGMessage | null {
 	if (!text.startsWith(NG_PREFIX)) return null;
 
 	try {
-		const obj = JSON.parse(text.slice(NG_PREFIX.length));
-		if (obj.ng !== 1 || !obj.type || !obj.id) return null;
-		return { message: obj as NGMeshMessage, ttl: parsed.ttl };
+		const message = validateNGMessage(JSON.parse(text.slice(NG_PREFIX.length)));
+		return message ? { message, ttl: parsed.ttl } : null;
 	} catch {
 		return null;
 	}
+}
+
+const NG_MESSAGE_TYPES: ReadonlySet<string> = new Set<NGMeshMessageType>([
+	'emergency_ticket',
+	'ticket_comment',
+	'crisis_vote',
+	'crisis_status',
+	'direct_message',
+	'heartbeat',
+	'resource_request',
+	'resource_offer',
+	'location_checkin',
+	'ack'
+]);
+
+/**
+ * Validate and normalise an untrusted decoded JSON value into an NGMeshMessage.
+ * Anything any nearby BLE device broadcasts ends up here, so a missing or
+ * wrongly typed field must never reach the UI (a message without `data` used to
+ * crash the mesh pages on every render) or the server sync payload.
+ * Returns null when the value is not a usable NG message.
+ */
+export function validateNGMessage(obj: unknown): NGMeshMessage | null {
+	if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return null;
+	const o = obj as Record<string, unknown>;
+	if (o.ng !== 1) return null;
+	if (typeof o.type !== 'string' || !NG_MESSAGE_TYPES.has(o.type)) return null;
+	if (typeof o.id !== 'string' || o.id.length === 0 || o.id.length > 100) return null;
+	if (typeof o.community_id !== 'number' || !Number.isInteger(o.community_id)) return null;
+	const data =
+		typeof o.data === 'object' && o.data !== null && !Array.isArray(o.data)
+			? (o.data as Record<string, unknown>)
+			: {};
+	return {
+		ng: 1,
+		type: o.type as NGMeshMessageType,
+		community_id: o.community_id,
+		sender_name: typeof o.sender_name === 'string' ? o.sender_name.slice(0, 100) : 'Unknown',
+		ts: typeof o.ts === 'number' && Number.isFinite(o.ts) ? o.ts : Date.now(),
+		id: o.id,
+		data
+	};
 }
 
 /** Build a BitChat-compatible binary packet from a payload. */

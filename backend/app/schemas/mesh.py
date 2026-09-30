@@ -31,6 +31,8 @@ class MeshSyncResponse(BaseModel):
     synced: int = 0
     duplicates: int = 0
     errors: int = 0
+    # Mesh IDs of the messages counted in ``errors`` so clients can keep only those
+    failed_ids: list[str] = Field(default_factory=list)
 
 
 class MeshMetricsIn(BaseModel):

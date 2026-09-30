@@ -45,8 +45,11 @@ def sync_mesh_messages(
     synced = 0
     duplicates = 0
     errors = 0
+    failed_ids: list[str] = []
 
-    for msg in body.messages:
+    # Comments reference tickets synced from the same batch, so process them last
+    # (stable sort keeps arrival order otherwise).
+    for msg in sorted(body.messages, key=lambda m: m.type == "ticket_comment"):
         # Check for duplicate
         existing = (
             db.query(MeshSyncedMessage)
@@ -82,11 +85,15 @@ def sync_mesh_messages(
         except HTTPException:
             db.rollback()
             errors += 1
+            failed_ids.append(msg.id)
         except Exception:
             db.rollback()
             errors += 1
+            failed_ids.append(msg.id)
 
-    return MeshSyncResponse(synced=synced, duplicates=duplicates, errors=errors)
+    return MeshSyncResponse(
+        synced=synced, duplicates=duplicates, errors=errors, failed_ids=failed_ids
+    )
 
 
 def _process_mesh_message(
