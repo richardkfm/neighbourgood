@@ -99,28 +99,56 @@ export function setPlatformMode(mode: 'blue' | 'red') {
 }
 
 /**
+ * Why the UI is in Red Sky: the instance-wide mode and/or the viewer's
+ * communities whose own mode is red. `key` changes whenever that set changes,
+ * so a dismissed crisis banner comes back for a new crisis.
+ */
+export interface CrisisContext {
+	instanceRed: boolean;
+	redCommunityIds: number[];
+	key: string;
+	/** False until the first successful refresh (the initial blue is only a placeholder). */
+	loaded: boolean;
+}
+
+export const crisisContext = writable<CrisisContext>({ instanceRed: false, redCommunityIds: [], key: '', loaded: false });
+
+/**
  * Derive the global Blue/Red Sky UI mode from the instance mode and the
- * viewer's own community memberships (any Red Sky community => Red Sky UI).
- * On a network error the current mode is kept, so going offline mid-crisis
- * never flips the UI back to Blue Sky.
+ * viewer's own community memberships (any community whose effective mode is
+ * red => Red Sky UI). On a network error the current mode is kept, so going
+ * offline mid-crisis never flips the UI back to Blue Sky.
  */
 export async function refreshPlatformMode(): Promise<void> {
-	let mode: 'blue' | 'red';
+	let instanceRed: boolean;
 	try {
-		const status = await api<{ mode: string }>('/status');
-		mode = status.mode === 'red' ? 'red' : 'blue';
+		const status = await api<{ mode: string; effective_mode?: string; instance_red?: boolean }>('/status');
+		instanceRed = status.instance_red ?? (status.effective_mode ?? status.mode) === 'red';
 	} catch {
 		return;
 	}
+	let redCommunityIds: number[] = [];
 	if (get(token)) {
 		try {
-			const communities = await api<Array<{ mode: string }>>('/communities/my/memberships', {
-				auth: true
-			});
-			if (communities.some((c) => c.mode === 'red')) mode = 'red';
+			const communities = await api<Array<{ id: number; mode: string; effective_mode?: string }>>(
+				'/communities/my/memberships',
+				{ auth: true }
+			);
+			// Communities red in their own right (the instance mode is tracked separately)
+			redCommunityIds = communities
+				.filter((c) => c.mode === 'red')
+				.map((c) => c.id)
+				.sort((a, b) => a - b);
 		} catch {
 			return;
 		}
 	}
+	const mode = instanceRed || redCommunityIds.length > 0 ? 'red' : 'blue';
+	crisisContext.set({
+		instanceRed,
+		redCommunityIds,
+		key: mode === 'red' ? `${instanceRed ? 'instance' : ''}|${redCommunityIds.join(',')}` : '',
+		loaded: true
+	});
 	setPlatformMode(mode);
 }

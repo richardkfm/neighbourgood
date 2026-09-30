@@ -429,7 +429,7 @@
 								<select bind:value={ticketType}>
 									<option value="request">Request</option>
 									<option value="offer">Offer</option>
-									{#if community?.mode === 'red'}
+									{#if (community?.effective_mode ?? community?.mode) === 'red'}
 										<option value="emergency_ping">Emergency Ping</option>
 									{/if}
 								</select>

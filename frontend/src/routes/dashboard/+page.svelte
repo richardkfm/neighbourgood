@@ -28,6 +28,7 @@
 		id: number;
 		name: string;
 		mode: string;
+		effective_mode?: string;
 	}
 
 	interface TicketItem {
@@ -87,7 +88,7 @@
 			}
 
 			// Load assigned tickets from Red Sky communities
-			const redCommunities = commData.filter(c => c.mode === 'red');
+			const redCommunities = commData.filter(c => (c.effective_mode ?? c.mode) === 'red');
 			const collected: TicketItem[] = [];
 			for (const c of redCommunities) {
 				try {
@@ -183,7 +184,7 @@
 						<div class="community-card-inner">
 							<div class="community-info">
 								<h3>{c.name}</h3>
-								{#if c.mode === 'red'}
+								{#if (c.effective_mode ?? c.mode) === 'red'}
 									<span class="community-crisis-badge">{$t('dashboard.crisis_active')}</span>
 								{/if}
 							</div>

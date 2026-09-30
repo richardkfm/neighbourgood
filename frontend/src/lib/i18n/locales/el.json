@@ -30,7 +30,10 @@
     "quick_nav": "Γρήγορη πλοήγηση",
     "main_nav": "Κύρια πλοήγηση",
     "crisis_mode": "Λειτουργία κρίσης",
-    "select_language": "Επιλογή γλώσσας"
+    "select_language": "Επιλογή γλώσσας",
+    "resources": "Resources",
+    "map": "Map",
+    "alerts": "Alerts"
   },
   "banner": {
     "update_available": "Μια νέα έκδοση του NeighbourGood είναι διαθέσιμη.",
@@ -40,7 +43,8 @@
     "go_to_emergency": "Μετάβαση στα Επείγοντα",
     "fed_alert": "Cross-instance alert",
     "fed_alerts_plural": "cross-instance alerts active",
-    "view_alerts": "View Alerts"
+    "view_alerts": "View Alerts",
+    "crisis_instance": "This instance is in Red Sky mode. Emergency coordination is active in every community."
   },
   "common": {
     "save": "Αποθήκευση",
@@ -270,7 +274,10 @@
       "comment_placeholder": "Γράψτε την απάντησή σας εδώ…",
       "posting": "Δημοσίευση…",
       "post_comment": "Δημοσίευση σχολίου"
-    }
+    },
+    "instance_red_notice": "This whole instance is in Red Sky mode, so this community runs in crisis mode too. The community's own mode is {mode}; it applies again when the instance returns to Blue Sky. Votes and the admin toggle change the community's own mode.",
+    "mode_red": "Red Sky",
+    "mode_blue": "Blue Sky"
   },
   "settings": {
     "title": "Ρυθμίσεις",
@@ -330,7 +337,22 @@
     "broadcast_ticket": "Αποστολή μέσω Mesh",
     "sync_messages": "Συγχρονισμός {count} μηνύματος(-ων)",
     "syncing": "Συγχρονισμός…",
-    "mesh_tickets": "Εισιτήρια Mesh"
+    "mesh_tickets": "Εισιτήρια Mesh",
+    "disabled_notice": "Mesh networking is turned off. Turn it on in Settings to use the Bluetooth mesh.",
+    "enable_in_settings": "Open Settings",
+    "community": "Community",
+    "sync_verified": "{count} signed by their author",
+    "sync_rejected": "{count} refused",
+    "signed": "Signed",
+    "signed_hint": "Signed with its author's device key: it is attributed to them, not to whoever relays it.",
+    "keys_title": "Device keys",
+    "keys_hint": "Each of your browsers signs the mesh messages you send with its own key, so neighbours who relay them cannot change them. Revoke the keys of devices you no longer use.",
+    "keys_offline": "Connect to the internet to manage your device keys.",
+    "keys_none": "No device keys registered yet.",
+    "keys_this_device": "This device",
+    "keys_revoked": "Revoked",
+    "keys_added": "Added {date}",
+    "keys_revoke": "Revoke"
   },
   "language_names": {
     "am": "አማርኛ",
@@ -391,6 +413,26 @@
     "back_to_directory": "Back to Network",
     "no_federated_resources": "No federated resources yet. Sync with other instances first.",
     "no_federated_skills": "No federated skills yet. Sync with other instances first."
+  },
+  "alerts": {
+    "title": "Cross-instance alerts",
+    "subtitle": "Red Sky alerts from neighbouring NeighbourGood instances.",
+    "show_inactive": "Show expired and dismissed alerts",
+    "none": "No alerts right now.",
+    "inactive": "inactive",
+    "inactive_note": "This alert has expired or was dismissed.",
+    "back": "All alerts",
+    "not_found": "Alert not found.",
+    "source": "Source instance",
+    "received": "Received",
+    "expires": "Expires",
+    "no_expiry": "No expiry set",
+    "severity_info": "Info",
+    "severity_warning": "Warning",
+    "severity_critical": "Critical"
+  },
+  "offline": {
+    "replay_failed": "{count, plural, one {# queued action was} other {# queued actions were}} refused by the server:"
   },
   "events": {
     "title": "Εκδηλώσεις",

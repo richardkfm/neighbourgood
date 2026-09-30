@@ -16,6 +16,7 @@
 		member_count: number;
 		is_active: boolean;
 		mode: string;
+		effective_mode?: string;
 	}
 
 	let allCommunities = $state<MapCommunity[]>([]);
@@ -221,7 +222,7 @@
 						<div class="my-card-meta">
 							<span class="tag">{c.postal_code}</span>
 							<span class="tag">{c.city}</span>
-							{#if c.mode === 'red'}
+							{#if (c.effective_mode ?? c.mode) === 'red'}
 								<span class="tag tag-crisis">{$t('communities.crisis_badge')}</span>
 							{/if}
 						</div>
@@ -259,7 +260,7 @@
 							<div class="list-card-meta">
 								<span class="tag">{c.postal_code}</span>
 								<span class="tag">{c.city}</span>
-								{#if c.mode === 'red'}
+								{#if (c.effective_mode ?? c.mode) === 'red'}
 									<span class="tag tag-crisis">{$t('communities.crisis_badge')}</span>
 								{/if}
 								{#if myIds.has(c.id)}

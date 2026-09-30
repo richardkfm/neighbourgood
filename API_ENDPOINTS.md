@@ -128,10 +128,11 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 
 | Endpoint                      | Method | Auth  | Description                              |
 | ----------------------------- | ------ | ----- | ---------------------------------------- |
-| `/alerts`                     | GET    | No    | List Red Sky alerts (active by default)  |
-| `/alerts/send`                | POST   | Admin | Broadcast alert to all known instances   |
+| `/alerts`                     | GET    | No    | List Red Sky alerts (active = not dismissed and not expired, by default) |
+| `/alerts/{id}`                | GET    | Yes   | One received alert, incl. `expires_at` (any logged-in user) |
+| `/alerts/send`                | POST   | Admin | Broadcast alert to all known instances; `duration_hours` 1–336, default 48 |
 | `/alerts/receive`             | POST   | No    | Receive alert notification from a known instance; the alert is fetched back from its source to verify it |
-| `/alerts/outgoing/{alert_uid}` | GET   | No    | An alert this instance broadcast (used by receivers to verify) |
+| `/alerts/outgoing/{alert_uid}` | GET   | No    | An alert this instance broadcast, with `expires_at` (used by receivers to verify) |
 | `/alerts/{id}/dismiss`        | PATCH  | Admin | Dismiss a Red Sky alert                  |
 
 ## Data Export & Migration

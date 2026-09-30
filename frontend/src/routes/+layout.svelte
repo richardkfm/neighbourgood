@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { isLoggedIn, user, token, logout, syncTokenFromStorage } from '$lib/stores/auth';
 	import type { UserProfile } from '$lib/stores/auth';
-	import { theme, toggleTheme, bandwidth, toggleBandwidth, platformMode, refreshPlatformMode } from '$lib/stores/theme';
+	import { theme, toggleTheme, bandwidth, toggleBandwidth, platformMode, refreshPlatformMode, crisisContext } from '$lib/stores/theme';
 	import { page } from '$app/stores';
 	import { afterNavigate } from '$app/navigation';
 	import { api } from '$lib/api';
@@ -11,8 +11,11 @@
 	import { get } from 'svelte/store';
 	import { AVAILABLE_LOCALES } from '$lib/i18n';
 	import { setLocale, hydrateLocale, currentLocale } from '$lib/stores/locale';
-	import { isOnline, offlineQueue, queueCount, flushQueue, initOfflineTracking } from '$lib/stores/offline';
-	import { clearMeshMessages, getMeshMessages, restoreMeshMessages, syncMeshMessagesToServer } from '$lib/stores/mesh';
+	import { isOnline, queueCount, flushQueue, initOfflineTracking, reconcileWithServiceWorker, replayFailures, dismissReplayFailures } from '$lib/stores/offline';
+	import { removeMeshMessages, getMeshMessages, restoreMeshMessages, syncMeshMessagesToServer } from '$lib/stores/mesh';
+	import { meshEnabled } from '$lib/stores/mesh-settings';
+	import { ensureMeshKeyRegistered } from '$lib/mesh-keys';
+	import { claimLocalData } from '$lib/local-data';
 
 	// svelte-i18n is initialised (and its dictionary awaited) in +layout.ts
 	// so the first SSR render never races the locale loader.
@@ -28,15 +31,28 @@
 
 	let mobileMenuOpen = $state(false);
 	let unreadCount = $state(0);
-	let crisisBannerDismissed = $state(false);
 	let showUpdateBanner = $state(false);
 	let installPrompt = $state<Event | null>(null);
 	let langMenuOpen = $state(false);
 	let syncMessage = $state('');
 	let fedAlerts = $state<FedAlert[]>([]);
-	let fedAlertsDismissed = $state(false);
+	// Dismissed per alert ID, so a later alert still shows
+	let dismissedAlertIds = $state<number[]>([]);
+	const visibleFedAlerts = $derived(fedAlerts.filter((a) => !dismissedAlertIds.includes(a.id)));
+	// Dismissal applies to one crisis (set of red communities / instance mode)
+	let crisisBannerDismissedKey = $state('');
+	const isRed = $derived($platformMode === 'red');
 
 	const isBrowse = $derived($page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills'));
+
+	// Local offline data belongs to one account; while online, register this
+	// browser's mesh signing key so messages sent offline later can be verified
+	$effect(() => {
+		const current = $user;
+		if (!current) return;
+		claimLocalData(current.id);
+		if ($meshEnabled && $isOnline) ensureMeshKeyRegistered(current.id);
+	});
 
 	function closeMobileMenu() {
 		mobileMenuOpen = false;
@@ -88,6 +104,8 @@
 
 		// Messages received over the mesh in a previous session stay queued until synced
 		restoreMeshMessages();
+		// Drop queued requests the service worker already replayed while no tab was open
+		reconcileWithServiceWorker();
 
 		// ── Service worker registration ───────────────────────────────────────
 		if ('serviceWorker' in navigator) {
@@ -122,7 +140,7 @@
 				// Apply the user's saved language preference
 				hydrateLocale(profile.language_code);
 			} catch {
-				logout();
+				logout({ keepOfflineData: true });
 			}
 		} else if ($user) {
 			hydrateLocale($user.language_code);
@@ -141,19 +159,62 @@
 			}
 		}
 
-		// Restore banner dismissals from session
-		crisisBannerDismissed = sessionStorage.getItem('ng_crisis_banner_dismissed') === 'true';
-		fedAlertsDismissed = sessionStorage.getItem('ng_fed_alerts_dismissed') === 'true';
+		// Restore banner dismissals
+		try {
+			crisisBannerDismissedKey = localStorage.getItem('ng_crisis_banner_dismissed') ?? '';
+			dismissedAlertIds = JSON.parse(localStorage.getItem('ng_fed_alerts_dismissed') ?? '[]');
+			if (!Array.isArray(dismissedAlertIds)) dismissedAlertIds = [];
+		} catch {
+			dismissedAlertIds = [];
+		}
+	});
+
+	// A crisis that ended forgets its dismissal, so the next one shows again
+	$effect(() => {
+		if ($crisisContext.loaded && $crisisContext.key === '' && crisisBannerDismissedKey !== '') {
+			crisisBannerDismissedKey = '';
+			try { localStorage.removeItem('ng_crisis_banner_dismissed'); } catch { /* ignore */ }
+		}
 	});
 
 	function dismissCrisisBanner() {
-		crisisBannerDismissed = true;
-		sessionStorage.setItem('ng_crisis_banner_dismissed', 'true');
+		crisisBannerDismissedKey = $crisisContext.key || 'red';
+		try { localStorage.setItem('ng_crisis_banner_dismissed', crisisBannerDismissedKey); } catch { /* ignore */ }
 	}
 
 	function dismissFedAlerts() {
-		fedAlertsDismissed = true;
-		sessionStorage.setItem('ng_fed_alerts_dismissed', 'true');
+		// Only the alerts shown now; alerts that expired are dropped from the list
+		dismissedAlertIds = [...new Set([...dismissedAlertIds.filter((id) => fedAlerts.some((a) => a.id === id)), ...visibleFedAlerts.map((a) => a.id)])];
+		try { localStorage.setItem('ng_fed_alerts_dismissed', JSON.stringify(dismissedAlertIds)); } catch { /* ignore */ }
+	}
+
+	async function doLogout() {
+		closeMobileMenu();
+		await logout();
+		window.location.href = '/';
+	}
+
+	function syncMeshNow() {
+		if (getMeshMessages().length === 0 || !get(token)) return;
+		syncMeshMessagesToServer().then((result) => {
+			if (!result) return;
+			const total = result.synced + result.duplicates;
+			if (total > 0) {
+				syncMessage = get(t)('mesh.sync_result', { values: { synced: result.synced, duplicates: result.duplicates, errors: result.errors } });
+				setTimeout(() => { syncMessage = ''; }, 5000);
+			}
+		}).catch(() => {
+			// Mesh sync failed — messages stay in queue for manual sync
+		});
+	}
+
+	function flushNow() {
+		flushQueue().then(({ succeeded }) => {
+			if (succeeded > 0) {
+				syncMessage = get(t)('offline.sync_success', { values: { count: succeeded } });
+				setTimeout(() => { syncMessage = ''; }, 5000);
+			}
+		});
 	}
 
 	// Register online/offline listeners and auto-flush the request queue when
@@ -164,27 +225,9 @@
 		let prevOnline = navigator.onLine;
 		const unsub = isOnline.subscribe(async (online) => {
 			if (online && !prevOnline) {
-				if ($queueCount > 0) {
-					flushQueue().then(({ succeeded }) => {
-						if (succeeded > 0) {
-							syncMessage = get(t)('offline.sync_success', { values: { count: succeeded } });
-							setTimeout(() => { syncMessage = ''; }, 5000);
-						}
-					});
-				}
+				if ($queueCount > 0) flushNow();
 				// Auto-sync mesh messages when coming back online
-				if (getMeshMessages().length > 0 && get(token)) {
-					syncMeshMessagesToServer().then((result) => {
-						if (!result) return;
-						const total = result.synced + result.duplicates;
-						if (total > 0) {
-							syncMessage = get(t)('mesh.sync_result', { values: { synced: result.synced, duplicates: result.duplicates, errors: result.errors } });
-							setTimeout(() => { syncMessage = ''; }, 5000);
-						}
-					}).catch(() => {
-						// Mesh sync failed — messages stay in queue for manual sync
-					});
-				}
+				syncMeshNow();
 			}
 			// Register Background Sync when going offline with a non-empty queue
 			if (!online && $queueCount > 0 && 'serviceWorker' in navigator) {
@@ -201,20 +244,16 @@
 		// Listen for service worker messages (e.g. queue flushed via Background Sync)
 		const handleSWMessage = (event: MessageEvent) => {
 			if (event.data?.type === 'ng-queue-flushed') {
-				// Reload queue from localStorage to stay in sync
-				const stored = localStorage.getItem('ng_offline_queue');
-				if (stored) {
-					try { offlineQueue.set(JSON.parse(stored)); } catch { /* ignore */ }
-				}
-				if (event.data.remaining === 0) {
-					syncMessage = get(t)('offline.sync_success', { values: { count: 0 } });
-					setTimeout(() => { syncMessage = ''; }, 5000);
-				}
+				// The worker replayed requests while no tab was open: drop them here
+				reconcileWithServiceWorker();
+			} else if (event.data?.type === 'ng-flush-request') {
+				// Background Sync fired while this tab is open: the tab replays
+				if (navigator.onLine) flushNow();
+			} else if (event.data?.type === 'ng-mesh-sync-request') {
+				if (navigator.onLine) syncMeshNow();
 			} else if (event.data?.type === 'ng-mesh-synced') {
 				// Service worker synced mesh messages in the background
-				clearMeshMessages();
-				syncMessage = get(t)('offline.sync_success', { values: { count: 0 } });
-				setTimeout(() => { syncMessage = ''; }, 5000);
+				if (Array.isArray(event.data.ids)) removeMeshMessages(event.data.ids);
 			}
 		};
 		navigator.serviceWorker?.addEventListener('message', handleSWMessage);
@@ -295,7 +334,23 @@
 		</button>
 
 		<div class="nav-links" id="primary-nav-links" class:has-tabs={$isLoggedIn} class:mobile-open={mobileMenuOpen}>
-			{#if $isLoggedIn}
+			{#if $isLoggedIn && isRed}
+				<!-- Red Sky: crisis-relevant items only; every other page stays reachable by URL -->
+				<a href="/triage" class="nav-link nav-link-crisis" class:active={$page.url.pathname.startsWith('/triage')} onclick={closeMobileMenu}>{$t('nav.emergency')}</a>
+				<a href="/resources" class="nav-link" class:active={isBrowse} onclick={closeMobileMenu}>{$t('nav.resources')}</a>
+				<a href="/messages" class="nav-link" class:active={$page.url.pathname === '/messages'} onclick={closeMobileMenu}>
+					{$t('nav.messages')}
+					{#if unreadCount > 0}
+						<span class="nav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+					{/if}
+				</a>
+				<a href="/explore" class="nav-link" class:active={$page.url.pathname === '/explore'} onclick={closeMobileMenu}>{$t('nav.map')}</a>
+				{#if $meshEnabled}
+					<a href="/mesh" class="nav-link" class:active={$page.url.pathname.startsWith('/mesh')} onclick={closeMobileMenu}>{$t('nav.mesh')}</a>
+				{/if}
+				<a href="/alerts" class="nav-link" class:active={$page.url.pathname.startsWith('/alerts')} onclick={closeMobileMenu}>{$t('nav.alerts')}</a>
+				<a href="/communities" class="nav-link" class:active={$page.url.pathname.startsWith('/communities')} onclick={closeMobileMenu}>{$t('nav.communities')}</a>
+			{:else if $isLoggedIn}
 				<a href="/dashboard" class="nav-link" class:active={$page.url.pathname === '/dashboard'} onclick={closeMobileMenu}>{$t('nav.home')}</a>
 				<a href="/resources" class="nav-link" class:active={$page.url.pathname.startsWith('/resources') || $page.url.pathname.startsWith('/skills')} onclick={closeMobileMenu}>{$t('nav.browse')}</a>
 				<a href="/bookings" class="nav-link" class:active={$page.url.pathname === '/bookings'} onclick={closeMobileMenu}>{$t('nav.bookings')}</a>
@@ -307,9 +362,6 @@
 						<span class="nav-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
 					{/if}
 				</a>
-				{#if $platformMode === 'red'}
-					<a href="/triage" class="nav-link nav-link-crisis" class:active={$page.url.pathname === '/triage'} onclick={closeMobileMenu}>{$t('nav.emergency')}</a>
-				{/if}
 			{:else}
 				<a href="/explore" class="nav-link" class:active={$page.url.pathname === '/explore'} onclick={closeMobileMenu}>{$t('nav.explore')}</a>
 			{/if}
@@ -391,7 +443,7 @@
 					{:else}
 						<span class="nav-user">{$t('nav.account')}</span>
 					{/if}
-					<button class="nav-btn" onclick={() => { closeMobileMenu(); logout(); window.location.href = '/'; }}>
+					<button class="nav-btn" onclick={doLogout}>
 						{$t('nav.logout')}
 					</button>
 				</div>
@@ -444,16 +496,26 @@
 	</div>
 {/if}
 
-{#if $isLoggedIn && $platformMode === 'red' && !crisisBannerDismissed}
+{#if $replayFailures.length > 0}
+	<div class="replay-error-banner" role="alert">
+		<span>
+			{$t('offline.replay_failed', { values: { count: $replayFailures.length } })}
+			{$replayFailures.map((f) => f.detail ? `${f.label} (${f.detail})` : f.label).join('; ')}
+		</span>
+		<button class="replay-error-dismiss" onclick={dismissReplayFailures} aria-label={$t('banner.dismiss')}>&times;</button>
+	</div>
+{/if}
+
+{#if $isLoggedIn && isRed && crisisBannerDismissedKey !== ($crisisContext.key || 'red')}
 	<div class="crisis-banner">
 		<span class="crisis-banner-dot"></span>
-		<span>{$t('banner.crisis_active')}</span>
+		<span>{$crisisContext.instanceRed ? $t('banner.crisis_instance') : $t('banner.crisis_active')}</span>
 		<a href="/triage" class="crisis-banner-link">{$t('banner.go_to_emergency')}</a>
 		<button class="crisis-banner-dismiss" onclick={dismissCrisisBanner} aria-label={$t('banner.dismiss')}>&times;</button>
 	</div>
 {/if}
 
-{#if fedAlerts.length > 0 && !fedAlertsDismissed}
+{#if visibleFedAlerts.length > 0}
 	<div class="fed-alert-banner">
 		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 			<circle cx="12" cy="12" r="10"/>
@@ -461,11 +523,11 @@
 			<path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
 		</svg>
 		<span>
-			{fedAlerts.length === 1
-				? `${$t('banner.fed_alert')}: ${fedAlerts[0].title} (${fedAlerts[0].source_instance_name})`
-				: `${fedAlerts.length} ${$t('banner.fed_alerts_plural')}`}
+			{visibleFedAlerts.length === 1
+				? `${$t('banner.fed_alert')}: ${visibleFedAlerts[0].title} (${visibleFedAlerts[0].source_instance_name})`
+				: `${visibleFedAlerts.length} ${$t('banner.fed_alerts_plural')}`}
 		</span>
-		<a href="/communities#federation" class="fed-alert-link">{$t('banner.view_alerts')}</a>
+		<a href={visibleFedAlerts.length === 1 ? `/alerts/${visibleFedAlerts[0].id}` : '/alerts'} class="fed-alert-link">{$t('banner.view_alerts')}</a>
 		<button class="fed-alert-dismiss" onclick={dismissFedAlerts} aria-label={$t('banner.dismiss')}>&times;</button>
 	</div>
 {/if}
@@ -476,13 +538,16 @@
 
 {#if $isLoggedIn}
 	<nav class="bottom-nav" class:crisis={$platformMode === 'red'} aria-label={$t('nav.quick_nav')}>
-		<a href="/dashboard" class="bn-item" class:active={$page.url.pathname === '/dashboard'} aria-current={$page.url.pathname === '/dashboard' ? 'page' : undefined}>
-			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
-			<span>{$t('nav.home')}</span>
-		</a>
+		<!-- Red Sky: Resources, Emergency, Messages, Map; everything else stays under More -->
+		{#if !isRed}
+			<a href="/dashboard" class="bn-item" class:active={$page.url.pathname === '/dashboard'} aria-current={$page.url.pathname === '/dashboard' ? 'page' : undefined}>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+				<span>{$t('nav.home')}</span>
+			</a>
+		{/if}
 		<a href="/resources" class="bn-item" class:active={isBrowse} aria-current={isBrowse ? 'page' : undefined}>
 			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-			<span>{$t('nav.browse')}</span>
+			<span>{isRed ? $t('nav.resources') : $t('nav.browse')}</span>
 		</a>
 		{#if $platformMode === 'red'}
 			<a href="/triage" class="bn-item bn-crisis" class:active={$page.url.pathname.startsWith('/triage')} aria-current={$page.url.pathname.startsWith('/triage') ? 'page' : undefined}>
@@ -502,6 +567,12 @@
 			</span>
 			<span>{$t('nav.messages')}</span>
 		</a>
+		{#if isRed}
+			<a href="/explore" class="bn-item" class:active={$page.url.pathname === '/explore'} aria-current={$page.url.pathname === '/explore' ? 'page' : undefined}>
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+				<span>{$t('nav.map')}</span>
+			</a>
+		{/if}
 		<button class="bn-item" class:active={mobileMenuOpen} onclick={() => (mobileMenuOpen = !mobileMenuOpen)} aria-expanded={mobileMenuOpen} aria-controls="primary-nav-links">
 			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
 			<span>{$t('nav.more')}</span>
@@ -1356,6 +1427,35 @@
 	}
 
 	.fed-alert-dismiss:hover {
+		opacity: 1;
+	}
+
+	/* ── Replay failure banner ──────────────────────────────────── */
+
+	.replay-error-banner {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.55rem 1.5rem;
+		background: var(--color-error-bg);
+		border-bottom: 1px solid var(--color-error);
+		font-size: 0.85rem;
+		color: var(--color-error);
+	}
+
+	.replay-error-dismiss {
+		margin-inline-start: auto;
+		background: none;
+		border: none;
+		font-size: 1.1rem;
+		color: var(--color-error);
+		cursor: pointer;
+		padding: 0 0.2rem;
+		opacity: 0.7;
+		line-height: 1;
+	}
+
+	.replay-error-dismiss:hover {
 		opacity: 1;
 	}
 

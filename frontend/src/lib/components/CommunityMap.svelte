@@ -129,7 +129,7 @@
 			const size = level === 'high' ? 40 : level === 'medium' ? 34 : 28;
 			const color = isMine
 				? 'var(--color-success)'
-				: c.mode === 'red'
+				: (c.effective_mode ?? c.mode) === 'red'
 					? 'var(--color-error)'
 					: 'var(--color-primary)';
 			const ringClass = isMine ? 'ring-mine' : level === 'high' ? 'ring-active' : '';
