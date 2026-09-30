@@ -292,8 +292,12 @@ h3, h4, h5, h6 {
 	font-weight: 500;
 	color: var(--color-text-muted);
 	text-decoration: none;
+	background: none;
+	border: 0;
 	border-bottom: 2px solid transparent;
 	margin-bottom: -1px;
+	font-family: inherit;
+	cursor: pointer;
 	transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 

@@ -5,6 +5,7 @@
 	import { onMount } from 'svelte';
 	import { t } from 'svelte-i18n';
 	import type { CommunityOut } from '$lib/types';
+	import Icon from '$lib/components/Icon.svelte';
 
 	interface Suggestion {
 		label: string;
@@ -301,7 +302,7 @@
 				<div class="progress-step {isDone ? 'done' : isCurrent ? 'current' : 'upcoming'}">
 					<div class="step-circle">
 						{#if isDone}
-							<span class="check">✓</span>
+							<Icon name="check" size={16} strokeWidth={3} />
 						{:else}
 							<span>{stepIndex + 1}</span>
 						{/if}
@@ -337,9 +338,9 @@
 						type="text"
 						bind:value={query}
 						placeholder="e.g. Kreuzberg, 10999, Berlin..."
-						class="search-input"
+						class="input search-input"
 					/>
-					<button type="submit" class="btn-search" disabled={searching || !query.trim()}>
+					<button type="submit" class="btn btn-primary" class:is-loading={searching} disabled={searching || !query.trim()}>
 						{searching ? 'Searching...' : 'Search'}
 					</button>
 				</div>
@@ -351,7 +352,7 @@
 						<p class="results-count">{total} communit{total === 1 ? 'y' : 'ies'} found</p>
 						<div class="results-list">
 							{#each results as community (community.id)}
-								<div class="community-card slide-up">
+								<div class="card community-card slide-up">
 									<div class="card-info">
 										<h3>{community.name}</h3>
 										<div class="card-meta">
@@ -364,7 +365,8 @@
 										{/if}
 									</div>
 									<button
-										class="btn-join"
+										class="btn btn-primary"
+									class:is-loading={joining === community.id}
 										onclick={() => joinCommunity(community.id, community.name)}
 										disabled={joining === community.id}
 									>
@@ -385,39 +387,41 @@
 			<div class="divider"><span>or</span></div>
 
 			{#if !showCreate}
-				<button class="btn-create-toggle" onclick={() => (showCreate = true)}>
+				<button class="btn btn-secondary btn-block btn-create-toggle" onclick={() => (showCreate = true)}>
+					<Icon name="plus" size={16} />
 					Create a new community
 				</button>
 			{:else}
-				<div class="create-form fade-in">
+				<div class="card create-form fade-in">
 					<h2>Create a new community</h2>
 					{#if createError}
 						<div class="alert alert-error fade-in">{createError}</div>
 					{/if}
-					<form onsubmit={(e) => { e.preventDefault(); createCommunity(); }}>
-						<label>
+					<form class="form-stack" onsubmit={(e) => { e.preventDefault(); createCommunity(); }}>
+						<label class="field">
 							<span>Community Name</span>
 							<input type="text" bind:value={newName} required placeholder="e.g. Nachbarschaft Kreuzberg" />
 						</label>
 						<div class="form-row">
-							<label class="flex-1">
+							<label class="field flex-1">
 								<span>Postal Code</span>
 								<input type="text" bind:value={newPlz} required placeholder="e.g. 10999" />
 							</label>
-							<label class="flex-2">
+							<label class="field flex-2">
 								<span>City</span>
 								<input type="text" bind:value={newCity} required placeholder="e.g. Berlin" />
 							</label>
 						</div>
-						<label>
+						<label class="field">
 							<span>Description (optional)</span>
 							<textarea bind:value={newDesc} rows="3" placeholder="What's this community about?"></textarea>
 						</label>
 						<div class="form-actions">
-							<button type="button" class="btn-cancel" onclick={() => (showCreate = false)}>Cancel</button>
+							<button type="button" class="btn btn-secondary" onclick={() => (showCreate = false)}>Cancel</button>
 							<button
 								type="submit"
-								class="btn-primary"
+								class="btn btn-primary"
+								class:is-loading={creating}
 								disabled={creating || !newName.trim() || !newPlz.trim() || !newCity.trim()}
 							>
 								{creating ? 'Creating...' : 'Create Community'}
@@ -428,7 +432,7 @@
 			{/if}
 
 			<div class="skip-section">
-				<a href="/dashboard" class="skip-link">Skip for now</a>
+				<a href="/dashboard" class="onboarding-skip">Skip for now</a>
 			</div>
 		</div>
 
@@ -466,7 +470,7 @@
 						onclick={() => addSkill(s.label, s.category)}
 						disabled={isAdded || isLoading}
 					>
-						{#if isAdded}<span class="chip-check">✓</span>{/if}
+						{#if isAdded}<Icon name="check" size={14} strokeWidth={3} />{/if}
 						{s.label}
 					</button>
 				{/each}
@@ -475,13 +479,14 @@
 			<div class="custom-add">
 				<input
 					type="text"
+					class="input"
 					bind:value={skillCustom}
 					placeholder="Something else you're good at..."
 					maxlength="200"
 					onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
 				/>
 				<button
-					class="btn-add"
+					class="btn btn-secondary"
 					onclick={addCustomSkill}
 					disabled={!skillCustom.trim() || skillsAddingCustom || skillsAdded.has(skillCustom.trim())}
 				>
@@ -490,7 +495,7 @@
 			</div>
 
 			<div class="step-actions">
-				<button class="btn-continue" onclick={() => (step = 'items')}>
+				<button class="btn btn-primary btn-lg btn-block btn-continue" onclick={() => (step = 'items')}>
 					{skillCount >= 3 ? 'Continue →' : 'Continue — you can add more later'}
 				</button>
 			</div>
@@ -530,7 +535,7 @@
 						onclick={() => addItem(s.label, s.category)}
 						disabled={isAdded || isLoading}
 					>
-						{#if isAdded}<span class="chip-check">✓</span>{/if}
+						{#if isAdded}<Icon name="check" size={14} strokeWidth={3} />{/if}
 						{s.label}
 					</button>
 				{/each}
@@ -539,13 +544,14 @@
 			<div class="custom-add">
 				<input
 					type="text"
+					class="input"
 					bind:value={itemCustom}
 					placeholder="Something else you could share..."
 					maxlength="200"
 					onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomItem(); } }}
 				/>
 				<button
-					class="btn-add"
+					class="btn btn-secondary"
 					onclick={addCustomItem}
 					disabled={!itemCustom.trim() || itemsAddingCustom || itemsAdded.has(itemCustom.trim())}
 				>
@@ -554,7 +560,7 @@
 			</div>
 
 			<div class="step-actions">
-				<button class="btn-continue" onclick={() => (step = 'done')}>
+				<button class="btn btn-primary btn-lg btn-block btn-continue" onclick={() => (step = 'done')}>
 					{itemCount >= 3 ? 'Finish →' : 'Finish — you can add more later'}
 				</button>
 			</div>
@@ -565,7 +571,7 @@
 	<!-- ══════════════════════════════════════════ -->
 	{:else if step === 'done'}
 		<div class="step-content done-screen fade-in">
-			<div class="celebration-icon">🎉</div>
+			<div class="celebration-icon"><Icon name="sparkles" size={56} strokeWidth={1.5} /></div>
 			<h1>You're all set!</h1>
 			<p class="subtitle">
 				You shared <strong>{skillCount} skill{skillCount !== 1 ? 's' : ''}</strong>
@@ -576,10 +582,10 @@
 				Your neighbours can now see what you bring to the community.
 			</p>
 			<div class="done-actions">
-				<button class="btn-continue" onclick={() => goto(`/communities/${communityId}`)}>
+				<button class="btn btn-primary btn-lg btn-block btn-continue" onclick={() => goto(`/communities/${communityId}`)}>
 					Go to your community →
 				</button>
-				<a href="/dashboard" class="skip-link">Go to dashboard</a>
+				<a href="/dashboard" class="onboarding-skip">Go to dashboard</a>
 			</div>
 		</div>
 	{/if}
@@ -773,81 +779,19 @@
 		cursor: wait;
 	}
 
-	.chip-check {
-		font-size: 0.75rem;
-		font-weight: 700;
-	}
-
 	/* ── Custom add row ──────────────────────────────────── */
 	.custom-add {
 		display: flex;
 		gap: 0.5rem;
 	}
 
-	.custom-add input {
+	.custom-add .input {
 		flex: 1;
-		padding: 0.6rem 0.9rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.92rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-family: inherit;
-		transition: border-color var(--transition-fast);
-	}
-
-	.custom-add input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-
-	.btn-add {
-		padding: 0.6rem 1.1rem;
-		background: var(--color-surface);
-		color: var(--color-primary-text);
-		border: 1px solid var(--color-primary);
-		border-radius: var(--radius);
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		white-space: nowrap;
-		font-family: inherit;
-	}
-
-	.btn-add:hover:not(:disabled) {
-		background: var(--color-primary-light);
-	}
-
-	.btn-add:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
 	}
 
 	/* ── Step navigation ────────────────────────────────── */
 	.step-actions {
 		margin-top: 0.5rem;
-	}
-
-	.btn-continue {
-		width: 100%;
-		padding: 0.85rem 1.5rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 1rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		font-family: inherit;
-	}
-
-	.btn-continue:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-		transform: translateY(-1px);
 	}
 
 	/* ── Completion / done screen ───────────────────────── */
@@ -858,8 +802,9 @@
 	}
 
 	.celebration-icon {
-		font-size: 3.5rem;
-		line-height: 1;
+		display: inline-flex;
+		justify-content: center;
+		color: var(--color-primary-text);
 	}
 
 	.done-screen h1 {
@@ -898,44 +843,6 @@
 
 	.search-input {
 		flex: 1;
-		padding: 0.65rem 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 1rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-family: inherit;
-		transition: border-color var(--transition-fast);
-	}
-
-	.search-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-
-	.btn-search {
-		padding: 0.65rem 1.25rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.95rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		white-space: nowrap;
-		font-family: inherit;
-	}
-
-	.btn-search:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-	}
-
-	.btn-search:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.results-section {
@@ -961,10 +868,6 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		transition: all var(--transition-fast);
 	}
 
 	.community-card:hover {
@@ -985,15 +888,6 @@
 		flex-wrap: wrap;
 	}
 
-	.tag {
-		font-size: 0.75rem;
-		font-weight: 500;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-	}
-
 	.member-count {
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
@@ -1004,32 +898,6 @@
 		color: var(--color-text-muted);
 		margin-top: 0.35rem;
 		line-height: 1.5;
-	}
-
-	.btn-join {
-		padding: 0.5rem 1.25rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		white-space: nowrap;
-		flex-shrink: 0;
-		font-family: inherit;
-	}
-
-	.btn-join:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-		transform: translateY(-1px);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-join:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.no-results {
@@ -1066,27 +934,12 @@
 	}
 
 	.btn-create-toggle {
-		width: 100%;
-		padding: 0.75rem;
-		background: var(--color-surface);
+		border-style: dashed;
+		border-color: var(--color-primary);
 		color: var(--color-primary-text);
-		border: 1px dashed var(--color-primary);
-		border-radius: var(--radius);
-		font-size: 0.95rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		font-family: inherit;
-	}
-
-	.btn-create-toggle:hover {
-		background: var(--color-primary-light);
 	}
 
 	.create-form {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
 		padding: 1.5rem;
 	}
 
@@ -1096,49 +949,14 @@
 		margin-bottom: 1rem;
 	}
 
-	.create-form form {
-		display: flex;
-		flex-direction: column;
-		gap: 0.85rem;
-	}
-
-	.create-form label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-	}
-
-	.create-form label span {
-		font-size: 0.82rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-	}
-
-	.create-form input,
-	.create-form textarea {
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.95rem;
-		background: var(--color-bg);
-		color: var(--color-text);
-		font-family: inherit;
-	}
-
-	.create-form input:focus,
-	.create-form textarea:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 3px var(--color-primary-light);
-	}
-
 	.form-row {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 	}
 
-	.flex-1 { flex: 1; }
-	.flex-2 { flex: 2; }
+	.flex-1 { flex: 1 1 8rem; }
+	.flex-2 { flex: 2 1 12rem; }
 
 	.form-actions {
 		display: flex;
@@ -1147,76 +965,21 @@
 		margin-top: 0.5rem;
 	}
 
-	.btn-cancel {
-		padding: 0.5rem 1rem;
-		background: none;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		color: var(--color-text-muted);
-		font-size: 0.88rem;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		font-family: inherit;
-	}
-
-	.btn-cancel:hover {
-		border-color: var(--color-text-muted);
-	}
-
-	.btn-primary {
-		padding: 0.5rem 1.25rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		font-family: inherit;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	/* ── Alerts ─────────────────────────────────────────── */
-	.alert {
-		padding: 0.65rem 1rem;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-	}
-
-	.alert-error {
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		border: 1px solid var(--color-error);
-	}
-
 	/* ── Skip link ──────────────────────────────────────── */
 	.skip-section {
 		text-align: center;
 		padding-top: 0.5rem;
 	}
 
-	.skip-link {
+	.onboarding-skip {
 		font-size: 0.88rem;
 		color: var(--color-text-muted);
 		text-decoration: none;
 		transition: color var(--transition-fast);
 	}
 
-	.skip-link:hover {
+	.onboarding-skip:hover {
 		color: var(--color-primary-text);
 	}
 
-	/* ── Check icon (global needed for :global in Svelte 5) ─ */
-	.check {
-		font-weight: 700;
-	}
 </style>

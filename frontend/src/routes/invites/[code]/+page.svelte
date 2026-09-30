@@ -45,29 +45,33 @@
 
 <div class="redeem-page">
 	{#if !$isLoggedIn}
-		<div class="card">
+		<div class="card invite-card">
 			<h1>{$t('invite.title')}</h1>
 			<p>{$t('invite.subtitle')}</p>
 			<div class="actions">
-				<a href="/login" class="btn-primary">{$t('invite.login')}</a>
-				<a href="/register" class="btn-secondary">{$t('invite.sign_up')}</a>
+				<a href="/login" class="btn btn-primary">{$t('invite.login')}</a>
+				<a href="/register" class="btn btn-secondary">{$t('invite.sign_up')}</a>
 			</div>
 		</div>
 	{:else if loading}
-		<div class="card">
-			<p class="loading-text">{$t('invite.redeeming')}</p>
+		<div class="card invite-card">
+			<div class="skeleton-stack" role="status" aria-busy="true">
+				<span class="sr-only">{$t('invite.redeeming')}</span>
+				<span class="skeleton skeleton-line" aria-hidden="true"></span>
+				<span class="skeleton skeleton-line is-short" aria-hidden="true"></span>
+			</div>
 		</div>
 	{:else if error}
-		<div class="card">
+		<div class="card invite-card">
 			<h1>{$t('invite.error_title')}</h1>
-			<p class="error-text">{error}</p>
-			<a href="/communities" class="btn-secondary">{$t('invite.browse')}</a>
+			<p class="alert alert-error" role="alert">{error}</p>
+			<a href="/communities" class="btn btn-secondary">{$t('invite.browse')}</a>
 		</div>
 	{:else if result}
-		<div class="card">
+		<div class="card invite-card">
 			<h1>{result.message}</h1>
 			<p>{$t('invite.joined_msg', { values: { name: result.community_name } })}</p>
-			<a href="/communities/{result.community_id}" class="btn-primary">{$t('invite.go_to_community')}</a>
+			<a href="/communities/{result.community_id}" class="btn btn-primary">{$t('invite.go_to_community')}</a>
 		</div>
 	{/if}
 </div>
@@ -80,22 +84,19 @@
 		min-height: 50vh;
 	}
 
-	.card {
+	.invite-card {
 		max-width: 420px;
 		width: 100%;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
 		padding: 2rem;
 		text-align: center;
 	}
 
-	.card h1 {
+	.invite-card h1 {
 		font-size: 1.5rem;
 		margin-bottom: 0.75rem;
 	}
 
-	.card p {
+	.invite-card > p {
 		color: var(--color-text-muted);
 		margin-bottom: 1.25rem;
 		line-height: 1.6;
@@ -103,51 +104,8 @@
 
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 0.75rem;
 		justify-content: center;
-	}
-
-	.btn-primary {
-		display: inline-block;
-		padding: 0.55rem 1.25rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-secondary {
-		display: inline-block;
-		padding: 0.55rem 1.25rem;
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 500;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-secondary:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary-text);
-	}
-
-	.loading-text {
-		color: var(--color-text-muted);
-	}
-
-	.error-text {
-		color: var(--color-error);
 	}
 </style>
