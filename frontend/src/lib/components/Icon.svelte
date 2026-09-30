@@ -73,9 +73,11 @@
 		label?: string;
 		class?: string;
 		strokeWidth?: number;
+		/** Solid instead of outline (e.g. a selected star). */
+		filled?: boolean;
 	}
 
-	let { name, size = 20, label, class: className = '', strokeWidth = 2 }: Props = $props();
+	let { name, size = 20, label, class: className = '', strokeWidth = 2, filled = false }: Props = $props();
 </script>
 
 <svg
@@ -84,7 +86,7 @@
 	width={size}
 	height={size}
 	viewBox="0 0 24 24"
-	fill="none"
+	fill={filled ? 'currentColor' : 'none'}
 	stroke="currentColor"
 	stroke-width={strokeWidth}
 	stroke-linecap="round"

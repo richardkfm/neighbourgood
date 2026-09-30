@@ -30,6 +30,7 @@
 
 	/* Focus ring + layout tokens shared by every theme */
 	--color-on-error: #ffffff;
+	--color-on-success: #ffffff; /* 5.0:1 on --color-success */
 	--focus-ring: var(--color-primary);
 	--tap-target: 44px;
 	--bottom-nav-height: 64px;
@@ -90,6 +91,7 @@
 	--color-success-bg: #064e3b;
 	--color-status-dot: #34d399;
 	--color-on-error: #1a0a0a;
+	--color-on-success: #052e16; /* 7.6:1 on the dark-theme success green */
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 	--shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -131,6 +133,7 @@
 	--color-success-bg: #0f2e1a;
 	--color-status-dot: #ef4444;
 	--color-on-error: #1a0a0a;
+	--color-on-success: #052e16;
 	--focus-ring: #fbbf24;
 	--urgency-low: #b3b3b3;
 	--urgency-medium: #fbbf24;
@@ -572,6 +575,19 @@ input[type='checkbox'], input[type='radio'] {
 .btn-danger:hover:not(:disabled):not([aria-disabled='true']) {
 	background: var(--color-error);
 	border-color: var(--color-error);
+	filter: brightness(0.92);
+}
+
+/* Positive action: resolve, confirm */
+.btn-success {
+	background: var(--color-success);
+	border-color: var(--color-success);
+	color: var(--color-on-success);
+}
+
+.btn-success:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-success);
+	border-color: var(--color-success);
 	filter: brightness(0.92);
 }
 
