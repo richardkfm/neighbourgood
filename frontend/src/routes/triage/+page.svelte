@@ -191,8 +191,10 @@
 			const data = await api<CommunityOut[]>('/communities/my/memberships', { auth: true });
 			communities = data ?? [];
 			if (communities.length > 0) {
-				selectedCommunityId = communities[0].id;
-				selectedCommunityMode = communities[0].mode ?? 'blue';
+				// Prefer a community that is actually in Red Sky
+				const initial = communities.find((c) => c.mode === 'red') ?? communities[0];
+				selectedCommunityId = initial.id;
+				selectedCommunityMode = initial.mode ?? 'blue';
 				await loadTickets();
 			}
 		} catch {
@@ -209,9 +211,11 @@
 		tickets = [];
 		myRole = 'member';
 		try {
-			// Use the member-accessible tickets endpoint
+			// Use the member-accessible tickets endpoint. The API defaults to 20 items
+			// (newest first), which would hide older critical tickets during a crisis,
+			// so ask for the maximum page size.
 			const data = await api<{ items: Ticket[]; total: number }>(
-				`/communities/${selectedCommunityId}/tickets`,
+				`/communities/${selectedCommunityId}/tickets?limit=100`,
 				{ auth: true }
 			);
 			tickets = data.items ?? [];

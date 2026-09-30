@@ -191,7 +191,7 @@
         >
           {$t(`crisis.status_${ticket.status}`)}
         </span>
-        <span class="type-label">{$t(`crisis.ticket_types.${ticket.ticket_type}`)}</span>
+        <span class="type-label">{$t(`crisis.ticket_types.${ticket.ticket_type === 'emergency_ping' ? 'ping' : ticket.ticket_type}`)}</span>
       </div>
       <h1 class="ticket-title">{ticket.title}</h1>
       <p class="ticket-byline">
@@ -230,7 +230,7 @@
         </div>
 
         <div class="assignment-actions">
-          {#if !ticket.assigned_to || ticket.assigned_to.id !== $user?.id}
+          {#if !ticket.assigned_to || (isPrivileged && ticket.assigned_to.id !== $user?.id)}
             <button
               class="btn btn-secondary"
               onclick={selfAssign}

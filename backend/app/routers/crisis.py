@@ -554,15 +554,29 @@ def update_ticket(
             status_code=status.HTTP_404_NOT_FOUND, detail="Ticket not found"
         )
 
-    # Only author, leader, or admin can update
+    # Author, leaders and admins can update everything. Any other member may
+    # volunteer for an unassigned ticket ("take this"), and the assignee may move
+    # it through its statuses — but nothing else.
     if ticket.author_id != current_user.id and membership.role not in (
         "admin",
         "leader",
     ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the author, leaders, or admins can update this ticket",
-        )
+        is_assignee = ticket.assigned_to_id == current_user.id
+        limited_fields = body.model_fields_set <= {"status", "assigned_to_id"}
+        if is_assignee:
+            # May change status, or release/keep their own assignment
+            allowed = limited_fields and body.assigned_to_id in (None, current_user.id)
+        else:
+            allowed = (
+                limited_fields
+                and ticket.assigned_to_id is None
+                and body.assigned_to_id == current_user.id
+            )
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the author, leaders, admins, or the assignee can update this ticket",
+            )
 
     if body.title is not None:
         ticket.title = body.title

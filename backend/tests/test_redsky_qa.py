@@ -75,6 +75,41 @@ def test_ticket_can_be_unassigned(client, auth_headers, community_id):
     assert res.json()["assigned_to"]["id"] == me
 
 
+def test_member_can_take_unassigned_ticket_and_assignee_can_update_status(
+    client, auth_headers, community_id, register_user
+):
+    """The ticket page offers 'Take this' and status buttons to the assignee."""
+    volunteer = register_user(2)
+    _join(client, volunteer, community_id)
+    vid = _me(client, volunteer)
+    third = register_user(3)
+    _join(client, third, community_id)
+    tid = client.post(
+        f"/communities/{community_id}/tickets",
+        headers=auth_headers,
+        json={"ticket_type": "request", "title": "Need help"},
+    ).json()["id"]
+    url = f"/communities/{community_id}/tickets/{tid}"
+
+    # Unrelated member can neither edit fields nor assign somebody else
+    assert client.patch(url, headers=volunteer, json={"title": "x"}).status_code == 403
+    assert client.patch(url, headers=volunteer, json={"status": "resolved"}).status_code == 403
+    assert client.patch(url, headers=volunteer, json={"assigned_to_id": _me(client, third)}).status_code == 403
+
+    # ...but can volunteer for the unassigned ticket
+    res = client.patch(url, headers=volunteer, json={"assigned_to_id": vid})
+    assert res.status_code == 200
+    assert res.json()["assigned_to"]["id"] == vid
+
+    # The assignee may change status but not other fields
+    assert client.patch(url, headers=volunteer, json={"status": "in_progress"}).status_code == 200
+    assert client.patch(url, headers=volunteer, json={"urgency": "low"}).status_code == 403
+    assert client.patch(url, headers=volunteer, json={"title": "hijack"}).status_code == 403
+
+    # Another member cannot steal an already-assigned ticket
+    assert client.patch(url, headers=third, json={"assigned_to_id": _me(client, third)}).status_code == 403
+
+
 # ── Privacy: no email / telegram id in nested user objects ────────────
 
 

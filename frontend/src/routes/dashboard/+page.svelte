@@ -92,7 +92,7 @@
 			for (const c of redCommunities) {
 				try {
 					const data = await api<{ items: TicketItem[] }>(
-						`/communities/${c.id}/tickets`, { auth: true }
+						`/communities/${c.id}/tickets?limit=100`, { auth: true }
 					);
 					for (const t of data.items ?? []) {
 						if (t.assigned_to?.id === $user?.id && t.status !== 'resolved') {
