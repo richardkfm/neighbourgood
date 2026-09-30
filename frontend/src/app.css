@@ -7,21 +7,31 @@
 	--color-surface-raised: #fef9f5;
 	--color-text: #2d1b0e;
 	--color-text-muted: #7a5c47;
-	--color-text-subtle: #b89078;
+	--color-text-subtle: #8f6a52; /* 4.6:1 on --color-bg (was 2.7:1) */
 	--color-primary: #4f46e5;
 	--color-primary-hover: #4338ca;
 	--color-primary-light: #eef2ff;
-	--color-accent: #c95d1b;
+	--color-accent: #b5521a; /* 4.9:1 on white; 4.5:1 white-on-accent */
 	--color-accent-light: #fef0e4;
 	--color-border: #e8d5c2;
 	--color-border-hover: #d4b89a;
-	--color-error: #dc2626;
+	--color-error: #c81e1e;
 	--color-error-bg: #fef2f2;
-	--color-warning: #d97706;
+	--color-warning: #b45309;
 	--color-warning-bg: #fffbeb;
-	--color-success: #16a34a;
+	--color-success: #15803d;
 	--color-success-bg: #f0fdf4;
 	--color-status-dot: #16a34a;
+
+	/* Focus ring + layout tokens shared by every theme */
+	--color-on-error: #ffffff;
+	--focus-ring: var(--color-primary);
+	--tap-target: 44px;
+	--bottom-nav-height: 64px;
+	--urgency-low: var(--color-text-muted);
+	--urgency-medium: var(--color-primary);
+	--urgency-high: var(--color-warning);
+	--urgency-critical: var(--color-error);
 
 	/* Fraunces is only fetched in Blue Sky mode (see +layout.svelte head);
 	   Georgia is the always-available fallback, so Red Sky renders instantly. */
@@ -55,7 +65,7 @@
 	--color-surface-raised: #22223b;
 	--color-text: #e8e8ed;
 	--color-text-muted: #9ca3af;
-	--color-text-subtle: #6b7280;
+	--color-text-subtle: #8b93a1;
 	/* Violet primary accent (restored) for dark surfaces — keeps the same brand
 	   hue as the light-mode violet. */
 	--color-primary: #818cf8;
@@ -72,6 +82,7 @@
 	--color-success: #34d399;
 	--color-success-bg: #064e3b;
 	--color-status-dot: #34d399;
+	--color-on-error: #1a0a0a;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 	--shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -81,21 +92,44 @@
 	color-scheme: dark;
 }
 
-/* Red Sky Mode overrides */
+/* Red Sky Mode overrides.
+   Red Sky is a complete, always-dark palette. It defines every semantic
+   token (error/warning/success/accent backgrounds too) so that it looks the
+   same whether the visitor's saved theme is light or dark; previously the
+   light theme's pale error/warning tints leaked into the dark crisis UI.
+   A solid top rule on the nav (see +layout.svelte) and the danger-red
+   primary make the mode recognisable on every screen without colour alone
+   (the "Emergency" nav item and a text pill carry the same message). */
 :root[data-mode='red'] {
 	--color-bg: #1a1a1a;
 	--color-surface: #2d2d2d;
 	--color-surface-raised: #3d3d3d;
 	--color-text: #f5f5f5;
-	--color-text-muted: #a3a3a3;
+	--color-text-muted: #b3b3b3;
+	--color-text-subtle: #8f8f8f;
 	--color-primary: #ef4444;
 	--color-primary-hover: #dc2626;
 	--color-primary-light: #450a0a;
 	--color-accent: #f59e0b;
+	--color-accent-light: #3a2a08;
 	--color-border: #404040;
+	--color-border-hover: #595959;
+	--color-error: #fca5a5;
+	--color-error-bg: #450a0a;
+	--color-warning: #fbbf24;
+	--color-warning-bg: #3a2a08;
+	--color-success: #4ade80;
+	--color-success-bg: #0f2e1a;
 	--color-status-dot: #ef4444;
+	--color-on-error: #1a0a0a;
+	--focus-ring: #fbbf24;
+	--urgency-low: #b3b3b3;
+	--urgency-medium: #fbbf24;
+	--urgency-high: #fb923c;
+	--urgency-critical: #fca5a5;
 	--radius: 0.25rem;
 	--shadow: none;
+	color-scheme: dark;
 }
 
 /* ── Low-bandwidth Mode ─────────────────────────────────────────── */
@@ -279,6 +313,96 @@ input:focus, textarea:focus, select:focus {
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
+/* ── Accessibility foundations ─────────────────────────────────────
+   One consistent, high-contrast keyboard focus ring for everything that
+   is not a text field (text fields keep their own border + glow above).
+   :focus-visible means mouse users never see it. */
+
+:where(a, button, summary, [role='button'], [role='menuitem'], [role='tab'], input[type='checkbox'], input[type='radio']):focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+	outline: 2px solid transparent; /* visible in forced-colors / high-contrast mode */
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.skip-link {
+	position: absolute;
+	top: 0.5rem;
+	left: 0.5rem;
+	z-index: 1000;
+	padding: 0.6rem 1rem;
+	border-radius: var(--radius-sm);
+	background: var(--color-primary);
+	color: #fff;
+	font-weight: 600;
+	transform: translateY(-200%);
+}
+
+.skip-link:focus {
+	transform: translateY(0);
+	text-decoration: none;
+}
+
+/* Honour the OS "reduce motion" setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* Touch ergonomics: comfortable form controls, and 16px text so iOS Safari
+   does not zoom the viewport when a field is focused. */
+@media (pointer: coarse) {
+	select,
+	input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']) {
+		min-height: var(--tap-target);
+	}
+}
+
+@media (max-width: 768px) {
+	input:not([type='checkbox']):not([type='radio']), select, textarea {
+		font-size: 16px;
+	}
+}
+
+/* Skeleton loading placeholders (shimmer is disabled by reduced-motion /
+   low-bandwidth rules above and below). */
+.skeleton {
+	display: block;
+	border-radius: var(--radius-sm);
+	background: linear-gradient(90deg, var(--color-surface-raised) 25%, var(--color-border) 50%, var(--color-surface-raised) 75%);
+	background-color: var(--color-surface-raised);
+	background-size: 200% 100%;
+	animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+	from { background-position: 200% 0; }
+	to { background-position: -200% 0; }
+}
+
+input[type='checkbox'], input[type='radio'] {
+	accent-color: var(--color-primary);
+}
+
 /* ── Utility classes ───────────────────────────────────────────── */
 
 /* Alerts */
@@ -339,6 +463,29 @@ input:focus, textarea:focus, select:focus {
 	letter-spacing: 0.03em;
 }
 
+/* Status pill: tinted from currentColor so any status colour works in every theme */
+.status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.15rem 0.6rem;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: capitalize;
+	background: color-mix(in srgb, currentColor 12%, transparent);
+	border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+	white-space: nowrap;
+}
+
+.status-pill::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
 /* Empty state */
 .empty-state {
 	text-align: center;
@@ -368,22 +515,8 @@ input:focus, textarea:focus, select:focus {
 	line-height: 1.8;
 }
 
-/* Navigation: flip horizontal order */
-[dir='rtl'] .nav-inner {
-	flex-direction: row-reverse;
-}
-
-[dir='rtl'] .nav-links {
-	flex-direction: row-reverse;
-}
-
-[dir='rtl'] .nav-brand {
-	flex-direction: row-reverse;
-}
-
-[dir='rtl'] .nav-user-group {
-	flex-direction: row-reverse;
-}
+/* Flex rows (nav, page headers, filter bars) mirror automatically under
+   dir="rtl"; do not add row-reverse here or they flip back to LTR order. */
 
 /* Form inputs: align text right for RTL */
 [dir='rtl'] input,
@@ -391,16 +524,6 @@ input:focus, textarea:focus, select:focus {
 [dir='rtl'] select {
 	text-align: right;
 	direction: rtl;
-}
-
-/* Page header: reverse order */
-[dir='rtl'] .page-header {
-	flex-direction: row-reverse;
-}
-
-/* Filter bars */
-[dir='rtl'] .filter-bar {
-	flex-direction: row-reverse;
 }
 
 /* Cards: reverse internal flex where needed */
