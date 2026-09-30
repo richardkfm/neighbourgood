@@ -9,6 +9,8 @@
 	import { bandwidth } from '$lib/stores/theme';
 	import { isOnline, enqueueRequest } from '$lib/stores/offline';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
+	import { TRUST_BADGE_ICON } from '$lib/icons';
 
 	let resource: Resource | null = $state(null);
 	let bookings: Booking[] = $state([]);
@@ -26,6 +28,15 @@
 	let bookMessage = $state('');
 	let bookError = $state('');
 	let bookQueued = $state(false);
+	let bookSubmitting = $state(false);
+
+	// Local calendar day (not UTC) so "today" is bookable and the server, which
+	// rejects past dates, never sees one from the picker.
+	function isoToday(): string {
+		const d = new Date();
+		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+	}
+	const minDate = isoToday();
 
 	// Image upload
 	let imageInput: HTMLInputElement;
@@ -222,6 +233,8 @@
 			return;
 		}
 
+		if (bookSubmitting) return;
+		bookSubmitting = true;
 		try {
 			await api('/bookings', {
 				method: 'POST',
@@ -240,30 +253,37 @@
 			await loadBookings(resource.id);
 		} catch (err) {
 			bookError = err instanceof Error ? err.message : 'Booking failed';
+		} finally {
+			bookSubmitting = false;
 		}
 	}
 
 </script>
 
 {#if loading}
-	<p class="loading">Loading...</p>
+	<div class="skeleton-stack" role="status" aria-busy="true">
+		<span class="sr-only">{$t('common.loading')}</span>
+		<span class="skeleton skeleton-line is-short"></span>
+		<span class="skeleton" style="height: 2.4rem; width: 60%"></span>
+		<div class="skeleton skeleton-card" style="height: 12rem; margin-top: 1rem"></div>
+	</div>
 {:else if error}
 	<div class="error-page">
 		<h1>Oops</h1>
 		<p>{error}</p>
-		<a href="/resources">Back to resources</a>
+		<a href="/resources" class="btn btn-primary">Back to resources</a>
 	</div>
 {:else if resource}
 	<article class="resource-detail">
-		<a href="/resources" class="back-link">&larr; Back to resources</a>
+		<a href="/resources" class="back-link"><Icon name="arrow-left" size={16} class="flip-rtl" /> Back to resources</a>
 
 		<div class="detail-header">
 			<div class="badges">
-				<span class="category-badge">{resource.category}</span>
+				<span class="badge badge-primary badge-caps">{resource.category}</span>
 				{#if resource.condition}
-					<span class="condition-badge">{resource.condition}</span>
+					<span class="badge badge-caps">{resource.condition}</span>
 				{/if}
-				<span class="availability" class:available={resource.is_available}>
+				<span class="badge" class:badge-success={resource.is_available} class:badge-error={!resource.is_available}>
 					{resource.is_available ? 'Available' : 'Unavailable'}
 				</span>
 			</div>
@@ -272,7 +292,7 @@
 		</div>
 
 		{#if actionError}
-			<p class="error" role="alert">{actionError}</p>
+			<p class="alert alert-error" role="alert">{actionError}</p>
 		{/if}
 
 		<div class="detail-grid">
@@ -284,11 +304,11 @@
 				{/if}
 
 				{#if editing && isOwner}
-					<form class="section-card edit-form" onsubmit={saveEdit} aria-labelledby="edit-resource-heading">
+					<form class="card section-card edit-form" onsubmit={saveEdit} aria-labelledby="edit-resource-heading">
 						<h3 id="edit-resource-heading">{$t('resources.edit_title')}</h3>
 
 						{#if editError}
-							<p class="error" role="alert">{editError}</p>
+							<p class="alert alert-error" role="alert">{editError}</p>
 						{/if}
 
 						<div class="field">
@@ -333,7 +353,7 @@
 								aria-describedby="edit-threshold-hint"
 								disabled={editSaving}
 							/>
-							<small id="edit-threshold-hint" class="hint">{$t('resources.edit_threshold_hint')}</small>
+							<small id="edit-threshold-hint" class="field-hint">{$t('resources.edit_threshold_hint')}</small>
 						</div>
 
 						<label class="check-row" for="edit-available">
@@ -350,7 +370,7 @@
 									alt={$t('resources.edit_image_current')}
 								/>
 							{:else if !resource.image_url}
-								<p class="hint">{$t('resources.edit_image_none')}</p>
+								<p class="field-hint">{$t('resources.edit_image_none')}</p>
 							{/if}
 							<input
 								id="edit-image"
@@ -361,20 +381,20 @@
 								aria-describedby="edit-image-hint"
 								disabled={editSaving}
 							/>
-							<small id="edit-image-hint" class="hint">{$t('resources.edit_image_hint')}</small>
+							<small id="edit-image-hint" class="field-hint">{$t('resources.edit_image_hint')}</small>
 						</div>
 
 						<div class="form-actions">
-							<button type="submit" class="btn-primary" disabled={editSaving}>
+							<button type="submit" class="btn btn-primary" class:is-loading={editSaving} disabled={editSaving}>
 								{editSaving ? $t('resources.edit_saving') : $t('resources.edit_save')}
 							</button>
-							<button type="button" class="btn-secondary" onclick={cancelEdit} disabled={editSaving}>
+							<button type="button" class="btn btn-secondary" onclick={cancelEdit} disabled={editSaving}>
 								{$t('common.cancel')}
 							</button>
 						</div>
 					</form>
 				{:else}
-					<div class="section-card">
+					<div class="card section-card">
 						<h3>About this item</h3>
 						{#if resource.description}
 							<p>{resource.description}</p>
@@ -386,7 +406,7 @@
 
 				<!-- Booking section -->
 				{#if isOwner || bookings.length > 0}
-					<div class="section-card" class:owner-bookings-card={isOwner}>
+					<div class="card section-card" class:owner-bookings-card={isOwner}>
 						<h3>{isOwner ? 'Who Has This Item?' : 'Booked Dates'}</h3>
 						{#if bookings.length > 0}
 							<div class="booking-list">
@@ -412,7 +432,7 @@
 				{/if}
 
 				{#if bookQueued}
-					<div class="section-card queued-notice">
+					<div class="card section-card queued-notice">
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
 						<div class="queued-notice-body">
 							<strong>Request saved for later</strong>
@@ -425,7 +445,7 @@
 
 			<aside class="detail-side">
 				<!-- Owner card -->
-				<div class="section-card owner-card">
+				<div class="card section-card owner-card">
 					<h3>Shared by</h3>
 					<div class="owner-row">
 						<span class="owner-avatar" aria-hidden="true">{resource.owner.display_name.charAt(0).toUpperCase()}</span>
@@ -439,17 +459,18 @@
 					{#if resource.owner_trust}
 						<div class="owner-trust-row">
 							{#if resource.owner_trust.total_reviews > 0}
-								<span class="trust-stars">★ {resource.owner_trust.average_rating.toFixed(1)}</span>
+								<span class="trust-stars"><Icon name="star" size={14} />{resource.owner_trust.average_rating.toFixed(1)}</span>
 								<span class="trust-count">({resource.owner_trust.total_reviews} reviews)</span>
 							{/if}
 							{#each resource.owner_trust.badges as badge}
-								<span class="trust-badge-mini">{badge === 'skilled_helper' ? '⭐' : badge === 'trusted_lender' ? '📦' : '🤝'}</span>
+								<span class="trust-badge-mini"><Icon name={TRUST_BADGE_ICON[badge] ?? 'handshake'} size={16} /></span>
 							{/each}
 							<span class="trust-level">{resource.owner_trust.reputation_level}</span>
 						</div>
 					{/if}
 					{#if $isLoggedIn && $user?.id !== resource.owner_id}
-						<button class="btn-message-owner" onclick={() => startConversation(resource!.owner_id)}>
+						<button class="btn btn-secondary btn-block btn-message-owner" onclick={() => startConversation(resource!.owner_id)}>
+							<Icon name="message" size={16} />
 							Message Owner
 						</button>
 					{/if}
@@ -457,11 +478,11 @@
 
 				<!-- Borrow card -->
 				{#if canBook && !bookQueued}
-					<div class="section-card borrow-card">
+					<div class="card section-card borrow-card">
 						{#if showBookingForm}
 							<h3>Request to Borrow</h3>
 							{#if bookError}
-								<p class="error">{bookError}</p>
+								<p class="alert alert-error" role="alert">{bookError}</p>
 							{/if}
 							{#if !$isOnline}
 								<p class="offline-note">
@@ -469,29 +490,29 @@
 								</p>
 							{/if}
 							<form onsubmit={handleBooking} class="booking-form">
-								<div class="form-row">
-									<label>
+								<div class="field-row">
+									<label class="field">
 										<span>Start Date</span>
-										<input type="date" bind:value={bookStartDate} required />
+										<input type="date" bind:value={bookStartDate} min={minDate} required />
 									</label>
-									<label>
+									<label class="field">
 										<span>End Date</span>
-										<input type="date" bind:value={bookEndDate} required />
+										<input type="date" bind:value={bookEndDate} min={bookStartDate || minDate} required />
 									</label>
 								</div>
-								<label>
+								<label class="field">
 									<span>Message (optional)</span>
 									<textarea bind:value={bookMessage} rows="2" placeholder="Hi! I'd like to borrow this for..."></textarea>
 								</label>
 								<div class="form-actions">
-									<button type="submit" class="btn-primary">
+									<button type="submit" class="btn btn-primary" class:is-loading={bookSubmitting} disabled={bookSubmitting}>
 										{$isOnline ? 'Send Request' : 'Queue Request'}
 									</button>
-									<button type="button" class="btn-secondary" onclick={() => (showBookingForm = false)}>Cancel</button>
+									<button type="button" class="btn btn-secondary" onclick={() => (showBookingForm = false)}>Cancel</button>
 								</div>
 							</form>
 						{:else}
-							<button class="btn-primary btn-borrow" onclick={() => (showBookingForm = true)}>
+							<button class="btn btn-primary btn-block" onclick={() => (showBookingForm = true)}>
 								Request to Borrow
 							</button>
 						{/if}
@@ -500,16 +521,16 @@
 
 				<!-- Owner actions -->
 				{#if isOwner}
-					<div class="section-card owner-panel">
+					<div class="card section-card owner-panel">
 						<h3>Manage Resource</h3>
 						<div class="owner-actions">
-							<button class="btn-secondary" onclick={startEdit} disabled={editing}>
+							<button class="btn btn-secondary" onclick={startEdit} disabled={editing}>
 								{$t('common.edit')}
 							</button>
-							<button class="btn-secondary" onclick={toggleAvailability}>
+							<button class="btn btn-secondary" onclick={toggleAvailability}>
 								{resource.is_available ? 'Mark Unavailable' : 'Mark Available'}
 							</button>
-							<label class="btn-secondary upload-btn">
+							<label class="btn btn-secondary upload-btn">
 								Upload Image
 								<input
 									type="file"
@@ -521,10 +542,10 @@
 							</label>
 							{#if confirmDelete}
 								<span class="confirm-text">{$t('common.confirm_delete')}</span>
-								<button class="btn-danger" onclick={deleteResource}>{$t('common.delete')}</button>
-								<button class="btn-secondary" onclick={() => confirmDelete = false}>{$t('common.cancel')}</button>
+								<button class="btn btn-danger" onclick={deleteResource}>{$t('common.delete')}</button>
+								<button class="btn btn-secondary" onclick={() => confirmDelete = false}>{$t('common.cancel')}</button>
 							{:else}
-								<button class="btn-danger" onclick={deleteResource}>{$t('common.delete')}</button>
+								<button class="btn btn-danger-outline" onclick={deleteResource}>{$t('common.delete')}</button>
 							{/if}
 						</div>
 					</div>
@@ -536,10 +557,12 @@
 
 <style>
 	.back-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		font-size: 0.9rem;
 		color: var(--color-text-muted);
 		text-decoration: none;
-		display: inline-block;
 		margin-bottom: 1rem;
 	}
 
@@ -608,42 +631,7 @@
 		flex-wrap: wrap;
 	}
 
-	.category-badge, .condition-badge {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-		background: var(--color-bg);
-		color: var(--color-primary-text);
-		font-weight: 600;
-	}
-
-	.condition-badge {
-		color: var(--color-text-muted);
-	}
-
-	.availability {
-		font-size: 0.75rem;
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-		font-weight: 600;
-	}
-
-	.availability.available {
-		background: var(--color-success-bg);
-		color: var(--color-success);
-	}
-
-	.availability:not(.available) {
-		background: var(--color-error-bg);
-		color: var(--color-error);
-	}
-
 	.section-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
 		padding: 1.5rem;
 		margin-bottom: 1.5rem;
 	}
@@ -712,6 +700,9 @@
 	}
 
 	.trust-stars {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
 		color: var(--color-warning);
 		font-weight: 600;
 	}
@@ -721,7 +712,8 @@
 	}
 
 	.trust-badge-mini {
-		font-size: 0.9rem;
+		display: inline-flex;
+		color: var(--color-primary-text);
 	}
 
 	.trust-level {
@@ -736,25 +728,6 @@
 	.owner-neighbourhood {
 		font-size: 0.9rem;
 		color: var(--color-text-muted);
-	}
-
-	.btn-message-owner {
-		margin-top: 1rem;
-		width: 100%;
-		padding: 0.5rem 0.9rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-primary);
-		border-radius: var(--radius);
-		color: var(--color-primary-text);
-		font-size: 0.85rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-message-owner:hover {
-		background: var(--color-primary);
-		color: var(--color-on-primary);
 	}
 
 	.meta {
@@ -773,68 +746,16 @@
 		flex-wrap: wrap;
 	}
 
-	.owner-actions button,
-	.owner-actions .upload-btn {
-		display: inline-flex;
-		align-items: center;
-		min-height: var(--tap-target);
+	.upload-btn input[hidden] {
+		display: none;
 	}
 
-	.btn-primary {
-		padding: 0.55rem 1.2rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		box-shadow: var(--shadow-sm);
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-	}
-
-	.btn-borrow {
-		width: 100%;
-		padding: 0.7rem 1.2rem;
-		font-size: 0.95rem;
+	.btn-message-owner {
+		margin-top: 1rem;
 	}
 
 	.borrow-card {
 		border-color: var(--color-primary);
-	}
-
-	.btn-secondary, .upload-btn {
-		padding: 0.5rem 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		background: var(--color-surface);
-		color: var(--color-text);
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-
-	.btn-secondary:hover, .upload-btn:hover {
-		border-color: var(--color-primary);
-	}
-
-	.btn-danger {
-		padding: 0.5rem 1rem;
-		border: 1px solid var(--color-error);
-		border-radius: var(--radius);
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-
-	.btn-danger:hover {
-		background: var(--color-error);
-		color: var(--color-on-error);
 	}
 
 	/* Edit form */
@@ -848,44 +769,9 @@
 		margin-bottom: 0;
 	}
 
-	.field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-		min-width: 0;
-	}
-
-	.field label,
 	.check-row span {
 		font-size: 0.85rem;
-		font-weight: 500;
-	}
-
-	.field-row {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: 0.75rem;
-	}
-
-	@media (max-width: 480px) {
-		.field-row {
-			grid-template-columns: minmax(0, 1fr);
-		}
-	}
-
-	.edit-form input:not([type='checkbox']),
-	.edit-form select {
-		min-height: var(--tap-target);
-	}
-
-	.edit-form select {
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		background: var(--color-surface);
-		color: var(--color-text);
+		font-weight: 600;
 	}
 
 	.check-row {
@@ -917,27 +803,6 @@
 		border-radius: var(--radius);
 		border: 1px solid var(--color-border);
 		align-self: flex-start;
-	}
-
-	.hint {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		margin: 0;
-	}
-
-	.edit-form .form-actions {
-		flex-wrap: wrap;
-	}
-
-	.edit-form .btn-primary,
-	.edit-form .btn-secondary {
-		min-height: var(--tap-target);
-	}
-
-	.btn-secondary:disabled,
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	/* Booking list */
@@ -976,7 +841,7 @@
 
 	.booking-who {
 		color: var(--color-text-muted);
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.owner-bookings-card {
@@ -1011,53 +876,15 @@
 		gap: 0.75rem;
 	}
 
-	.form-row {
-		display: grid;
-		/* minmax(0, …) lets the columns shrink below the date input's large
-		   intrinsic width so the second picker can't overflow the sidebar. */
+	/* Two date pickers side by side even in the 320px sidebar: minmax(0, …) lets the
+	   columns shrink below the date input's large intrinsic width. */
+	.booking-form .field-row {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-		gap: 0.75rem;
-	}
-
-	.form-row label {
-		min-width: 0;
-	}
-
-	label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	label span {
-		font-size: 0.85rem;
-		font-weight: 500;
-	}
-
-	input, textarea {
-		width: 100%;
-		min-width: 0;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		background: var(--color-surface);
-		color: var(--color-text);
 	}
 
 	.form-actions {
 		display: flex;
 		gap: 0.75rem;
-	}
-
-	.error {
-		color: var(--color-error);
-		font-size: 0.9rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.loading {
-		color: var(--color-text-muted);
 	}
 
 	.error-page {
@@ -1107,7 +934,7 @@
 	}
 
 	.queued-dismiss {
-		margin-left: auto;
+		margin-inline-start: auto;
 		background: none;
 		border: none;
 		font-size: 1.2rem;

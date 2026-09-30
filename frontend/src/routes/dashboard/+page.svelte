@@ -4,6 +4,7 @@
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { api } from '$lib/api';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 
 	interface DashboardData {
 		resources_count: number;
@@ -18,10 +19,10 @@
 		id: number;
 		resource_title: string;
 		borrower_name: string;
+		borrower_id: number;
 		start_date: string;
 		end_date: string;
 		status: string;
-		is_owner: boolean;
 	}
 
 	interface CommunityMembership {
@@ -42,8 +43,12 @@
 	}
 
 	let dashboard: DashboardData | null = $state(null);
-	let pendingIncoming: BookingItem[] = $state([]);
-	let pendingOutgoing: BookingItem[] = $state([]);
+	let pendingBookings: BookingItem[] = $state([]);
+	// Whose dashboard this is. Filled from the auth store or /users/me, never
+	// guessed: until it is known no pending booking is classified.
+	let meId: number | null = $state(null);
+	const pendingIncoming = $derived(meId === null ? [] : pendingBookings.filter((b) => b.borrower_id !== meId));
+	const pendingOutgoing = $derived(meId === null ? [] : pendingBookings.filter((b) => b.borrower_id === meId));
 	let communities: CommunityMembership[] = $state([]);
 	let assignedTickets: TicketItem[] = $state([]);
 	let loading = $state(true);
@@ -56,36 +61,27 @@
 		}
 
 		try {
-			const [dashData, commData] = await Promise.all([
+			// The layout loads /users/me in parallel, so $user can still be null here.
+			const [dashData, commData, meData] = await Promise.all([
 				api<DashboardData>('/users/me/dashboard', { auth: true }),
-				api<CommunityMembership[]>('/communities/my/memberships', { auth: true })
+				api<CommunityMembership[]>('/communities/my/memberships', { auth: true }),
+				$user ? Promise.resolve($user) : api<{ id: number }>('/users/me', { auth: true })
 			]);
 			dashboard = dashData;
 			communities = commData;
+			meId = meData.id;
 
 			// Fetch pending bookings for "needs attention" section
 			const bookingsData = await api<{ items: any[] }>('/bookings?status=pending', { auth: true });
-			if (bookingsData.items) {
-				for (const b of bookingsData.items) {
-					const item: BookingItem = {
-						id: b.id,
-						resource_title: b.resource_title ?? b.resource?.title ?? `Resource #${b.resource_id}`,
-						borrower_name: b.borrower?.display_name ?? 'Someone',
-						start_date: b.start_date,
-						end_date: b.end_date,
-						status: b.status,
-						is_owner: b.borrower_id !== $user?.id
-					};
-					if (item.is_owner) {
-						pendingIncoming.push(item);
-					} else {
-						pendingOutgoing.push(item);
-					}
-				}
-				// Trigger reactivity
-				pendingIncoming = [...pendingIncoming];
-				pendingOutgoing = [...pendingOutgoing];
-			}
+			pendingBookings = (bookingsData.items ?? []).map((b) => ({
+				id: b.id,
+				resource_title: b.resource_title ?? b.resource?.title ?? `Resource #${b.resource_id}`,
+				borrower_name: b.borrower?.display_name ?? 'Someone',
+				borrower_id: b.borrower_id,
+				start_date: b.start_date,
+				end_date: b.end_date,
+				status: b.status
+			}));
 
 			// Load assigned tickets from Red Sky communities
 			const redCommunities = commData.filter(c => (c.effective_mode ?? c.mode) === 'red');
@@ -96,7 +92,7 @@
 						`/communities/${c.id}/tickets?limit=100`, { auth: true }
 					);
 					for (const t of data.items ?? []) {
-						if (t.assigned_to?.id === $user?.id && t.status !== 'resolved') {
+						if (t.assigned_to?.id === meId && t.status !== 'resolved') {
 							collected.push(t);
 						}
 					}
@@ -157,7 +153,16 @@
 	<h1>{$t('dashboard.welcome', { values: { name: $user?.display_name ?? '' } })}</h1>
 
 	{#if loading}
-		<div class="loading">{$t('dashboard.loading')}</div>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$t('dashboard.loading')}</span>
+			<div class="skeleton skeleton-card" style="height: 4.5rem"></div>
+			<div class="skeleton-grid">
+				<div class="skeleton skeleton-card"></div>
+				<div class="skeleton skeleton-card"></div>
+				<div class="skeleton skeleton-card"></div>
+				<div class="skeleton skeleton-card"></div>
+			</div>
+		</div>
 	{:else if error}
 		<div class="alert alert-error">{error}</div>
 	{:else}
@@ -165,13 +170,13 @@
 		{#if communities.length === 0}
 			<div class="nudge-banner">
 				<div class="nudge-icon">
-					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+					<Icon name="users" size={22} />
 				</div>
 				<div class="nudge-text">
 					<strong>{$t('dashboard.join_title')}</strong>
 					<span>{$t('dashboard.join_desc')}</span>
 				</div>
-				<a href="/onboarding" class="nudge-btn">{$t('dashboard.find_community')}</a>
+				<a href="/onboarding" class="btn btn-primary">{$t('dashboard.find_community')}</a>
 			</div>
 		{/if}
 
@@ -180,7 +185,7 @@
 			<section>
 				<h2>{$t('dashboard.your_community')}</h2>
 				{#each communities.slice(0, 1) as c (c.id)}
-					<a href="/communities/{c.id}" class="community-card-link">
+					<a href="/communities/{c.id}" class="card card-interactive community-card-link">
 						<div class="community-card-inner">
 							<div class="community-info">
 								<h3>{c.name}</h3>
@@ -188,7 +193,7 @@
 									<span class="community-crisis-badge">{$t('dashboard.crisis_active')}</span>
 								{/if}
 							</div>
-							<span class="community-arrow">→</span>
+							<span class="community-arrow"><Icon name="arrow-right" class="flip-rtl" /></span>
 						</div>
 					</a>
 				{/each}
@@ -205,7 +210,7 @@
 							<span class="ticket-urgency-dot urgency-{ticket.urgency}"></span>
 							<span class="assigned-ticket-title">{ticket.title}</span>
 							<span class="assigned-ticket-meta">{$t(`crisis.ticket_types.${ticket.ticket_type === 'emergency_ping' ? 'ping' : ticket.ticket_type}`)} · {$t(`crisis.status_${ticket.status}`)}</span>
-							<span class="assigned-ticket-arrow">→</span>
+							<span class="assigned-ticket-arrow"><Icon name="arrow-right" size={16} class="flip-rtl" /></span>
 						</a>
 					{/each}
 				</div>
@@ -253,32 +258,32 @@
 			<section>
 				<h2>{$t('dashboard.your_activity')}</h2>
 				<div class="overview-grid">
-					<a href="/resources" class="overview-card">
-						<div class="card-icon">📦</div>
+					<a href="/resources" class="card card-interactive overview-card">
+						<div class="card-icon"><Icon name="package" size={22} /></div>
 						<div class="card-content">
 							<div class="card-label">{$t('dashboard.stat_resources')}</div>
 							<div class="card-value">{dashboard.resources_count}</div>
 						</div>
 					</a>
 
-					<a href="/skills" class="overview-card">
-						<div class="card-icon">🎯</div>
+					<a href="/skills" class="card card-interactive overview-card">
+						<div class="card-icon"><Icon name="target" size={22} /></div>
 						<div class="card-content">
 							<div class="card-label">{$t('dashboard.stat_skills')}</div>
 							<div class="card-value">{dashboard.skills_count}</div>
 						</div>
 					</a>
 
-					<a href="/bookings" class="overview-card">
-						<div class="card-icon">📋</div>
+					<a href="/bookings" class="card card-interactive overview-card">
+						<div class="card-icon"><Icon name="clipboard" size={22} /></div>
 						<div class="card-content">
 							<div class="card-label">{$t('dashboard.stat_bookings')}</div>
 							<div class="card-value">{dashboard.bookings_count}</div>
 						</div>
 					</a>
 
-					<a href="/messages" class="overview-card">
-						<div class="card-icon">💬</div>
+					<a href="/messages" class="card card-interactive overview-card">
+						<div class="card-icon"><Icon name="message" size={22} /></div>
 						<div class="card-content">
 							<div class="card-label">{$t('dashboard.stat_messages')}</div>
 							<div class="card-value">{dashboard.messages_unread_count}</div>
@@ -363,12 +368,6 @@
 		margin: 0 0 0.9rem 0;
 	}
 
-	.loading {
-		text-align: center;
-		padding: 2rem;
-		color: var(--color-text-muted);
-	}
-
 	/* ── Onboarding nudge ─────────────────────────────────────── */
 
 	.nudge-banner {
@@ -378,7 +377,7 @@
 		padding: 1.25rem 1.5rem;
 		background: linear-gradient(135deg, var(--color-primary-light), var(--color-surface));
 		border: 1px solid var(--color-border);
-		border-left: 3px solid var(--color-primary);
+		border-inline-start: 3px solid var(--color-primary);
 		border-radius: var(--radius-md);
 	}
 
@@ -412,42 +411,13 @@
 		color: var(--color-text-muted);
 	}
 
-	.nudge-btn {
-		padding: 0.5rem 1.2rem;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		border-radius: var(--radius-sm);
-		font-size: 0.88rem;
-		font-weight: 600;
-		text-decoration: none;
-		white-space: nowrap;
-		transition: all var(--transition-fast);
-	}
-
-	.nudge-btn:hover {
-		background: var(--color-primary-hover);
-		text-decoration: none;
-		box-shadow: var(--shadow-md);
-	}
-
 	/* ── Community card ───────────────────────────────────────── */
 
 	.community-card-link {
 		display: block;
 		padding: 1rem 1.25rem;
 		background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-primary-light) 100%);
-		border: 1px solid var(--color-border);
-		border-left: 4px solid var(--color-primary);
-		border-radius: var(--radius-md);
-		text-decoration: none;
-		color: inherit;
-		transition: all var(--transition-fast);
-	}
-
-	.community-card-link:hover {
-		box-shadow: var(--shadow-sm);
-		transform: translateY(-1px);
-		text-decoration: none;
+		border-inline-start: 4px solid var(--color-primary);
 	}
 
 	.community-card-inner {
@@ -475,9 +445,8 @@
 	}
 
 	.community-arrow {
-		font-size: 1.1rem;
+		display: inline-flex;
 		color: var(--color-primary-text);
-		font-weight: 600;
 	}
 
 	/* ── Assigned crisis tickets ─────────────────────────────── */
@@ -542,9 +511,8 @@
 	}
 
 	.assigned-ticket-arrow {
-		font-size: 0.9rem;
+		display: inline-flex;
 		color: var(--color-error);
-		font-weight: 600;
 		flex-shrink: 0;
 	}
 
@@ -623,23 +591,22 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		padding: 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		transition: all var(--transition-fast);
-		text-decoration: none;
-		color: inherit;
 	}
 
 	.overview-card:hover {
 		border-color: var(--color-primary);
-		box-shadow: var(--shadow-sm);
-		text-decoration: none;
 	}
 
 	.card-icon {
-		font-size: 1.75rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex: none;
+		width: 44px;
+		height: 44px;
+		border-radius: var(--radius);
+		background: var(--color-primary-light);
+		color: var(--color-primary-text);
 	}
 
 	.card-content {
@@ -816,18 +783,6 @@
 
 	/* ── Alerts ────────────────────────────────────────────────── */
 
-	.alert {
-		padding: 1rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.95rem;
-	}
-
-	.alert-error {
-		background-color: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--color-error);
-	}
-
 	@media (max-width: 600px) {
 		h1 {
 			font-size: 1.5rem;
@@ -844,6 +799,11 @@
 			align-items: flex-start;
 			gap: 0.4rem;
 			padding: 1rem;
+		}
+
+		.card-icon {
+			width: 36px;
+			height: 36px;
 		}
 
 		.card-label {
