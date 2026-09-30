@@ -1,16 +1,29 @@
-"""Authentication endpoints – register and login."""
+"""Authentication endpoints – register, login and password reset."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import datetime
+import hashlib
+import secrets
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.middleware.csrf import generate_csrf_token
+from app.models.password_reset import PasswordResetToken
 from app.models.user import User
-from app.schemas.auth import Token, UserLogin, UserRegister
+from app.schemas.auth import (
+    MessageOut,
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    UserLogin,
+    UserRegister,
+)
 from app.services.auth import create_access_token, hash_password, verify_password
 from app.services.lockout import check_lockout, clear_failures, record_failure
+from app.services.notifications import notify_password_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -84,3 +97,102 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 
     clear_failures(body.email)
     return Token(access_token=create_access_token(user.id))
+
+
+# ── Password reset ─────────────────────────────────────────────────
+
+PASSWORD_RESET_TTL = datetime.timedelta(hours=1)
+_RESET_REQUEST_DETAIL = "If an account with that email exists, a password reset link has been sent."
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _utcnow() -> datetime.datetime:
+    """Naive UTC, matching how the database stores timestamps."""
+    return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+
+
+@router.post(
+    "/password-reset/request",
+    response_model=MessageOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def request_password_reset(
+    body: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Email a single-use password reset link.
+
+    Always answers 202 with the same body whether or not the email belongs to
+    an account, so the endpoint cannot be used to enumerate users.
+    """
+    user = (
+        db.query(User)
+        .filter(func.lower(User.email) == body.email.lower(), User.is_active == True)  # noqa: E712
+        .first()
+    )
+    if user:
+        now = _utcnow()
+        # A new request supersedes any link that is still outstanding.
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
+
+        raw_token = secrets.token_urlsafe(32)
+        db.add(
+            PasswordResetToken(
+                user_id=user.id,
+                token_hash=_hash_reset_token(raw_token),
+                expires_at=now + PASSWORD_RESET_TTL,
+            )
+        )
+        db.commit()
+        # Sent after the response so response time does not reveal whether the account exists.
+        background_tasks.add_task(notify_password_reset, user.email, raw_token)
+
+    return MessageOut(detail=_RESET_REQUEST_DETAIL)
+
+
+@router.post("/password-reset/confirm", response_model=MessageOut)
+def confirm_password_reset(body: PasswordResetConfirm, db: Session = Depends(get_db)):
+    """Set a new password using a token from the reset email. Each token works once."""
+    invalid = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token"
+    )
+    now = _utcnow()
+    record = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.token_hash == _hash_reset_token(body.token))
+        .first()
+    )
+    if record is None or record.used_at is not None or record.expires_at <= now:
+        raise invalid
+    user = db.query(User).filter(User.id == record.user_id).first()
+    if user is None or not user.is_active:
+        raise invalid
+
+    # Atomically claim the token so two concurrent confirms cannot both succeed.
+    claimed = (
+        db.query(PasswordResetToken)
+        .filter(PasswordResetToken.id == record.id, PasswordResetToken.used_at.is_(None))
+        .update({PasswordResetToken.used_at: now}, synchronize_session=False)
+    )
+    if claimed != 1:
+        db.rollback()
+        raise invalid
+
+    user.hashed_password = hash_password(body.new_password)
+    # TODO(A1 token_version): bump user.token_version here, exactly as change_password
+    # does, so every session issued before the reset stops working.
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used_at.is_(None),
+    ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
+    db.commit()
+
+    clear_failures(user.email)
+    return MessageOut(detail="Password has been reset")

@@ -14,6 +14,7 @@ from app.models.mesh import MeshSyncedMessage
 from app.models.mesh_checkin import MeshCheckin
 from app.models.sync import FederatedResource, FederatedSkill, InstanceSyncLog
 from app.models.event import Event, EventAttendee
+from app.models.password_reset import PasswordResetToken
 
 __all__ = [
     "User", "Resource", "Booking", "Message", "Community", "CommunityMember",
@@ -23,4 +24,5 @@ __all__ = [
     "MeshSyncedMessage", "MeshCheckin",
     "InstanceSyncLog", "FederatedResource", "FederatedSkill",
     "Event", "EventAttendee",
+    "PasswordResetToken",
 ]

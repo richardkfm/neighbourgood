@@ -1,7 +1,7 @@
 """In-memory sliding-window rate limiter middleware.
 
 Limits:
-  - Auth endpoints (/auth/login, /auth/register): 5 requests / 60 s per IP
+  - Auth endpoints (/auth/login, /auth/register, /auth/password-reset/*): 5 requests / 60 s per IP
   - Upload endpoints (paths ending with /image):  10 requests / 60 s per IP
   - All other API paths:                          60 requests / 60 s per IP
 
@@ -17,7 +17,12 @@ from threading import Lock
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-_AUTH_ENDPOINTS: frozenset[str] = frozenset({"/auth/login", "/auth/register"})
+_AUTH_ENDPOINTS: frozenset[str] = frozenset({
+    "/auth/login",
+    "/auth/register",
+    "/auth/password-reset/request",
+    "/auth/password-reset/confirm",
+})
 _WINDOW_SECONDS = 60
 
 _AUTH_LIMIT = 5
