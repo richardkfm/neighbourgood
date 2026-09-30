@@ -221,8 +221,9 @@ def update_resource(
 
     if body.title is not None:
         resource.title = body.title
-    if body.description is not None:
-        resource.description = body.description
+    # An explicit null clears an optional field; an omitted field is left alone.
+    if "description" in body.model_fields_set:
+        resource.description = body.description or None
     if body.category is not None:
         if body.category not in VALID_CATEGORIES:
             raise HTTPException(
@@ -230,8 +231,8 @@ def update_resource(
                 detail=f"Invalid category. Must be one of: {VALID_CATEGORIES}",
             )
         resource.category = body.category
-    if body.condition is not None:
-        if body.condition not in VALID_CONDITIONS:
+    if "condition" in body.model_fields_set:
+        if body.condition is not None and body.condition not in VALID_CONDITIONS:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Invalid condition. Must be one of: {VALID_CONDITIONS}",

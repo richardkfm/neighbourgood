@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.database import get_db
@@ -112,7 +112,10 @@ class DataExport(BaseModel):
     instance: str
     user: dict
     resources: list[dict]
+    # Bookings I made as a borrower (unchanged shape for existing consumers).
     bookings: list[dict]
+    # Bookings other members made on resources I own; kept apart from my own borrowings.
+    lending_bookings: list[dict] = []
     skills: list[dict]
     messages: list[dict]
     reviews: list[dict]
@@ -451,7 +454,19 @@ def export_my_data(
     uid = current_user.id
 
     resources = db.query(Resource).filter(Resource.owner_id == uid).all()
-    bookings = db.query(Booking).filter(Booking.borrower_id == uid).all()
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.resource))
+        .filter(Booking.borrower_id == uid)
+        .all()
+    )
+    lending_bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.resource), joinedload(Booking.borrower))
+        .join(Resource, Resource.id == Booking.resource_id)
+        .filter(Resource.owner_id == uid)
+        .all()
+    )
     skills = db.query(Skill).filter(Skill.owner_id == uid).all()
     sent_messages = db.query(Message).filter(Message.sender_id == uid).all()
     received_messages = db.query(Message).filter(Message.recipient_id == uid).all()
@@ -497,7 +512,9 @@ def export_my_data(
         ],
         bookings=[
             {
+                "role": "borrower",
                 "resource_id": b.resource_id,
+                "resource_title": b.resource.title if b.resource else None,
                 "start_date": str(b.start_date),
                 "end_date": str(b.end_date),
                 "message": b.message,
@@ -505,6 +522,21 @@ def export_my_data(
                 "created_at": _dt(b.created_at),
             }
             for b in bookings
+        ],
+        # Other members are identified by display name only, never by email.
+        lending_bookings=[
+            {
+                "role": "lender",
+                "resource_id": b.resource_id,
+                "resource_title": b.resource.title if b.resource else None,
+                "borrower_display_name": b.borrower.display_name if b.borrower else None,
+                "start_date": str(b.start_date),
+                "end_date": str(b.end_date),
+                "message": b.message,
+                "status": b.status,
+                "created_at": _dt(b.created_at),
+            }
+            for b in lending_bookings
         ],
         skills=[
             {

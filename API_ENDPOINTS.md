@@ -14,6 +14,8 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | ---------------- | ------ | ---- | ------------------------- |
 | `/auth/register` | POST   | No   | Create account, returns JWT |
 | `/auth/login`    | POST   | No   | Authenticate, returns JWT |
+| `/auth/password-reset/request` | POST | No | Email a single-use reset link (valid 1 hour). Always 202 with the same body, whether or not the email exists |
+| `/auth/password-reset/confirm` | POST | No | Set a new password with `{token, new_password}`; token works once; clears lockout |
 
 ## Users
 
@@ -21,6 +23,7 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | ------------------------ | ------ | ---- | ------------------------------------ |
 | `/users/me`              | GET    | Yes  | Get current user profile             |
 | `/users/me`              | PATCH  | Yes  | Update profile (name, neighbourhood) |
+| `/users/me`              | DELETE | Yes  | Delete (anonymise) your account; body `{password}`, 400 on wrong password |
 | `/users/me/reputation`   | GET    | Yes  | Get your reputation score            |
 | `/users/{id}/reputation` | GET    | No   | Get a user's reputation score        |
 
@@ -138,5 +141,5 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 
 | Endpoint              | Method | Auth | Description                              |
 | --------------------- | ------ | ---- | ---------------------------------------- |
-| `/export/my-data`     | GET    | Yes  | Export all user data as portable JSON    |
+| `/export/my-data`     | GET    | Yes  | Export all user data as portable JSON (`bookings` = as borrower, `lending_bookings` = as lender) |
 | `/migrate/import`     | POST   | Yes  | Import resources/skills from export data |

@@ -208,8 +208,9 @@ def update_skill(
 
     if body.title is not None:
         skill.title = body.title
-    if body.description is not None:
-        skill.description = body.description
+    # An explicit null clears the description; an omitted field is left alone.
+    if "description" in body.model_fields_set:
+        skill.description = body.description or None
     if body.category is not None:
         if body.category not in VALID_SKILL_CATEGORIES:
             raise HTTPException(
