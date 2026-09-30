@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import type { RedSkyAlertInfo } from '$lib/types';
@@ -41,15 +42,18 @@
 </svelte:head>
 
 <div class="alert-page">
-	<a href="/alerts" class="back-link">&larr; {$t('alerts.back')}</a>
+	<a href="/alerts" class="back-link"><Icon name="arrow-left" size={16} class="flip-rtl" /> {$t('alerts.back')}</a>
 
 	{#if loading}
-		<p class="muted">{$t('common.loading')}</p>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			<div class="skeleton skeleton-card" style="height: 12rem" aria-hidden="true"></div>
+		</div>
 	{:else if error || !alert}
-		<p class="error">{error || $t('alerts.not_found')}</p>
+		<p class="alert alert-error" role="alert">{error || $t('alerts.not_found')}</p>
 	{:else}
-		<article class="alert-detail" style="--sev: {severityColor(alert.severity)}">
-			<span class="severity">{$t(`alerts.severity_${alert.severity}`)}</span>
+		<article class="card alert-detail" style="--sev: {severityColor(alert.severity)}">
+			<span class="severity"><Icon name="alert" size={15} />{$t(`alerts.severity_${alert.severity}`)}</span>
 			<h1>{alert.title}</h1>
 			{#if !alert.is_active}
 				<p class="inactive-note">{$t('alerts.inactive_note')}</p>
@@ -76,7 +80,9 @@
 	}
 
 	.back-link {
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		margin-bottom: 1rem;
 		color: var(--color-text-muted);
 	}
@@ -85,19 +91,15 @@
 		color: var(--color-text-muted);
 	}
 
-	.error {
-		color: var(--color-error);
-	}
-
 	.alert-detail {
-		padding: 1.25rem;
-		border: 1px solid var(--color-border);
 		border-inline-start: 4px solid var(--sev);
 		border-radius: var(--radius-sm);
-		background: var(--color-surface);
 	}
 
 	.severity {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		color: var(--sev);
 		font-size: 0.8rem;
 		font-weight: 700;

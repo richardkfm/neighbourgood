@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import type { RedSkyAlertInfo } from '$lib/types';
@@ -55,17 +56,25 @@
 	</label>
 
 	{#if loading}
-		<p class="muted">{$t('common.loading')}</p>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3] as n (n)}
+				<div class="skeleton skeleton-card" style="height: 5rem" aria-hidden="true"></div>
+			{/each}
+		</div>
 	{:else if error}
-		<p class="error">{error}</p>
+		<p class="alert alert-error" role="alert">{error}</p>
 	{:else if alerts.length === 0}
-		<p class="muted">{$t('alerts.none')}</p>
+		<div class="empty-state">
+			<span class="empty-icon"><Icon name="shield" size={26} /></span>
+			<p>{$t('alerts.none')}</p>
+		</div>
 	{:else}
 		<ul class="alert-list">
 			{#each alerts as alert (alert.id)}
 				<li>
-					<a href="/alerts/{alert.id}" class="alert-card" class:inactive={!alert.is_active} style="--sev: {severityColor(alert.severity)}">
-						<span class="severity">{$t(`alerts.severity_${alert.severity}`)}</span>
+					<a href="/alerts/{alert.id}" class="card card-interactive alert-card" class:inactive={!alert.is_active} style="--sev: {severityColor(alert.severity)}">
+						<span class="severity"><Icon name="alert" size={14} />{$t(`alerts.severity_${alert.severity}`)}</span>
 						<strong>{alert.title}</strong>
 						<span class="meta">
 							{alert.source_instance_name} · {new Date(alert.created_at).toLocaleString()}
@@ -84,13 +93,8 @@
 		margin: 0 auto;
 	}
 
-	.subtitle,
-	.muted {
+	.subtitle {
 		color: var(--color-text-muted);
-	}
-
-	.error {
-		color: var(--color-error);
 	}
 
 	.inactive-toggle {
@@ -115,16 +119,11 @@
 		flex-direction: column;
 		gap: 0.25rem;
 		padding: 0.9rem 1rem;
-		border: 1px solid var(--color-border);
 		border-inline-start: 4px solid var(--sev);
 		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text);
-		text-decoration: none;
 	}
 
 	.alert-card:hover {
-		border-color: var(--color-border-hover);
 		border-inline-start-color: var(--sev);
 	}
 
@@ -133,6 +132,9 @@
 	}
 
 	.severity {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		color: var(--sev);
 		font-size: 0.75rem;
 		font-weight: 700;

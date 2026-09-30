@@ -29,7 +29,7 @@
   const effectiveMode = $derived(crisisStatus.effective_mode ?? crisisStatus.mode);
 </script>
 
-<section class="crisis-section slide-up">
+<section class="card crisis-section slide-up">
   <div class="crisis-header">
     <div class="crisis-indicator" class:crisis-red={effectiveMode === 'red'}>
       <span class="crisis-dot"></span>
@@ -39,11 +39,11 @@
     </div>
     {#if showToggle && isAdmin}
       {#if crisisStatus.mode === 'blue'}
-        <button class="btn-crisis-activate" onclick={() => ontoggle('red')} disabled={togglingCrisis}>
+        <button class="btn btn-danger" class:is-loading={togglingCrisis} onclick={() => ontoggle('red')} disabled={togglingCrisis}>
           {togglingCrisis ? 'Activating...' : 'Activate Crisis Mode'}
         </button>
       {:else}
-        <button class="btn-crisis-deactivate" onclick={() => ontoggle('blue')} disabled={togglingCrisis}>
+        <button class="btn btn-primary" class:is-loading={togglingCrisis} onclick={() => ontoggle('blue')} disabled={togglingCrisis}>
           {togglingCrisis ? 'Deactivating...' : 'Deactivate Crisis Mode'}
         </button>
       {/if}
@@ -51,7 +51,7 @@
   </div>
 
   {#if crisisStatus.instance_red}
-    <p class="instance-red-note" role="note">
+    <p class="alert alert-error instance-red-note" role="note">
       {$t('crisis.instance_red_notice', {
         values: { mode: crisisStatus.mode === 'red' ? $t('crisis.mode_red') : $t('crisis.mode_blue') }
       })}
@@ -69,11 +69,11 @@
         <div class="vote-actions">
           <!-- Only the vote that can change the stored mode ("activate" while red is a no-op) -->
           {#if crisisStatus.mode !== 'red'}
-            <button class="btn-vote btn-vote-red" onclick={() => onvote('activate')} disabled={votingCrisis}>
+            <button class="btn btn-danger btn-sm" class:is-loading={votingCrisis} onclick={() => onvote('activate')} disabled={votingCrisis}>
               Vote to Activate
             </button>
           {:else}
-            <button class="btn-vote btn-vote-blue" onclick={() => onvote('deactivate')} disabled={votingCrisis}>
+            <button class="btn btn-primary btn-sm" class:is-loading={votingCrisis} onclick={() => onvote('deactivate')} disabled={votingCrisis}>
               Vote to Deactivate
             </button>
           {/if}
@@ -86,26 +86,19 @@
 <style>
   .instance-red-note {
     margin: 0.75rem 0 0;
-    padding: 0.6rem 0.75rem;
-    border-radius: var(--radius-sm);
-    background: var(--color-error-bg);
-    color: var(--color-error);
-    font-size: 0.85rem;
   }
   .crisis-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
     margin-bottom: 1rem;
   }
   .crisis-red {
-    border-left: 3px solid var(--color-error);
+    border-inline-start: 3px solid var(--color-error);
+    padding-inline-start: 0.75rem;
   }
   .crisis-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 1rem;
   }
   .crisis-indicator {
@@ -150,43 +143,4 @@
     display: flex;
     gap: 0.5rem;
   }
-  .btn-vote {
-    padding: 0.4rem 0.9rem;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: inherit;
-  }
-  .btn-vote:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-vote-red { background: var(--color-error); color: white; }
-  .btn-vote-blue { background: var(--color-primary); color: var(--color-on-primary); }
-  .btn-crisis-activate {
-    padding: 0.45rem 0.9rem;
-    background: var(--color-error);
-    color: var(--color-on-error);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: inherit;
-  }
-  .btn-crisis-activate:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-crisis-deactivate {
-    padding: 0.45rem 0.9rem;
-    background: var(--color-primary);
-    color: var(--color-on-primary);
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: inherit;
-  }
-  .btn-crisis-deactivate:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
