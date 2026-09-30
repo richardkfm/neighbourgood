@@ -36,7 +36,7 @@
 	onMount(() => {
 		if ($isLoggedIn) {
 			redeem();
-		} else {
+		} else if (code) {
 			// Login/register pick this up and come back here afterwards
 			sessionStorage.setItem('ng_pending_invite', code);
 		}
