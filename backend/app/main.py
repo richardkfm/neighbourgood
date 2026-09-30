@@ -5,7 +5,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import DataError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
@@ -88,6 +90,13 @@ app = FastAPI(
     description="Community resource-sharing platform with crisis-mode support.",
     lifespan=lifespan,
 )
+
+@app.exception_handler(OverflowError)
+@app.exception_handler(DataError)
+async def out_of_range_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Integers beyond the database range (e.g. /resources/99999999999999999999) are a client error, not a 500."""
+    return JSONResponse(status_code=422, content={"detail": "Value out of range"})
+
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)

@@ -386,3 +386,17 @@ def test_import_sanitises_invalid_values(client, auth_headers):
     assert export["skills"][0]["title"] == "Imported Skill"
     assert export["skills"][0]["category"] == "other"
     assert export["skills"][0]["skill_type"] == "offer"
+
+
+# ── Out-of-range integers are a client error, not a 500 ──────────────────────
+
+
+def test_out_of_range_ids_return_422(client, auth_headers):
+    huge = 10**25
+    assert client.get(f"/resources/{huge}").status_code == 422
+    assert client.get(f"/communities/{huge}").status_code == 422
+    assert client.get(f"/resources?community_id={huge}", headers=auth_headers).status_code == 422
+    res = client.post(
+        "/resources", headers=auth_headers, json={"title": "x", "category": "tool", "community_id": huge}
+    )
+    assert res.status_code == 422
