@@ -20,6 +20,7 @@ def _create_community(client, headers, name="Test Community"):
 
 def _create_completed_booking(client, lender_headers, borrower_headers, community_id):
     """Helper: create a resource, book it, approve, and complete."""
+    client.post(f"/communities/{community_id}/join", headers=borrower_headers)
     r = client.post(
         "/resources", headers=lender_headers,
         json={"title": "Drill", "category": "tool", "community_id": community_id},
@@ -28,12 +29,12 @@ def _create_completed_booking(client, lender_headers, borrower_headers, communit
 
     b = client.post(
         "/bookings", headers=borrower_headers,
-        json={"resource_id": resource_id, "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": resource_id, "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     booking_id = b.json()["id"]
 
     client.patch(f"/bookings/{booking_id}", headers=lender_headers, json={"status": "approved"})
-    client.patch(f"/bookings/{booking_id}", headers=borrower_headers, json={"status": "completed"})
+    client.patch(f"/bookings/{booking_id}", headers=lender_headers, json={"status": "completed"})
     return booking_id
 
 
@@ -97,13 +98,14 @@ def test_both_parties_can_review(client, auth_headers, community_id):
 def test_cannot_review_pending_booking(client, auth_headers, community_id):
     """Cannot review a booking that is not completed."""
     borrower = _register(client, "borrower@test.com", "Borrower")
+    client.post(f"/communities/{community_id}/join", headers=borrower)
     r = client.post(
         "/resources", headers=auth_headers,
         json={"title": "Drill", "category": "tool", "community_id": community_id},
     )
     b = client.post(
         "/bookings", headers=borrower,
-        json={"resource_id": r.json()["id"], "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": r.json()["id"], "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     res = client.post(
         "/reviews", headers=borrower,
@@ -205,17 +207,18 @@ def test_get_user_review_summary(client, auth_headers, community_id):
     client.post("/reviews", headers=borrower1, json={"booking_id": booking_id1, "rating": 5})
 
     borrower2 = _register(client, "b2@test.com", "B2")
+    client.post(f"/communities/{community_id}/join", headers=borrower2)
     r2 = client.post(
         "/resources", headers=auth_headers,
         json={"title": "Saw", "category": "tool", "community_id": community_id},
     )
     b2 = client.post(
         "/bookings", headers=borrower2,
-        json={"resource_id": r2.json()["id"], "start_date": "2026-05-01", "end_date": "2026-05-05"},
+        json={"resource_id": r2.json()["id"], "start_date": "2099-05-01", "end_date": "2099-05-05"},
     )
     booking_id2 = b2.json()["id"]
     client.patch(f"/bookings/{booking_id2}", headers=auth_headers, json={"status": "approved"})
-    client.patch(f"/bookings/{booking_id2}", headers=borrower2, json={"status": "completed"})
+    client.patch(f"/bookings/{booking_id2}", headers=auth_headers, json={"status": "completed"})
     client.post("/reviews", headers=borrower2, json={"booking_id": booking_id2, "rating": 3})
 
     me = client.get("/users/me", headers=auth_headers)

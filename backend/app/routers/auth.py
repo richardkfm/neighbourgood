@@ -4,13 +4,14 @@ import datetime
 import hashlib
 import secrets
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.middleware.csrf import generate_csrf_token
+from app.middleware.rate_limit import _client_ip
 from app.models.password_reset import PasswordResetToken
 from app.models.user import User
 from app.schemas.auth import (
@@ -21,8 +22,8 @@ from app.schemas.auth import (
     UserLogin,
     UserRegister,
 )
-from app.services.auth import create_access_token, hash_password, verify_password
-from app.services.lockout import check_lockout, clear_failures, record_failure
+from app.services.auth import hash_password, issue_token_for_user, verify_password
+from app.services.lockout import check_lockout, clear_all_failures_for_email, clear_failures, record_failure
 from app.services.notifications import notify_password_reset
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -62,18 +63,20 @@ def register(body: UserRegister, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    return Token(access_token=create_access_token(user.id))
+    return Token(access_token=issue_token_for_user(user))
 
 
 @router.post("/login", response_model=Token)
-def login(body: UserLogin, db: Session = Depends(get_db)):
+def login(body: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Authenticate with email + password and return a JWT token.
 
     Returns a generic error for both unknown email and wrong password to
     prevent user-enumeration attacks (Phase 4b hardening).
     """
-    # Check lockout before touching the DB
-    is_locked, retry_after = check_lockout(body.email)
+    # Lockout is keyed by (email, client IP) so a third party cannot lock a
+    # known email out of its owner's own network.
+    client_ip = _client_ip(request)
+    is_locked, retry_after = check_lockout(body.email, client_ip)
     if is_locked:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -86,7 +89,7 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
 
     # Unified failure path — do not distinguish "no such user" from "wrong password"
     if not user or not verify_password(body.password, user.hashed_password):
-        record_failure(body.email)
+        record_failure(body.email, client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -95,8 +98,8 @@ def login(body: UserLogin, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
 
-    clear_failures(body.email)
-    return Token(access_token=create_access_token(user.id))
+    clear_failures(body.email, client_ip)
+    return Token(access_token=issue_token_for_user(user))
 
 
 # ── Password reset ─────────────────────────────────────────────────
@@ -186,13 +189,13 @@ def confirm_password_reset(body: PasswordResetConfirm, db: Session = Depends(get
         raise invalid
 
     user.hashed_password = hash_password(body.new_password)
-    # TODO(A1 token_version): bump user.token_version here, exactly as change_password
-    # does, so every session issued before the reset stops working.
+    # Sign out every session issued before the reset
+    user.token_version += 1
     db.query(PasswordResetToken).filter(
         PasswordResetToken.user_id == user.id,
         PasswordResetToken.used_at.is_(None),
     ).update({PasswordResetToken.used_at: now}, synchronize_session=False)
     db.commit()
 
-    clear_failures(user.email)
+    clear_all_failures_for_email(user.email)
     return MessageOut(detail="Password has been reset")

@@ -14,7 +14,11 @@ from app.models.skill import Skill
 from app.models.user import User
 from app.services.activity import record_activity
 from app.services.webhooks import dispatch_event
-from app.utils.authorization import get_active_community_membership
+from app.utils.authorization import (
+    get_active_community_membership,
+    require_admin,
+    require_community,
+)
 from app.schemas.community import (
     CommunityCreate,
     CommunityList,
@@ -155,6 +159,12 @@ def create_community(
     db: Session = Depends(get_db),
 ):
     """Create a new community group."""
+    if get_active_community_membership(db, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You're already a member of a community. Leave your current community before creating another.",
+        )
+
     community = Community(
         name=body.name,
         description=body.description,
@@ -406,8 +416,51 @@ def leave_community(
     )
     if not membership:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not a member")
+
+    if membership.role == "admin":
+        other_members = (
+            db.query(CommunityMember.role)
+            .filter(CommunityMember.community_id == community_id, CommunityMember.user_id != current_user.id)
+            .all()
+        )
+        # A sole member may leave (nobody is left to manage); otherwise an admin
+        # must remain so the community is never left without one.
+        if other_members and not any(role == "admin" for (role,) in other_members):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You are the last admin of this community. Make another member an admin before leaving.",
+            )
+
     db.delete(membership)
     db.commit()
+
+
+@router.post("/{community_id}/members/{user_id}/promote", response_model=CommunityMemberOut)
+def promote_member(
+    community_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Make a community member an admin (community admin only)."""
+    require_community(db, community_id)
+    require_admin(db, community_id, current_user.id)
+
+    target = (
+        db.query(CommunityMember)
+        .options(joinedload(CommunityMember.user))
+        .filter(CommunityMember.community_id == community_id, CommunityMember.user_id == user_id)
+        .first()
+    )
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    if target.role == "admin":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already an admin")
+
+    target.role = "admin"
+    db.commit()
+    db.refresh(target)
+    return target
 
 
 @router.get("/{community_id}/members", response_model=list[CommunityMemberOut])
@@ -436,7 +489,10 @@ def merge_communities(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Merge source community into target. Both community admins or the source admin can initiate."""
+    """Merge source community into target.
+
+    The caller must be admin of BOTH communities, or a platform admin.
+    """
     source = (
         db.query(Community)
         .options(joinedload(Community.members), joinedload(Community.created_by))
@@ -459,14 +515,19 @@ def merge_communities(
     if target.merged_into_id is not None or not target.is_active:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Target community is no longer active")
 
-    # Check that the user is admin of the source community
-    source_membership = (
-        db.query(CommunityMember)
-        .filter(CommunityMember.community_id == source.id, CommunityMember.user_id == current_user.id)
-        .first()
-    )
-    if not source_membership or source_membership.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Must be admin of source community")
+    if current_user.role != "admin":
+        admin_of = {
+            cid
+            for (cid,) in db.query(CommunityMember.community_id).filter(
+                CommunityMember.user_id == current_user.id,
+                CommunityMember.role == "admin",
+                CommunityMember.community_id.in_([source.id, target.id]),
+            )
+        }
+        if source.id not in admin_of:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Must be admin of source community")
+        if target.id not in admin_of:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Must be admin of target community")
 
     # Move members from source to target (skip duplicates)
     target_user_ids = {m.user_id for m in target.members}

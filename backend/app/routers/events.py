@@ -23,6 +23,7 @@ from app.schemas.event import (
 )
 from app.services.activity import record_activity
 from app.services.webhooks import dispatch_event
+from app.utils.authorization import is_community_member
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -286,6 +287,13 @@ def attend_event(
 ):
     """RSVP to an event."""
     event = _load_event(event_id, db)
+
+    if not is_community_member(db, event.community_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a member of this community to RSVP to its events",
+        )
+
     already = (
         db.query(EventAttendee)
         .filter(EventAttendee.event_id == event_id, EventAttendee.user_id == current_user.id)

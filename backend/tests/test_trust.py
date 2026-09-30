@@ -37,6 +37,7 @@ def _create_skill(client, headers, community_id, title="Python Tutoring"):
 
 
 def _create_completed_booking(client, lender_headers, borrower_headers, community_id):
+    _join_community(client, borrower_headers, community_id)
     r = client.post(
         "/resources",
         headers=lender_headers,
@@ -46,11 +47,11 @@ def _create_completed_booking(client, lender_headers, borrower_headers, communit
     b = client.post(
         "/bookings",
         headers=borrower_headers,
-        json={"resource_id": resource_id, "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": resource_id, "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     booking_id = b.json()["id"]
     client.patch(f"/bookings/{booking_id}", headers=lender_headers, json={"status": "approved"})
-    client.patch(f"/bookings/{booking_id}", headers=borrower_headers, json={"status": "completed"})
+    client.patch(f"/bookings/{booking_id}", headers=lender_headers, json={"status": "completed"})
     return booking_id
 
 

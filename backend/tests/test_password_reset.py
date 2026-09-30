@@ -239,12 +239,14 @@ def test_confirm_missing_fields_422(client):
     )
 
 
-def test_confirm_clears_lockout(client, auth_headers, monkeypatch):
+def test_confirm_clears_lockout_from_every_ip(client, auth_headers, monkeypatch):
     email = "test@example.com"
-    clear_failures(email)
-    for _ in range(5):
-        record_failure(email)
-    assert check_lockout(email)[0]
+    client_ip = "testclient"  # the address TestClient requests come from
+    for ip in (client_ip, "203.0.113.7"):
+        clear_failures(email, ip)
+        for _ in range(5):
+            record_failure(email, ip)
+        assert check_lockout(email, ip)[0]
     assert _login(client, email, "Testpass123").status_code == 429
 
     raw = _request_token(client, monkeypatch)
@@ -252,8 +254,19 @@ def test_confirm_clears_lockout(client, auth_headers, monkeypatch):
         "/auth/password-reset/confirm", json={"token": raw, "new_password": "Brandnew789"}
     )
     assert res.status_code == 200
-    assert not check_lockout(email)[0]
+    assert not check_lockout(email, client_ip)[0]
+    assert not check_lockout(email, "203.0.113.7")[0]
     assert _login(client, email, "Brandnew789").status_code == 200
+
+
+def test_confirm_signs_out_existing_sessions(client, auth_headers, monkeypatch):
+    assert client.get("/users/me", headers=auth_headers).status_code == 200
+    raw = _request_token(client, monkeypatch)
+    res = client.post(
+        "/auth/password-reset/confirm", json={"token": raw, "new_password": "Brandnew789"}
+    )
+    assert res.status_code == 200
+    assert client.get("/users/me", headers=auth_headers).status_code == 401
 
 
 def test_confirm_for_account_deactivated_after_request_400(client, auth_headers, db, monkeypatch):

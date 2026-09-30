@@ -1,16 +1,15 @@
 """Federation endpoints – instance directory, Red Sky alerts, data export/import."""
 
 import datetime
-import ipaddress
 import json
 import logging
 import secrets
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -27,6 +26,7 @@ from app.models.skill import Skill
 from app.models.user import User
 from app.schemas.resource import VALID_CATEGORIES, VALID_CONDITIONS
 from app.schemas.skill import VALID_SKILL_CATEGORIES, VALID_SKILL_TYPES
+from app.utils.net import is_safe_url as _is_safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -122,10 +122,19 @@ class DataExport(BaseModel):
     communities: list[dict]
 
 
+MAX_IMPORT_ITEMS = 200
+
+
 class MigrationImport(BaseModel):
-    display_name: str
+    display_name: str = Field(..., max_length=100)
     resources: list[dict] = []
     skills: list[dict] = []
+
+    @model_validator(mode="after")
+    def _cap_items(self):
+        if len(self.resources) + len(self.skills) > MAX_IMPORT_ITEMS:
+            raise ValueError(f"At most {MAX_IMPORT_ITEMS} items (resources + skills) can be imported per request")
+        return self
 
 
 # ── Instance Directory ──────────────────────────────────────────────
@@ -240,24 +249,6 @@ def refresh_directory(
 
     db.commit()
     return instances
-
-
-def _is_safe_url(url: str) -> bool:
-    """Reject URLs that resolve to private/internal IP ranges to prevent SSRF."""
-    try:
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-        if not hostname:
-            return False
-        import socket
-        resolved = socket.getaddrinfo(hostname, None)
-        for _, _, _, _, addr in resolved:
-            ip = ipaddress.ip_address(addr[0])
-            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
-                return False
-        return True
-    except Exception:
-        return False
 
 
 def _fetch_instance_info(base_url: str) -> dict | None:
@@ -591,7 +582,8 @@ def import_user_data(
     """Import resources and skills from a data export into the current user's account.
 
     This allows a user who exported their data from another instance to
-    re-create their listings on this instance.
+    re-create their listings on this instance. Imported listings are flagged
+    ``imported`` and earn no reputation points.
     """
     created_resources = 0
     created_skills = 0
@@ -611,6 +603,7 @@ def import_user_data(
             condition=condition if condition in VALID_CONDITIONS else None,
             is_available=bool(r.get("is_available", True)),
             owner_id=current_user.id,
+            imported=True,
         )
         db.add(resource)
         created_resources += 1
@@ -624,6 +617,7 @@ def import_user_data(
             category=category if category in VALID_SKILL_CATEGORIES else "other",
             skill_type=skill_type if skill_type in VALID_SKILL_TYPES else "offer",
             owner_id=current_user.id,
+            imported=True,
         )
         db.add(skill)
         created_skills += 1

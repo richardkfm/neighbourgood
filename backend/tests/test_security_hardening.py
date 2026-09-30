@@ -1,213 +1,311 @@
-"""Tests for admin bootstrap (NG_ADMIN_EMAILS), Telegram webhook secret and mesh replay hardening."""
+"""Regression tests: session invalidation, webhook SSRF guard and NUL-byte rejection."""
 
-import time
-import uuid
-from unittest.mock import patch
+import json
 
 import pytest
 
-from app.config import settings
-from app.models.crisis import CrisisVote, EmergencyTicket
-from app.models.mesh_checkin import MeshCheckin
-from app.models.user import User
-from app.services import telegram as tg
+from app.services.auth import create_access_token
+
+PASSWORD = "Testpass123"
 
 
-# ── NG_ADMIN_EMAILS ──────────────────────────────────────────────────────────
+def _bearer(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
 
 
-def _role(client, headers):
-    return client.get("/users/me", headers=headers).json()["role"]
+# ── Session invalidation on password / email change ─────────────────────────
 
 
-def test_admin_email_is_promoted_case_insensitively(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "admin_emails", ["  TEST@Example.com "])
-    assert _role(client, auth_headers) == "admin"
+def test_change_password_invalidates_old_tokens_and_returns_fresh_one(client, auth_headers):
+    old_token = auth_headers["Authorization"].split()[1]
 
-
-def test_unlisted_email_stays_member(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "admin_emails", ["someone-else@example.com"])
-    assert _role(client, auth_headers) == "member"
-
-
-def test_admin_email_grants_admin_endpoints(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "admin_emails", ["test@example.com"])
-    res = client.delete("/federation/directory/99999", headers=auth_headers)
-    assert res.status_code == 404  # past the admin check
-
-
-def test_removing_email_does_not_demote(client, auth_headers, db, monkeypatch):
-    user = db.query(User).filter(User.email == "test@example.com").first()
-    user.role = "admin"
-    db.commit()
-    monkeypatch.setattr(settings, "admin_emails", [])
-    assert _role(client, auth_headers) == "admin"
-
-
-# ── Telegram webhook secret ──────────────────────────────────────────────────
-
-_UPDATE = {"message": {"chat": {"id": 1, "type": "private"}, "text": "hello"}}
-
-
-def test_webhook_disabled_without_bot_token(client, monkeypatch):
-    monkeypatch.setattr(settings, "telegram_bot_token", "")
-    res = client.post("/telegram/webhook", json=_UPDATE)
-    assert res.status_code == 404
-
-
-def test_webhook_requires_secret_even_when_not_configured(client, monkeypatch):
-    """With no NG_TELEGRAM_WEBHOOK_SECRET the derived secret is still enforced."""
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    monkeypatch.setattr(settings, "telegram_webhook_secret", "")
-    assert client.post("/telegram/webhook", json=_UPDATE).status_code == 403
     res = client.post(
-        "/telegram/webhook", json=_UPDATE, headers={"X-Telegram-Bot-Api-Secret-Token": "guess"}
-    )
-    assert res.status_code == 403
-    res = client.post(
-        "/telegram/webhook",
-        json=_UPDATE,
-        headers={"X-Telegram-Bot-Api-Secret-Token": tg.webhook_secret()},
+        "/users/me/change-password",
+        headers=auth_headers,
+        json={"current_password": PASSWORD, "new_password": "Newpass456"},
     )
     assert res.status_code == 200
+    new_token = res.json()["access_token"]
+    assert new_token and new_token != old_token
+    assert res.json()["email"] == "test@example.com"
+
+    # Old session is signed out, the fresh token keeps working
+    assert client.get("/users/me", headers=_bearer(old_token)).status_code == 401
+    assert client.get("/users/me", headers=_bearer(new_token)).status_code == 200
+
+    # A new login issues a token for the current version
+    login = client.post("/auth/login", json={"email": "test@example.com", "password": "Newpass456"})
+    assert login.status_code == 200
+    assert client.get("/users/me", headers=_bearer(login.json()["access_token"])).status_code == 200
 
 
-def test_derived_secret_depends_on_secret_key_and_token(monkeypatch):
-    monkeypatch.setattr(settings, "telegram_webhook_secret", "")
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    first = tg.webhook_secret()
-    assert len(first) == 64 and first.isalnum()
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:other")
-    assert tg.webhook_secret() != first
-    monkeypatch.setattr(settings, "secret_key", "x" * 40)
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    assert tg.webhook_secret() != first
-
-
-def test_explicit_secret_takes_precedence(client, monkeypatch):
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    monkeypatch.setattr(settings, "telegram_webhook_secret", "explicit-secret")
-    assert tg.webhook_secret() == "explicit-secret"
+def test_failed_password_change_keeps_session(client, auth_headers):
     res = client.post(
-        "/telegram/webhook", json=_UPDATE, headers={"X-Telegram-Bot-Api-Secret-Token": "explicit-secret"}
+        "/users/me/change-password",
+        headers=auth_headers,
+        json={"current_password": "Wrong123", "new_password": "Newpass456"},
     )
-    assert res.status_code == 200
-
-
-def test_register_webhook_admin_only(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    res = client.post("/telegram/webhook/register", headers=auth_headers)
-    assert res.status_code == 403
-
-
-def test_register_webhook_sends_derived_secret(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "admin_emails", ["test@example.com"])
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    monkeypatch.setattr(settings, "telegram_webhook_secret", "")
-    monkeypatch.setattr(settings, "instance_url", "https://ng.example.org/")
-    with patch("app.services.telegram.set_webhook", return_value=True) as mock_set:
-        res = client.post("/telegram/webhook/register", headers=auth_headers)
-    assert res.status_code == 200
-    assert res.json()["url"] == "https://ng.example.org/telegram/webhook"
-    mock_set.assert_called_once_with("https://ng.example.org/telegram/webhook", tg.webhook_secret())
-
-
-def test_register_webhook_needs_instance_url(client, auth_headers, monkeypatch):
-    monkeypatch.setattr(settings, "admin_emails", ["test@example.com"])
-    monkeypatch.setattr(settings, "telegram_bot_token", "123456:token")
-    monkeypatch.setattr(settings, "instance_url", "")
-    res = client.post("/telegram/webhook/register", headers=auth_headers)
     assert res.status_code == 400
+    assert client.get("/users/me", headers=auth_headers).status_code == 200
 
 
-# ── Mesh: replay window and relayed messages ─────────────────────────────────
+def test_change_email_invalidates_old_tokens_and_returns_fresh_one(client, auth_headers):
+    old_token = auth_headers["Authorization"].split()[1]
+
+    res = client.post(
+        "/users/me/change-email",
+        headers=auth_headers,
+        json={"new_email": "new@example.com", "password": PASSWORD},
+    )
+    assert res.status_code == 200
+    new_token = res.json()["access_token"]
+
+    assert client.get("/users/me", headers=_bearer(old_token)).status_code == 401
+    me = client.get("/users/me", headers=_bearer(new_token))
+    assert me.status_code == 200
+    assert me.json()["email"] == "new@example.com"
 
 
-def _msg(msg_type, community_id, data, sender_name="Test User", ts=None):
-    return {
-        "ng": 1,
-        "type": msg_type,
-        "community_id": community_id,
-        "sender_name": sender_name,
-        "ts": ts if ts is not None else int(time.time() * 1000),
-        "id": str(uuid.uuid4()),
-        "data": data,
-    }
+def test_wrong_password_email_change_does_not_bump_version(client, auth_headers, db):
+    from app.models.user import User
+
+    res = client.post(
+        "/users/me/change-email",
+        headers=auth_headers,
+        json={"new_email": "new@example.com", "password": "Wrong123"},
+    )
+    assert res.status_code == 400
+    assert db.query(User).filter(User.email == "test@example.com").first().token_version == 0
+    assert client.get("/users/me", headers=auth_headers).status_code == 200
 
 
-def _sync(client, headers, *msgs):
-    res = client.post("/mesh/sync", headers=headers, json={"messages": list(msgs)})
-    assert res.status_code == 200, res.text
-    return res.json()
+def test_token_with_mismatched_version_rejected(client, auth_headers, db):
+    from app.models.user import User
+
+    user = db.query(User).filter(User.email == "test@example.com").first()
+    user.token_version = 3
+    db.commit()
+
+    assert client.get("/users/me", headers=auth_headers).status_code == 401  # issued at version 0
+    assert client.get("/users/me", headers=_bearer(create_access_token(user.id, 3))).status_code == 200
+    assert client.get("/users/me", headers=_bearer(create_access_token(user.id, 2))).status_code == 401
+
+
+def test_optional_auth_ignores_stale_token(db, client, auth_headers):
+    from fastapi.security import HTTPAuthorizationCredentials
+
+    from app.dependencies import get_current_user_optional
+    from app.models.user import User
+
+    user = db.query(User).filter(User.email == "test@example.com").first()
+    stale = HTTPAuthorizationCredentials(scheme="Bearer", credentials=create_access_token(user.id, 0))
+    current = HTTPAuthorizationCredentials(scheme="Bearer", credentials=create_access_token(user.id, 1))
+
+    assert get_current_user_optional(stale, db).id == user.id
+    user.token_version = 1
+    db.commit()
+    assert get_current_user_optional(stale, db) is None
+    assert get_current_user_optional(current, db).id == user.id
+
+
+# ── Webhook SSRF guard ──────────────────────────────────────────────────────
+
+
+def _webhook(url):
+    return {"url": url, "secret": "supersecret123", "event_types": ["message.new"]}
 
 
 @pytest.mark.parametrize(
-    "age_ms",
+    "url",
     [
-        (settings.mesh_max_message_age_hours * 3600 + 60) * 1000,  # older than the window
-        -2 * 3600 * 1000,  # two hours in the future
+        "http://127.0.0.1/hook",
+        "http://localhost:8300/hook",
+        "http://10.0.0.5/hook",
+        "http://internal.example.com/hook",  # resolves to 10.0.0.5 (see conftest fake_dns)
+        "http://192.168.1.10/hook",
+        "http://172.16.0.1/hook",
+        "http://169.254.169.254/latest/meta-data",
+        "http://100.64.0.1/hook",
+        "http://0.0.0.0/hook",
+        "http://224.0.0.1/hook",
+        "http://240.0.0.1/hook",
+        "http://[::1]/hook",
+        "http://[fe80::1]/hook",
+        "http://[::ffff:10.0.0.1]/hook",
+        "ftp://example.com/hook",
+        "file:///etc/passwd",
+        "http:///nohost",
     ],
 )
-def test_mesh_message_outside_time_window_is_rejected(client, auth_headers, community_id, db, age_ms):
-    msg = _msg("emergency_ticket", community_id, {"title": "Old"}, ts=int(time.time() * 1000) - age_ms)
-    result = _sync(client, auth_headers, msg)
-    assert result["rejected"] == 1
-    assert result["failed_ids"] == []
-    assert db.query(EmergencyTicket).count() == 0
+def test_webhook_create_rejects_internal_or_bad_scheme(client, auth_headers, url):
+    res = client.post("/webhooks", json=_webhook(url), headers=auth_headers)
+    assert res.status_code == 422, url
 
 
-def test_mesh_max_age_is_configurable(client, auth_headers, community_id, db, monkeypatch):
-    monkeypatch.setattr(settings, "mesh_max_message_age_hours", 1)
-    two_hours_ago = int(time.time() * 1000) - 2 * 3600 * 1000
-    result = _sync(client, auth_headers, _msg("emergency_ticket", community_id, {"title": "x"}, ts=two_hours_ago))
-    assert result["rejected"] == 1
+def test_webhook_create_accepts_public_url(client, auth_headers):
+    res = client.post("/webhooks", json=_webhook("https://hooks.example.com/ng"), headers=auth_headers)
+    assert res.status_code == 201
 
 
-def test_relayed_vote_is_not_cast_for_the_relay(client, auth_headers, community_id, db):
-    result = _sync(
-        client, auth_headers,
-        _msg("crisis_vote", community_id, {"vote_type": "activate"}, sender_name="Someone Else"),
+def test_webhook_allow_private_setting(client, auth_headers, monkeypatch):
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "webhook_allow_private", True)
+    res = client.post("/webhooks", json=_webhook("http://192.168.1.10/hook"), headers=auth_headers)
+    assert res.status_code == 201
+    # Scheme restriction still applies
+    res = client.post("/webhooks", json=_webhook("ftp://192.168.1.10/hook"), headers=auth_headers)
+    assert res.status_code == 422
+
+
+def test_webhook_delivery_rechecks_dns(monkeypatch):
+    """A hostname that later resolves to a private address must not be contacted."""
+    from app.services import webhooks as svc
+
+    calls = []
+
+    class FakeClient:
+        def __init__(self, *a, **kw):
+            calls.append("client")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def post(self, *a, **kw):
+            calls.append("post")
+
+    monkeypatch.setattr(svc.httpx, "Client", FakeClient)
+
+    svc._deliver_webhook("https://hooks.example.com/ng", "s3cretvalue", "message.new", {})
+    assert "post" in calls
+
+    calls.clear()
+    # DNS now points at an internal address (rebinding)
+    monkeypatch.setattr("app.utils.net._resolve", lambda host, port: ["10.1.2.3"])
+    svc._deliver_webhook("https://hooks.example.com/ng", "s3cretvalue", "message.new", {})
+    assert calls == []
+
+
+def test_webhook_delivery_respects_allow_private(monkeypatch):
+    from app.config import settings
+    from app.services import webhooks as svc
+
+    posted = []
+
+    class FakeClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def post(self, *a, **kw):
+            posted.append(a[0])
+
+            class R:
+                status_code = 200
+
+            return R()
+
+    monkeypatch.setattr(svc.httpx, "Client", FakeClient)
+    monkeypatch.setattr(settings, "webhook_allow_private", True)
+    svc._deliver_webhook("http://192.168.1.10/hook", "s3cretvalue", "message.new", {})
+    assert posted == ["http://192.168.1.10/hook"]
+
+
+def test_federation_uses_shared_safe_url_helper():
+    from app.routers import federation
+    from app.utils import net
+
+    assert federation._is_safe_url is net.is_safe_url
+    assert federation._is_safe_url("https://peer.example.org") is True
+    assert federation._is_safe_url("http://127.0.0.1:8300") is False
+    assert federation._is_safe_url("gopher://peer.example.org") is False
+
+
+def test_is_public_ip_ranges():
+    import ipaddress
+
+    from app.utils.net import is_public_ip
+
+    for bad in ("127.0.0.1", "10.1.1.1", "172.20.0.1", "192.168.0.1", "169.254.1.1", "224.0.0.5",
+                "0.0.0.0", "::1", "fe80::1", "fc00::1", "::ffff:192.168.0.1", "ff02::1"):
+        assert not is_public_ip(ipaddress.ip_address(bad)), bad
+    for good in ("93.184.216.34", "8.8.8.8", "2606:4700:4700::1111"):
+        assert is_public_ip(ipaddress.ip_address(good)), good
+
+
+# ── NUL bytes ───────────────────────────────────────────────────────────────
+
+
+def test_nul_in_register_body_is_422(client):
+    res = client.post(
+        "/auth/register",
+        json={"email": "nul@example.com", "password": PASSWORD, "display_name": "Bad\u0000Name"},
     )
-    assert result["rejected"] == 1
-    assert result["failed_ids"] == []
-    assert db.query(CrisisVote).count() == 0
+    assert res.status_code == 422
+    assert "NUL" in json.dumps(res.json())
 
 
-def test_relayed_checkin_is_not_stored_as_the_relay(client, auth_headers, community_id, db):
-    result = _sync(
-        client, auth_headers,
-        _msg("location_checkin", community_id, {"lat": 52.5, "lng": 13.4, "status": "safe"}, sender_name="Other"),
+def test_nul_in_resource_fields_is_422(client, auth_headers):
+    for field in ("title", "description"):
+        body = {"title": "Drill", "category": "tool", "description": "ok"}
+        body[field] = "x\u0000y"
+        res = client.post("/resources", json=body, headers=auth_headers)
+        assert res.status_code == 422, field
+
+
+def test_nul_nested_in_json_is_422(client, auth_headers):
+    res = client.post(
+        "/webhooks",
+        json={"url": "https://example.com/h", "secret": "supersecret123", "event_types": ["a\u0000b"]},
+        headers=auth_headers,
     )
-    assert result["rejected"] == 1
-    assert db.query(MeshCheckin).count() == 0
+    assert res.status_code == 422
 
 
-def test_own_vote_matches_display_name_case_insensitively(client, auth_headers, community_id, db):
-    result = _sync(
-        client, auth_headers,
-        _msg("crisis_vote", community_id, {"vote_type": "activate"}, sender_name=" test user "),
+def test_nul_in_query_string_and_path_is_422(client, auth_headers):
+    assert client.get("/communities/search?q=a%00b").status_code == 422
+    assert client.get("/resources?q=%00", headers=auth_headers).status_code == 422
+    assert client.get("/resources/1%00").status_code == 422
+
+
+def test_raw_nul_byte_in_json_body_is_422(client, auth_headers):
+    res = client.post(
+        "/resources",
+        content=b'{"title": "a\x00b", "category": "tool"}',
+        headers={**auth_headers, "Content-Type": "application/json"},
     )
-    assert result["synced"] == 1
-    # Sole member: the vote reaches the threshold and switches the community
-    assert client.get(f"/communities/{community_id}/crisis/status").json()["mode"] == "red"
+    assert res.status_code == 422
 
 
-def test_relayed_ticket_is_marked_unverified(client, auth_headers, community_id, db):
-    result = _sync(
-        client, auth_headers,
-        _msg("emergency_ticket", community_id, {"title": "Water needed", "description": "Two people"},
-             sender_name="Mallory"),
+def test_escaped_backslash_u0000_text_is_not_a_nul(client, auth_headers):
+    """The literal text backslash-u0000 (an escaped backslash) is harmless and allowed."""
+    res = client.post(
+        "/resources",
+        content=json.dumps({"title": "literal \\u0000 text", "category": "tool"}).encode(),
+        headers={**auth_headers, "Content-Type": "application/json"},
     )
-    assert result["synced"] == 1
-    ticket = db.query(EmergencyTicket).one()
-    assert ticket.description.startswith(
-        '[Relayed via mesh by Test User; original sender "Mallory" is unverified]\n'
+    assert res.status_code == 201
+    assert res.json()["title"] == "literal \\u0000 text"
+
+
+def test_bodies_still_reach_the_app_intact(client, auth_headers):
+    res = client.post("/resources", json={"title": "Normal title", "category": "tool"}, headers=auth_headers)
+    assert res.status_code == 201
+    assert res.json()["title"] == "Normal title"
+
+
+def test_malformed_json_still_reports_normal_error(client, auth_headers):
+    res = client.post(
+        "/resources",
+        content=b'{"title": "\\u0000" ',  # NUL escape inside malformed JSON
+        headers={**auth_headers, "Content-Type": "application/json"},
     )
-    assert ticket.description.endswith("Two people")
-    feed = client.get(f"/activity?community_id={community_id}", headers=auth_headers).json()
-    assert any('relayed from "Mallory" (unverified)' in item["summary"] for item in feed["items"])
-
-
-def test_own_ticket_is_not_marked(client, auth_headers, community_id, db):
-    _sync(client, auth_headers, _msg("emergency_ticket", community_id, {"title": "Mine", "description": "d"}))
-    assert db.query(EmergencyTicket).one().description == "d"
+    assert res.status_code == 422

@@ -12,6 +12,7 @@ from app.dependencies import get_current_user
 from app.models.community import CommunityMember
 from app.models.message import Message
 from app.models.user import User
+from app.utils.authorization import users_share_community as _share_community
 from app.services.notifications import notify_new_message
 from app.services.webhooks import dispatch_event
 from app.schemas.message import (
@@ -26,26 +27,6 @@ from app.schemas.message import (
 from app.schemas.user import UserProfile
 
 router = APIRouter(prefix="/messages", tags=["messages"])
-
-
-def _share_community(db: Session, user_a_id: int, user_b_id: int) -> bool:
-    """Return True if user_a and user_b share at least one community."""
-    a_communities = (
-        db.query(CommunityMember.community_id)
-        .filter(CommunityMember.user_id == user_a_id)
-        .subquery()
-    )
-    shared = (
-        db.query(CommunityMember.id)
-        .filter(
-            CommunityMember.user_id == user_b_id,
-            CommunityMember.community_id.in_(
-                db.query(a_communities.c.community_id)
-            ),
-        )
-        .first()
-    )
-    return shared is not None
 
 
 @router.get("/contacts", response_model=list[MessageableUser])

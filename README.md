@@ -123,6 +123,68 @@ git pull
 docker compose up --build -d
 ```
 
+#### Running behind a reverse proxy (nginx / Caddy)
+
+In production you will normally terminate TLS in nginx or Caddy and forward to the `frontend` container (port 3800). **You must tell the frontend (SvelteKit `adapter-node`) which header carries the real client address.** Otherwise the frontend only sees the proxy's IP, forwards that to the backend, and **every user shares one IP** — so the per-IP rate limits (5 logins/min, 200 requests/min) and the per-(email, IP) login lockout trip for everyone at once.
+
+How the address flows: browser → proxy → `frontend` (`hooks.server.ts` calls `event.getClientAddress()` and sends it to the backend as `X-Forwarded-For`) → `backend` (trusts that header only when the connection comes from a private/loopback address, i.e. your Docker network). Set these on the **`frontend`** service:
+
+| Variable | Value | Meaning |
+|----------|-------|---------|
+| `ORIGIN` | `https://neighbourgood.example.com` | Public URL users type; required for form posts and redirects |
+| `ADDRESS_HEADER` | `X-Forwarded-For` | Read the client IP from this header |
+| `XFF_DEPTH` | `1` | Number of trusted proxies in front of the frontend. The client IP is taken that many entries from the **right** of the header, so a client cannot spoof it. Use `2` if a second proxy (e.g. a CDN) sits in front of your nginx/Caddy and appends its own entry |
+
+When `ADDRESS_HEADER` is set, the proxy **must always send that header**, otherwise the frontend answers with a 500. Also keep the `frontend` port reachable only from the proxy (bind it to `127.0.0.1:3800` or an internal Docker network), and do not publish the backend's port 8300 to the internet.
+
+**nginx**
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name neighbourgood.example.com;
+    # ssl_certificate / ssl_certificate_key ...
+
+    client_max_body_size 10m;   # image uploads
+
+    location / {
+        proxy_pass http://127.0.0.1:3800;
+        proxy_set_header Host $host;
+        # Appends the connecting client's address to any X-Forwarded-For the
+        # client sent, so the rightmost entry (XFF_DEPTH=1) is always genuine.
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Caddy**
+
+```caddy
+neighbourgood.example.com {
+    # Caddy sets X-Forwarded-For (overwriting anything the client sent) and
+    # handles TLS certificates automatically.
+    reverse_proxy 127.0.0.1:3800
+}
+```
+
+**docker-compose.yml** (`frontend` service)
+
+```yaml
+    environment:
+      ORIGIN: "https://neighbourgood.example.com"
+      PORT: "3800"
+      API_BACKEND: "http://backend:8300"
+      ADDRESS_HEADER: "X-Forwarded-For"
+      XFF_DEPTH: "1"
+```
+
+Also set `NG_CORS_ORIGINS='["https://neighbourgood.example.com"]'` and `NG_FRONTEND_URL=https://neighbourgood.example.com` for the backend. You can check that it works by logging in from two different networks and confirming that failed logins on one do not rate-limit the other.
+
+#### Outbound webhooks and private addresses
+
+Webhook URLs are rejected when they use a scheme other than `http`/`https` or resolve to a private, loopback, link-local, reserved or multicast address (SSRF protection); the check runs when the webhook is created and again at every delivery. Self-hosters who need to notify a service on their LAN can set `NG_WEBHOOK_ALLOW_PRIVATE=true`.
+
 ---
 
 ### Local Development (without Docker)

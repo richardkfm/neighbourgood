@@ -166,8 +166,8 @@ def test_send_message_with_booking_id(client, auth_headers):
         headers=bob,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-04-01",
-            "end_date": "2026-04-05",
+            "start_date": "2099-04-01",
+            "end_date": "2099-04-05",
         },
     )
     booking_id = b.json()["id"]
@@ -267,7 +267,7 @@ def test_list_messages_filter_by_booking(client, auth_headers):
     b = client.post(
         "/bookings",
         headers=bob,
-        json={"resource_id": resource_id, "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": resource_id, "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     booking_id = b.json()["id"]
 

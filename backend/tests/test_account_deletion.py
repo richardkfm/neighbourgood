@@ -189,7 +189,7 @@ def test_resource_with_booking_history_becomes_tombstone(client, auth_headers, d
     client.post(f"/communities/{cid}/join", headers=borrower)
     bid = _booking(client, borrower, rid)
     _set_status(client, auth_headers, bid, "approved")
-    _set_status(client, borrower, bid, "completed")
+    _set_status(client, auth_headers, bid, "completed")
     assert client.post(
         "/reviews", headers=borrower, json={"booking_id": bid, "rating": 5, "comment": "great"}
     ).status_code == 201
@@ -252,7 +252,7 @@ def test_own_pending_and_approved_borrowings_are_cancelled_history_kept(client, 
     _set_status(client, owner, approved, "approved")
     done = _booking(client, auth_headers, r3, "2031-03-01", "2031-03-02")
     _set_status(client, owner, done, "approved")
-    _set_status(client, auth_headers, done, "completed")
+    _set_status(client, owner, done, "completed")
 
     assert _delete(client, auth_headers).status_code == 204
 
@@ -488,7 +488,7 @@ def test_messages_reviews_and_tickets_stay_and_show_deleted_user(client, auth_he
     client.post(f"/communities/{cid}/join", headers=auth_headers)
     bid = _booking(client, auth_headers, rid)
     _set_status(client, other, bid, "approved")
-    _set_status(client, auth_headers, bid, "completed")
+    _set_status(client, other, bid, "completed")
     assert client.post(
         "/reviews", headers=auth_headers, json={"booking_id": bid, "rating": 4, "comment": "ok"}
     ).status_code == 201

@@ -48,7 +48,7 @@ def test_public_endpoints_do_not_leak_email(client, auth_headers, community_id):
     client.post(
         "/bookings",
         headers=borrower,
-        json={"resource_id": rid, "start_date": "2026-03-01", "end_date": "2026-03-02"},
+        json={"resource_id": rid, "start_date": "2099-03-01", "end_date": "2099-03-02"},
     )
     client.post(
         "/skills",
@@ -64,7 +64,7 @@ def test_public_endpoints_do_not_leak_email(client, auth_headers, community_id):
         f"/communities/{community_id}",
         f"/communities/{community_id}/members",
         f"/activity?community_id={community_id}",
-        f"/bookings/resource/{rid}/calendar?month=3&year=2026",
+        f"/bookings/resource/{rid}/calendar?month=3&year=2099",
     ):
         res = client.get(url)
         assert res.status_code == 200, url
@@ -210,7 +210,7 @@ def test_delete_resource_with_active_booking_blocked(client, auth_headers, commu
     booking = client.post(
         "/bookings",
         headers=borrower,
-        json={"resource_id": rid, "start_date": "2026-03-01", "end_date": "2026-03-02"},
+        json={"resource_id": rid, "start_date": "2099-03-01", "end_date": "2099-03-02"},
     ).json()
 
     res = client.delete(f"/resources/{rid}", headers=auth_headers)
@@ -246,7 +246,7 @@ def test_delete_skill_with_messages_and_reviews(client, auth_headers, community_
 # ── Merge moves content and rejects dead targets ─────────────────────────────
 
 
-def test_merge_moves_content_to_target(client, auth_headers):
+def test_merge_moves_content_to_target(client, auth_headers, admin_headers):
     source = client.post(
         "/communities", headers=auth_headers, json={"name": "Src", "postal_code": "1", "city": "X"}
     ).json()["id"]
@@ -267,7 +267,7 @@ def test_merge_moves_content_to_target(client, auth_headers):
         json={"title": "E", "category": "meetup", "start_at": "2030-01-01T10:00:00", "community_id": source},
     )
 
-    res = client.post("/communities/merge", headers=auth_headers, json={"source_id": source, "target_id": target})
+    res = client.post("/communities/merge", headers=admin_headers, json={"source_id": source, "target_id": target})
     assert res.status_code == 200
 
     assert client.get(f"/resources/{rid}").json()["community_id"] == target
@@ -277,12 +277,15 @@ def test_merge_moves_content_to_target(client, auth_headers):
     assert client.get(f"/resources?community_id={source}").json()["total"] == 0
 
 
-def test_merge_into_merged_target_rejected(client, auth_headers):
-    a = client.post("/communities", headers=auth_headers, json={"name": "A", "postal_code": "1", "city": "X"}).json()["id"]
-    b = client.post("/communities", headers=auth_headers, json={"name": "B", "postal_code": "1", "city": "X"}).json()["id"]
-    c = client.post("/communities", headers=auth_headers, json={"name": "C", "postal_code": "1", "city": "X"}).json()["id"]
-    assert client.post("/communities/merge", headers=auth_headers, json={"source_id": a, "target_id": b}).status_code == 200
-    res = client.post("/communities/merge", headers=auth_headers, json={"source_id": c, "target_id": a})
+def test_merge_into_merged_target_rejected(client, auth_headers, admin_headers):
+    ids = []
+    for n, headers in enumerate((auth_headers, _register(client, "b@test.com", "B"), _register(client, "c@test.com", "C"))):
+        ids.append(
+            client.post("/communities", headers=headers, json={"name": f"C{n}", "postal_code": "1", "city": "X"}).json()["id"]
+        )
+    a, b, c = ids
+    assert client.post("/communities/merge", headers=admin_headers, json={"source_id": a, "target_id": b}).status_code == 200
+    res = client.post("/communities/merge", headers=admin_headers, json={"source_id": c, "target_id": a})
     assert res.status_code == 409
 
 
@@ -340,6 +343,7 @@ def test_event_datetimes_are_serialised_as_utc(client, auth_headers, community_i
 def test_event_max_attendees_cannot_drop_below_attendees(client, auth_headers, community_id):
     eid = client.post("/events", headers=auth_headers, json=_event(community_id)).json()["id"]
     other = _register(client, "o@test.com", "Other")
+    _join(client, other, community_id)
     client.post(f"/events/{eid}/attend", headers=other)
     client.post(f"/events/{eid}/attend", headers=auth_headers)
     res = client.patch(f"/events/{eid}", headers=auth_headers, json={"max_attendees": 1})

@@ -13,7 +13,9 @@ from datetime import datetime, timezone
 
 import httpx
 
+from app.config import settings
 from app.services import telegram as tg
+from app.utils.net import is_safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +93,14 @@ def _sign_payload(secret: str, body: bytes) -> str:
 
 
 def _deliver_webhook(url: str, secret: str, event_type: str, payload: dict) -> None:
-    """POST signed event payload to a registered webhook URL."""
+    """POST signed event payload to a registered webhook URL.
+
+    The target is re-validated here (not just at registration) because DNS can
+    change between create time and delivery time.
+    """
+    if not is_safe_url(url, allow_private=settings.webhook_allow_private):
+        logger.warning("Blocked webhook delivery to non-public or invalid URL: %s", url)
+        return
     body = json.dumps(
         {"event": event_type, "data": payload, "timestamp": datetime.now(timezone.utc).isoformat()}
     ).encode()

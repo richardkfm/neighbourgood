@@ -230,7 +230,9 @@
 								<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
 							{/if}
 							{#if b.status === 'approved'}
-								<button class="btn-complete" onclick={() => updateStatus(b.id, 'completed')}>{$t('bookings.mark_done')}</button>
+								{#if isOwnerOf(b)}
+									<button class="btn-complete" onclick={() => updateStatus(b.id, 'completed')}>{$t('bookings.mark_done')}</button>
+								{/if}
 								{#if isBorrowerOf(b)}
 									<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
 								{/if}
