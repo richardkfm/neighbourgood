@@ -20,6 +20,18 @@ export const currentLocale = derived(locale, ($l) => $l ?? 'en');
 /** True when the active locale is right-to-left. */
 export const isRTL = derived(locale, ($l) => RTL_LOCALES.has($l ?? ''));
 
+// Keep <html lang/dir> in step with the active locale however it was chosen
+// (saved choice, browser language, profile, language menu). Without this a
+// reload of an RTL locale chosen earlier, or one detected from the browser,
+// rendered Arabic/Farsi text in a left-to-right page.
+if (browser) {
+	locale.subscribe(($l) => {
+		if (!$l) return;
+		document.documentElement.setAttribute('lang', $l);
+		document.documentElement.setAttribute('dir', RTL_LOCALES.has($l) ? 'rtl' : 'ltr');
+	});
+}
+
 /**
  * Switch the active locale.
  * - Persists to localStorage.
