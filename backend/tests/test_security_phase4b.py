@@ -65,8 +65,10 @@ def test_rate_limit_store_upload_bucket():
 def test_rate_limit_store_general_bucket_allows_60():
     from app.middleware.rate_limit import RateLimitStore
 
+    from app.middleware.rate_limit import _GENERAL_LIMIT
+
     store = RateLimitStore()
-    for _ in range(60):
+    for _ in range(_GENERAL_LIMIT):
         allowed, _ = store.check_and_record("1.2.3.4", "/resources")
         assert allowed
     allowed, _ = store.check_and_record("1.2.3.4", "/resources")

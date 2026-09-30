@@ -7,7 +7,9 @@ def test_instance_info(client):
     assert res.status_code == 200
     data = res.json()
     assert data["name"] == "My NeighbourGood"
-    assert data["version"] == "2.0.5"
+    from app.config import settings
+
+    assert data["version"] == settings.app_version
     assert data["platform_mode"] == "blue"
     assert "admin_name" in data
     assert "admin_contact" in data
