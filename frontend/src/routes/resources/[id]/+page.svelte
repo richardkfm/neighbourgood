@@ -49,11 +49,20 @@
 
 	async function loadBookings(resourceId: number) {
 		try {
+			// The calendar endpoint is per month; fetch this month and next so a
+			// booking for the coming weeks is not hidden when it crosses a boundary.
 			const now = new Date();
-			const res = await api<Booking[]>(
-				`/bookings/resource/${resourceId}/calendar?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
+			const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+			const months = [now, next];
+			const results = await Promise.all(
+				months.map((d) =>
+					api<Booking[]>(
+						`/bookings/resource/${resourceId}/calendar?month=${d.getMonth() + 1}&year=${d.getFullYear()}`
+					)
+				)
 			);
-			bookings = res;
+			const seen = new Set<number>();
+			bookings = results.flat().filter((b) => (seen.has(b.id) ? false : (seen.add(b.id), true)));
 		} catch {
 			bookings = [];
 		}

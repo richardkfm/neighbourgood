@@ -56,7 +56,7 @@
 		</label>
 		<label>
 			<span>{$t('auth.password')}</span>
-			<input type="password" bind:value={password} required minlength="6" />
+			<input type="password" bind:value={password} required minlength="8" />
 		</label>
 		<label>
 			<span>{$t('auth.display_name')}</span>

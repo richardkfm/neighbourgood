@@ -22,10 +22,12 @@ interface RequestOptions {
 	auth?: boolean;
 	/** If provided, queues the request when offline instead of throwing. */
 	offline?: OfflineOptions;
+	/** Use SvelteKit's load-scoped fetch when calling from a `load` function. */
+	fetch?: typeof fetch;
 }
 
 export async function api<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
-	const { method = 'GET', body, auth = false, offline } = opts;
+	const { method = 'GET', body, auth = false, offline, fetch: fetchFn = fetch } = opts;
 
 	// Queue the request if offline and the caller opted in
 	if (offline && !get(isOnline)) {
@@ -44,7 +46,7 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 		if (t) headers['Authorization'] = `Bearer ${t}`;
 	}
 
-	const res = await fetch(`${BASE}${path}`, {
+	const res = await fetchFn(`${BASE}${path}`, {
 		method,
 		headers,
 		body: body ? JSON.stringify(body) : undefined
@@ -61,7 +63,10 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 		// Handle Pydantic validation errors (detail is an array of objects)
 		let errorMsg = '';
 		if (Array.isArray(err.detail)) {
-			errorMsg = err.detail.map((e: any) => e.msg || e.toString()).join('; ');
+			// Pydantic prefixes custom validator messages with "Value error, "
+			errorMsg = err.detail
+				.map((e: any) => (e.msg ? String(e.msg).replace(/^Value error, /, '') : e.toString()))
+				.join('; ');
 		} else if (typeof err.detail === 'string') {
 			errorMsg = err.detail;
 		} else if (err.detail) {
