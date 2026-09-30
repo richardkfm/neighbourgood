@@ -11,8 +11,8 @@ Token efficiency matters. Use the right model for the right task:
 | Model | When to use | Examples |
 |-------|-------------|---------|
 | **Haiku** `claude-haiku-4-5-20251001` | Quick, cheap tasks — default starting point | File searches, single-line fixes, reading docs, grepping for a symbol, status checks, typo corrections, explaining a short function |
-| **Sonnet** `claude-sonnet-4-6` | Standard coding work | New features, bug fixes, multi-file refactors, writing tests, schema changes, adding endpoints |
-| **Opus** `claude-opus-4-6` | Save for the hardest problems only | Architecture decisions, complex security analysis, orchestrating multi-agent plans, debugging tricky async/concurrency/race-condition bugs, analysing attack surfaces |
+| **Sonnet** `claude-sonnet-5` | Standard coding work | New features, bug fixes, multi-file refactors, writing tests, schema changes, adding endpoints |
+| **Opus** `claude-opus-5` | Save for the hardest problems only | Architecture decisions, complex security analysis, orchestrating multi-agent plans, debugging tricky async/concurrency/race-condition bugs, analysing attack surfaces |
 
 **Default to Haiku.** Escalate to Sonnet when a task clearly spans multiple files or requires system-wide reasoning. Reserve Opus for genuine deep-thinking — it is expensive and slow. Never use Opus for searches, reads, or anything grep can answer in one shot.
 
@@ -20,14 +20,14 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v1.9.6** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.2.2** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
-- **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, reputation/trust scores, community feed, direct messaging
+- **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
 
 Each instance exposes `/instance/info` so instances can discover and federate with each other.
 
-Current test count: **441 tests** across 29 test files (all backend, pytest + in-memory SQLite).
+Current test count: **444 tests** across 29 test files (all backend, pytest + in-memory SQLite).
 
 ---
 
@@ -83,7 +83,7 @@ neighbourgood/
 │   │   └── services/           # auth, notifications, activity, telegram, webhooks
 │   └── tests/
 │       ├── conftest.py         # In-memory SQLite fixtures + auth_headers
-│       └── test_*.py           # 21 test files, one per router/domain
+│       └── test_*.py           # 29 test files, one per router/domain
 │
 └── frontend/
     ├── Dockerfile
@@ -308,9 +308,9 @@ All paths are relative to `/api` (e.g. `/resources`, not `/api/resources`).
 ### Internationalisation (`src/lib/i18n/`)
 
 - Uses `svelte-i18n`. Setup and locale detection in `i18n/index.ts`.
-- 7 supported languages: `en`, `ar`, `fr`, `es`, `sw`, `id`, `uk`.
-- Arabic (`ar`) requires RTL layout — check `$isRTL` from `locale.ts` to apply `dir="rtl"` where needed.
-- Translation strings live in `i18n/locales/<lang>.json`; always add a key to all 7 files when adding new UI text.
+- 12 supported languages: `ar`, `de`, `el`, `en`, `es`, `fa`, `fr`, `id`, `nl`, `su`, `sw`, `uk`.
+- Arabic (`ar`) and Farsi (`fa`) require RTL layout — check `$isRTL` from `locale.ts` to apply `dir="rtl"` where needed.
+- Translation strings live in `i18n/locales/<lang>.json`; always add a key to all 12 files when adding new UI text.
 - Graceful fallback to English if a key is missing in a locale.
 
 ### Offline / PWA (`src/service-worker.ts`)
@@ -359,6 +359,10 @@ Shared TypeScript interfaces that mirror backend Pydantic schemas. Always import
 | `RedSkyAlert` | id, source_instance_url, title, body, severity, expires_at | cross-instance crisis alerts |
 | `Webhook` | id, owner_id, url, secret, events, is_active | outbound webhook subscriptions |
 | `TelegramLinkToken` | id, user_id, token, expires_at | one-time tokens for Telegram account linking |
+| `Event` / `EventAttendee` | id, community_id, organizer_id, title, category, start_time, end_time, max_attendees | 9 categories; attendee join table |
+| `MeshSyncedMessage` | id, community_id, message_uuid, message_type, payload | BLE mesh messages, deduplicated by UUID on sync |
+| `MeshCheckin` | id, community_id, user_id, status, note | offline safety check-ins relayed via mesh |
+| `InstanceSyncLog` / `FederatedResource` / `FederatedSkill` | id, instance_url, cursor, synced_at | pull-based federation sync bookkeeping + cached peer listings |
 
 ---
 
@@ -377,12 +381,15 @@ Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
 | `/communities` | communities.py | CRUD, join/leave, members, merge, map |
 | `/crisis` | crisis.py | toggle, vote, tickets, leader management |
 | `/skills` | skills.py | offer/request listings, search |
+| `/events` | events.py | create, browse, RSVP, attendee list |
 | `/activity` | activity.py | community feed |
 | `/invites` | invites.py | generate and redeem codes |
 | `/reviews` | reviews.py | booking reviews and user averages |
 | `/instance/info` | instance.py | public metadata for federation crawlers |
 | `/federation` | federation.py | instance directory, Red Sky alert broadcast |
+| `/federation/sync/*`, `/federation/federated-*` | federation_sync.py | pull-based snapshot/sync from peer instances, cached federated resources/skills |
 | `/webhooks` | webhooks.py | CRUD outbound webhooks + inbound handler |
+| `/mesh` | mesh_sync.py | BLE mesh message sync, check-ins |
 | `/matching` | matching.py | Smart suggestions, unmet needs, AI status |
 | `/users/me/telegram` | telegram.py | link/unlink Telegram account |
 
@@ -399,14 +406,17 @@ Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
 - File upload hardening: magic byte check + extension allowlist (`.jpg/.jpeg/.png/.webp/.gif`) + double-extension strip — `routers/resources.py`
 - Input `max_length` on all user-facing schema fields — `schemas/*.py`
 
-### Phase 4b — Pending (next priority) ⏳
+### Phase 4b — Implemented in v1.7.0 ✅
 
-- **Rate limiting** on auth endpoints (`/auth/login`, `/auth/register`): 5 req/min per IP; general API: 60 req/min; uploads: 10 req/min. New file: `app/middleware/rate_limit.py` (in-memory sliding window, no external dep). Return `429` with `Retry-After` header.
-- **Account lockout**: track failed login attempts per email; lock for 15 min after 5 failures in 15 min. In-memory store with TTL. New logic in `routers/auth.py`.
-- **CSRF protection** for state-changing operations.
+- **Rate limiting** on auth endpoints (`/auth/login`, `/auth/register`): 5 req/min per IP; general API: 60 req/min; uploads: 10 req/min — `app/middleware/rate_limit.py` (in-memory sliding window, `429` with `Retry-After` header)
+- **Account lockout**: failed login attempts tracked per email; 15-min lockout after 5 failures in 15 min — `app/services/lockout.py`, checked in `routers/auth.py`
+- **CSRF protection** for state-changing operations — `app/middleware/csrf.py` (double-submit Origin + `X-CSRF-Token` validation)
+- **Hardened auth responses** — unified `"Invalid credentials"` error to prevent user enumeration
+
+### Phase 4b — Remaining ⏳
+
 - **Session invalidation** on password change.
 - **Audit logging** for admin actions — new `app/services/audit.py`, structured JSON logs to `logs/security.log`.
-- **Hardened auth responses**: unify error messages to always return `"Invalid credentials"` (prevent user enumeration via timing or message differences).
 
 ### Phase 4c / 5a — Future ⏳
 
@@ -465,7 +475,7 @@ def test_not_found(client, auth_headers):
     assert res.status_code == 404
 ```
 
-Current test files (27): `test_activity`, `test_auth`, `test_bookings`, `test_communities`, `test_crisis`, `test_events`, `test_federation`, `test_federation_sync`, `test_instance`, `test_inventory`, `test_invites`, `test_matching`, `test_mesh_sync`, `test_messages`, `test_notifications`, `test_reputation`, `test_resource_community`, `test_resources`, `test_resources_phase2`, `test_reviews`, `test_skills`, `test_status`, `test_telegram`, `test_triage`, `test_trust`, `test_users`, `test_webhooks`.
+Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_communities`, `test_crisis`, `test_events`, `test_federation`, `test_federation_sync`, `test_instance`, `test_inventory`, `test_invites`, `test_matching`, `test_mesh_sync`, `test_messages`, `test_notifications`, `test_reputation`, `test_resource_community`, `test_resources`, `test_resources_phase2`, `test_reviews`, `test_security_phase4b`, `test_skills`, `test_status`, `test_telegram`, `test_telegram_ai`, `test_triage`, `test_trust`, `test_users`, `test_webhooks`.
 
 ---
 
@@ -473,6 +483,14 @@ Current test files (27): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.2.2 | 2026-07-15 | Fix: block joining a second community while already an active member (409), deterministic `/communities/my/memberships` ordering, fix resources/skills/events pages racing unfiltered vs. community-filtered fetches, one-time multi-membership cleanup migration, 4 new tests (444 total) |
+| 2.2.1 | 2026-07-08 | Fix: empty main column on bare resource/skill detail pages, end-date picker overflow on the borrow card |
+| 2.2.0 | 2026-07-08 | Fraunces display serif for heros/page titles, editorial landing page redesign, two-column resource/skill detail pages (sticky sidebar), re-spaced list overviews, fix SSR 500 on first request after restart (svelte-i18n `waitLocale()`) |
+| 2.1.1 | 2026-06-22 | Fix: events page layout inconsistency vs. shared layout wrapper, past events hidden by default with "Past" badge |
+| 2.1.0 | 2026-06-19 | Violet restored as primary brand accent, terracotta moved to secondary accent, more restrained accent usage, fix hardcoded badge/star colours in dark mode |
+| 2.0.5 | 2026-06-12 | Consolidated `/explore` and `/communities` map into shared `CommunityMap` component, dark mode keeps terracotta brand colour, fix hardcoded map marker colours |
+| 2.0.4 | 2026-06-12 | Bookings added to main navigation, "View profile" nav link, mesh dashboard link from Emergency page, fix intermittent SSR proxy 500s, fix broken federation "Back to Network" links, `/triage/[id]` i18n |
+| 2.0.3 | 2026-05-09 | Event detail page (`/events/[id]`), `EventOut.attendees` field, events page i18n + layout parity, crisis-vote regression test (442 tests) |
 | 2.0.0 | 2026-04-03 | Trust system: skill reviews/endorsements, trust badges (Reliable Borrower, Trusted Lender, Skilled Helper), public user profile page with tabbed reviews, OwnerTrust in listings, review filtering/breakdown, 23 new tests (441 total) |
 | 1.9.6 | 2026-04-01 | Simplified community display: hide community selectors for single-community users, scope resources/skills/events/triage to one community at a time |
 | 1.9.5.1 | 2026-03-16 | Fix login 500 (restore additive column auto-migration), move mesh networking to settings toggle (hidden by default), mesh settings store + i18n |

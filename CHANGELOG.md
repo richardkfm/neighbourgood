@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Docs
+
+- **CLAUDE.md brought up to date with the actual codebase** — it had drifted to describing v1.9.6/441 tests while the project was already at v2.2.2/444 tests. Corrected version/test-count banner, marked Security Phase 4b (rate limiting, account lockout, CSRF protection) as implemented instead of pending (it shipped in v1.7.0), expanded the i18n language list from 7 to the actual 12 locales, added missing `/events` and `/mesh` routers and `Event`/mesh/federation-sync models to the reference tables, extended the version history table through 2.2.2, and fixed the test file count/list
+- **README.md** — removed a stray `### Local Development` heading that had been accidentally left inside the "Useful Docker commands" bash code block
+
 ## [2.2.2] - 2026-07-15
 
 ### Fixed

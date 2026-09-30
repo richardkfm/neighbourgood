@@ -94,8 +94,6 @@ docker compose up --build -d
 # Stream logs while running in the background
 docker compose logs -f
 
-### Local Development
-
 # Stop everything (data is preserved in the postgres volume)
 docker compose down
 
