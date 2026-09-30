@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class MeshMessageIn(BaseModel):
     """A single NG mesh message received via BLE, submitted for server sync."""
 
-    ng: int = Field(1, description="Protocol version, must be 1")
+    ng: int = Field(1, ge=1, le=1, description="Protocol version, must be 1")
     type: str = Field(
         ...,
         pattern="^(emergency_ticket|ticket_comment|crisis_vote|crisis_status|direct_message|heartbeat|resource_request|resource_offer|location_checkin|ack)$",
@@ -15,7 +15,7 @@ class MeshMessageIn(BaseModel):
     community_id: int
     sender_name: str = Field(..., max_length=100)
     ts: int = Field(..., description="Unix timestamp in milliseconds")
-    id: str = Field(..., max_length=100, description="Unique message UUID")
+    id: str = Field(..., min_length=1, max_length=100, description="Unique message UUID")
     data: dict = Field(default_factory=dict)
 
 

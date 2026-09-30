@@ -21,6 +21,13 @@ from app.services.activity import record_activity
 
 router = APIRouter(prefix="/mesh", tags=["mesh"])
 
+_NON_PERSISTED_TYPES = frozenset({"heartbeat", "ack"})
+
+
+def _text(value) -> str:
+    """Return a stripped string, or "" for non-strings (mesh payloads are untrusted)."""
+    return value.strip() if isinstance(value, str) else ""
+
 
 @router.post("/sync", response_model=MeshSyncResponse)
 def sync_mesh_messages(
@@ -52,16 +59,19 @@ def sync_mesh_messages(
 
         try:
             server_object_id = _process_mesh_message(db, msg, current_user)
-            # Record as synced
-            db.add(
-                MeshSyncedMessage(
-                    mesh_message_id=msg.id,
-                    message_type=msg.type,
-                    community_id=msg.community_id,
-                    synced_by_id=current_user.id,
-                    server_object_id=server_object_id,
+            # Record as synced. Heartbeats/acks persist nothing, so they are not
+            # recorded: otherwise any member could "squat" a real message's ID
+            # with a junk heartbeat and make the genuine message a duplicate.
+            if msg.type not in _NON_PERSISTED_TYPES:
+                db.add(
+                    MeshSyncedMessage(
+                        mesh_message_id=msg.id,
+                        message_type=msg.type,
+                        community_id=msg.community_id,
+                        synced_by_id=current_user.id,
+                        server_object_id=server_object_id,
+                    )
                 )
-            )
             db.commit()
             synced += 1
         except IntegrityError:
@@ -130,7 +140,7 @@ def _sync_emergency_ticket(
     """Create an emergency ticket from a mesh message. Returns the ticket ID."""
     data = msg.data
     ticket_type = data.get("ticket_type", "request")
-    title = data.get("title", "")
+    title = _text(data.get("title"))
     description = data.get("description", "")
     urgency = data.get("urgency", "medium")
 
@@ -178,7 +188,7 @@ def _sync_ticket_comment(
 ) -> int:
     """Create a ticket comment from a mesh message. Returns the comment ID."""
     data = msg.data
-    body = data.get("body", "")
+    body = _text(data.get("body"))
     ticket_mesh_id = data.get("ticket_mesh_id", "")
 
     if not body:
@@ -252,7 +262,7 @@ def _sync_direct_message(
 ) -> int:
     """Create a direct message from a mesh message. Returns the message ID."""
     data = msg.data
-    body = data.get("body", "")
+    body = _text(data.get("body"))
     recipient_id = data.get("recipient_id")
 
     if not body:
@@ -348,7 +358,7 @@ def _sync_resource(
 ) -> int:
     """Create a resource listing from a mesh message. Returns the resource ID."""
     data = msg.data
-    title = data.get("title", "")
+    title = _text(data.get("title"))
     description = data.get("description", "")
     category = data.get("category", "other")
 

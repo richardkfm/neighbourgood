@@ -332,3 +332,43 @@ def test_telegram_created_request_is_logged_in_activity_feed(
     _exec_create_request("Need insulin", "", user, community, db)
     feed = client.get(f"/activity?community_id={community_id}", headers=auth_headers).json()
     assert any("via Telegram" in a["summary"] for a in feed["items"])
+
+
+# ── Mesh: payload hygiene ─────────────────────────────────────────────
+
+
+def test_mesh_heartbeat_cannot_squat_a_real_message_id(
+    client, auth_headers, community_id, register_user
+):
+    h2 = register_user(2)
+    _join(client, h2, community_id)
+    shared = str(uuid.uuid4())
+    r = client.post(
+        "/mesh/sync",
+        headers=auth_headers,
+        json={"messages": [_mesh_msg("heartbeat", community_id, mid=shared)]},
+    )
+    assert r.json()["synced"] == 1
+    r = client.post(
+        "/mesh/sync",
+        headers=h2,
+        json={"messages": [_mesh_msg("emergency_ticket", community_id, {"title": "Real"}, shared)]},
+    )
+    assert r.json() == {"synced": 1, "duplicates": 0, "errors": 0}
+
+
+def test_mesh_rejects_blank_or_non_string_text_and_bad_envelope(
+    client, auth_headers, community_id
+):
+    msgs = [
+        _mesh_msg("emergency_ticket", community_id, {"title": "   "}),
+        _mesh_msg("emergency_ticket", community_id, {"title": {"a": 1}}),
+        _mesh_msg("resource_offer", community_id, {"title": " "}),
+    ]
+    res = client.post("/mesh/sync", headers=auth_headers, json={"messages": msgs})
+    assert res.json() == {"synced": 0, "duplicates": 0, "errors": 3}
+    bad_version = {**_mesh_msg("heartbeat", community_id), "ng": 2}
+    empty_id = {**_mesh_msg("heartbeat", community_id), "id": ""}
+    for bad in (bad_version, empty_id):
+        res = client.post("/mesh/sync", headers=auth_headers, json={"messages": [bad]})
+        assert res.status_code == 422
