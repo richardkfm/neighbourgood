@@ -510,36 +510,20 @@ def test_get_checkins_requires_membership(client, auth_headers, register_user):
     assert res.status_code == 403
 
 
-# ── Mesh key exchange ────────────────────────────────────────
+# ── Mesh key exchange (see test_mesh_signing.py) ─────────────
 
 
-def test_set_and_get_mesh_key(client, auth_headers):
-    """Set and retrieve mesh encryption public key."""
-    key_data = "eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6InRlc3QiLCJ5IjoidGVzdCJ9"
-    res = client.put(
-        "/mesh/keys/me",
-        json={"public_key": key_data},
-        headers=auth_headers,
-    )
+def test_old_unvalidated_key_endpoint_is_gone(client, auth_headers):
+    """PUT /mesh/keys/me accepted any string; keys are now validated via POST /mesh/keys."""
+    res = client.put("/mesh/keys/me", json={"public_key": "anything"}, headers=auth_headers)
+    assert res.status_code == 405
+
+
+def test_get_mesh_keys_of_user_without_keys(client, auth_headers):
+    user_id = client.get("/users/me", headers=auth_headers).json()["id"]
+    res = client.get(f"/mesh/keys/{user_id}", headers=auth_headers)
     assert res.status_code == 200
-
-    # Get own key via user ID
-    me_res = client.get("/users/me", headers=auth_headers)
-    user_id = me_res.json()["id"]
-
-    get_res = client.get(f"/mesh/keys/{user_id}", headers=auth_headers)
-    assert get_res.status_code == 200
-    assert get_res.json()["public_key"] == key_data
-
-
-def test_get_mesh_key_not_set(client, auth_headers, register_user):
-    """Getting key for user without one returns 404."""
-    user2_headers = register_user(5)
-    me_res = client.get("/users/me", headers=user2_headers)
-    user2_id = me_res.json()["id"]
-
-    res = client.get(f"/mesh/keys/{user2_id}", headers=auth_headers)
-    assert res.status_code == 404
+    assert res.json() == []
 
 
 # ── Mesh metrics ─────────────────────────────────────────────
@@ -571,3 +555,9 @@ def test_submit_mesh_metrics_requires_auth(client):
     """Metrics endpoint requires authentication."""
     res = client.post("/mesh/metrics", json={})
     assert res.status_code == 403
+
+
+def test_submit_mesh_metrics_rejects_negative_values(client, auth_headers):
+    for field in ("messages_sent", "peak_peer_count", "errors", "session_duration_ms"):
+        res = client.post("/mesh/metrics", json={field: -1}, headers=auth_headers)
+        assert res.status_code == 422, field
