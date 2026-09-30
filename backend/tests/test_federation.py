@@ -395,9 +395,15 @@ class TestAlerts:
 
         published = client.get(f"/federation/alerts/outgoing/{uid}")
         assert published.status_code == 200
-        assert published.json() == {
+        body = published.json()
+        expires_at = body.pop("expires_at")
+        assert body == {
             "alert_uid": uid, "title": "Storm", "description": "Stay inside", "severity": "critical",
         }
+        # Default duration is 48 hours
+        expires = datetime.datetime.fromisoformat(expires_at.replace("Z", "+00:00")).replace(tzinfo=None)
+        delta = expires - datetime.datetime.utcnow()
+        assert datetime.timedelta(hours=47) < delta <= datetime.timedelta(hours=48)
         assert client.get("/federation/alerts/outgoing/" + "x" * 32).status_code == 404
 
     def test_dismiss_admin(self, client, db):
