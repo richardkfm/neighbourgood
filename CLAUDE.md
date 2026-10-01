@@ -20,7 +20,7 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.4.1** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.4.2** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
@@ -488,6 +488,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.4.2 | 2026-10-01 | Community map moves from CARTO (now key-only) to OpenFreeMap vector tiles via MapLibre GL with a real dark style that follows the theme toggle live; logged-out mobile menu: theme/language icons in one footer row, no double indent (711 tests) |
 | 2.4.1 | 2026-10-01 | Fix login 500 after upgrading: missing columns are added on every start (also in production), robust per-dialect defaults; home page hero cards no longer clipped (711 tests) |
 | 2.4.0 | 2026-10-01 | Remaining QA findings: signed mesh messages + fragmentation, global red (`NG_PLATFORM_MODE=red` applies to every community), alert expiry/detail page, session invalidation, per-(email, IP) lockout, webhook SSRF guard, members-only booking/RSVP, password reset, account deletion, data export UI, edit forms, shared UI primitives + SVG icons, full translations of 11 locales (707 tests) |
 | 2.3.0 | 2026-09-30 | QA pass (Blue Sky + Red Sky/mesh, ~45 fixes), UI/UX overhaul (mobile tab bar, Red Sky identity, WCAG AA), security: verified federation alerts, NG_ADMIN_EMAILS, always-on Telegram webhook secret, mesh replay protection, no email leaks (521 tests) |

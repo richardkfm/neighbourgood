@@ -19,28 +19,43 @@
 
 	let mapContainer: HTMLDivElement;
 	let map: any = null;
-	let markerLayer: any = null;
-	let leaflet: any = $state(null);
+	let markers: any[] = [];
+	let maplibre: any = $state(null);
 	let userLocated = $state(false);
 	let userLat = 51.1657; // Default: center of Germany
 	let userLng = 10.4515;
 	let centeredOnMine = false;
 
-	async function loadLeaflet(): Promise<any> {
-		if (!document.querySelector('link[href*="leaflet"]')) {
+	// OpenFreeMap: free vector tiles from OpenStreetMap data, no API key or
+	// account (https://openfreemap.org). CARTO's basemaps now require a key.
+	const MAPLIBRE_VERSION = '5.24.0';
+	const STYLE_URLS = {
+		light: 'https://tiles.openfreemap.org/styles/positron',
+		dark: 'https://tiles.openfreemap.org/styles/dark'
+	};
+
+	async function loadMaplibre(): Promise<any> {
+		if (!document.querySelector('link[href*="maplibre-gl"]')) {
 			const link = document.createElement('link');
 			link.rel = 'stylesheet';
-			link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+			link.href = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.css`;
 			document.head.appendChild(link);
 		}
-		if ((window as any).L) return (window as any).L;
+		if ((window as any).maplibregl) return (window as any).maplibregl;
 		return new Promise((resolve, reject) => {
 			const script = document.createElement('script');
-			script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-			script.onload = () => resolve((window as any).L);
+			script.src = `https://unpkg.com/maplibre-gl@${MAPLIBRE_VERSION}/dist/maplibre-gl.js`;
+			script.onload = () => resolve((window as any).maplibregl);
 			script.onerror = reject;
 			document.head.appendChild(script);
 		});
+	}
+
+	function escapeHtml(value: unknown): string {
+		return String(value ?? '').replace(
+			/[&<>"']/g,
+			(ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!
+		);
 	}
 
 	function locateUser(): Promise<{ lat: number; lng: number } | null> {
@@ -65,9 +80,11 @@
 	}
 
 	onMount(() => {
+		let unsubscribeTheme: (() => void) | undefined;
+
 		(async () => {
 			try {
-				const L = await loadLeaflet();
+				const maplibregl = await loadMaplibre();
 				const pos = await locateUser();
 				if (pos) {
 					userLat = pos.lat;
@@ -76,39 +93,45 @@
 					onlocate?.(pos.lat, pos.lng);
 				}
 
-				map = L.map(mapContainer).setView([userLat, userLng], userLocated ? 12 : 6);
+				let currentTheme = get(theme);
+				map = new maplibregl.Map({
+					container: mapContainer,
+					style: STYLE_URLS[currentTheme],
+					center: [userLng, userLat],
+					zoom: userLocated ? 12 : 6,
+					attributionControl: { compact: true }
+				});
+				map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
 
-				const tileUrl =
-					get(theme) === 'dark'
-						? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-						: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-				L.tileLayer(tileUrl, {
-					attribution:
-						'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-					maxZoom: 19,
-					subdomains: 'abcd'
-				}).addTo(map);
+				// Follow the light/dark toggle live. Markers are DOM overlays,
+				// so swapping the style leaves them in place.
+				unsubscribeTheme = theme.subscribe((value) => {
+					if (!map || value === currentTheme) return;
+					currentTheme = value;
+					map.setStyle(STYLE_URLS[value]);
+				});
 
 				if (userLocated) {
-					const userIcon = L.divIcon({
-						className: 'user-marker',
-						html: '<div class="user-dot"></div>',
-						iconSize: [20, 20],
-						iconAnchor: [10, 10]
-					});
-					L.marker([userLat, userLng], { icon: userIcon })
-						.addTo(map)
-						.bindPopup(`<strong>${get(t)('communities.you_are_here')}</strong>`);
+					const el = document.createElement('div');
+					el.className = 'user-dot';
+					new maplibregl.Marker({ element: el })
+						.setLngLat([userLng, userLat])
+						.setPopup(
+							new maplibregl.Popup({ offset: 12 }).setHTML(
+								`<strong>${escapeHtml(get(t)('communities.you_are_here'))}</strong>`
+							)
+						)
+						.addTo(map);
 				}
 
-				markerLayer = L.layerGroup().addTo(map);
-				leaflet = L;
+				maplibre = maplibregl;
 			} catch (e) {
 				console.warn('Map initialization failed:', e);
 			}
 		})();
 
 		return () => {
+			unsubscribeTheme?.();
 			map?.remove();
 			map = null;
 		};
@@ -116,12 +139,13 @@
 
 	// (Re)draw community markers whenever the map is ready or the data changes.
 	$effect(() => {
-		const L = leaflet;
+		const maplibregl = maplibre;
 		const list = communities;
 		const mine = myIds;
-		if (!L || !map) return;
+		if (!maplibregl || !map) return;
 
-		markerLayer.clearLayers();
+		for (const m of markers) m.remove();
+		markers = [];
 		for (const c of list) {
 			if (c.latitude == null || c.longitude == null) continue;
 			const isMine = mine.has(c.id);
@@ -133,27 +157,25 @@
 					? 'var(--color-error)'
 					: 'var(--color-primary)';
 			const ringClass = isMine ? 'ring-mine' : level === 'high' ? 'ring-active' : '';
-			const icon = L.divIcon({
-				className: 'community-marker',
-				html: `<div class="community-dot ${ringClass}" style="background:${color};width:${size}px;height:${size}px"><span>${c.member_count}</span></div>`,
-				iconSize: [size, size],
-				iconAnchor: [size / 2, size / 2]
-			});
-			L.marker([c.latitude, c.longitude], { icon })
-				.addTo(markerLayer)
-				.bindPopup(`
-					<strong>${c.name}</strong>${isMine ? ` (${get(t)('communities.your_community_paren')})` : ''}<br/>
-					${c.city} (${c.postal_code})<br/>
-					${get(t)('communities.map_popup_counts', { values: { members: c.member_count, items: c.resource_count, skills: c.skill_count } })}<br/>
-					<a href="/communities/${c.id}">${get(t)('communities.view_community')}</a>
-				`);
+			const el = document.createElement('div');
+			el.className = 'community-marker';
+			el.innerHTML = `<div class="community-dot ${ringClass}" style="background:${color};width:${size}px;height:${size}px"><span>${c.member_count}</span></div>`;
+			const popup = new maplibregl.Popup({ offset: size / 2 + 4 }).setHTML(`
+				<strong>${escapeHtml(c.name)}</strong>${isMine ? ` (${escapeHtml(get(t)('communities.your_community_paren'))})` : ''}<br/>
+				${escapeHtml(c.city)} (${escapeHtml(c.postal_code)})<br/>
+				${escapeHtml(get(t)('communities.map_popup_counts', { values: { members: c.member_count, items: c.resource_count, skills: c.skill_count } }))}<br/>
+				<a href="/communities/${c.id}">${escapeHtml(get(t)('communities.view_community'))}</a>
+			`);
+			markers.push(
+				new maplibregl.Marker({ element: el }).setLngLat([c.longitude, c.latitude]).setPopup(popup).addTo(map)
+			);
 		}
 
 		// Center on the user's own community once, when it has coordinates.
 		if (!centeredOnMine) {
 			const home = list.find((c) => mine.has(c.id) && c.latitude != null && c.longitude != null);
 			if (home) {
-				map.setView([home.latitude, home.longitude], 12);
+				map.jumpTo({ center: [home.longitude, home.latitude], zoom: 12 });
 				centeredOnMine = true;
 			}
 		}
@@ -216,12 +238,7 @@
 		margin-bottom: 1.5rem;
 	}
 
-	/* ── Custom Leaflet markers ──────────────── */
-
-	:global(.user-marker) {
-		background: none !important;
-		border: none !important;
-	}
+	/* ── Custom map markers ──────────────── */
 
 	:global(.user-dot) {
 		width: 16px;
@@ -250,8 +267,7 @@
 	}
 
 	:global(.community-marker) {
-		background: none !important;
-		border: none !important;
+		cursor: pointer;
 	}
 
 	:global(.community-dot) {
@@ -310,6 +326,76 @@
 				0 0 0 10px color-mix(in srgb, var(--color-success) 10%, transparent),
 				0 2px 6px rgba(0, 0, 0, 0.3);
 		}
+	}
+
+	/* ── Map chrome follows the light/dark theme ──────────────── */
+	/* Scoped under .map-wrapper: maplibre-gl.css is injected after this
+	   stylesheet, so equal-specificity rules would lose to its white defaults. */
+
+	.map-wrapper :global(.maplibregl-popup-content) {
+		background: var(--color-surface);
+		color: var(--color-text);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow-md);
+		font-family: inherit;
+		font-size: 0.85rem;
+		line-height: 1.5;
+		padding: 0.65rem 0.9rem;
+	}
+
+	.map-wrapper :global(.maplibregl-popup-content a) {
+		color: var(--color-primary-text);
+	}
+
+	.map-wrapper :global(.maplibregl-popup-close-button) {
+		color: var(--color-text-muted);
+	}
+
+	.map-wrapper :global(.maplibregl-popup-anchor-bottom .maplibregl-popup-tip),
+	.map-wrapper :global(.maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip),
+	.map-wrapper :global(.maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip) {
+		border-top-color: var(--color-surface);
+	}
+
+	.map-wrapper :global(.maplibregl-popup-anchor-top .maplibregl-popup-tip),
+	.map-wrapper :global(.maplibregl-popup-anchor-top-left .maplibregl-popup-tip),
+	.map-wrapper :global(.maplibregl-popup-anchor-top-right .maplibregl-popup-tip) {
+		border-bottom-color: var(--color-surface);
+	}
+
+	.map-wrapper :global(.maplibregl-popup-anchor-left .maplibregl-popup-tip) {
+		border-right-color: var(--color-surface);
+	}
+
+	.map-wrapper :global(.maplibregl-popup-anchor-right .maplibregl-popup-tip) {
+		border-left-color: var(--color-surface);
+	}
+
+	.map-wrapper :global(.maplibregl-ctrl-group),
+	.map-wrapper :global(.maplibregl-ctrl-attrib.maplibregl-compact) {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.map-wrapper :global(.maplibregl-ctrl-group button + button) {
+		border-top-color: var(--color-border);
+	}
+
+	.map-wrapper :global(.maplibregl-ctrl-attrib),
+	.map-wrapper :global(.maplibregl-ctrl-attrib a) {
+		color: var(--color-text-muted);
+	}
+
+	.map-wrapper :global(.maplibregl-ctrl-attrib:not(.maplibregl-compact)) {
+		background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+	}
+
+	/* MapLibre's control icons are dark SVG backgrounds */
+	:global([data-theme='dark']) .map-wrapper :global(.maplibregl-ctrl-icon),
+	:global([data-theme='dark']) .map-wrapper :global(.maplibregl-ctrl-attrib-button) {
+		filter: invert(1);
 	}
 
 	@media (max-width: 640px) {

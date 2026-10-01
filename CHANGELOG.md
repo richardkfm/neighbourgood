@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.2] - 2026-10-01
+
+### Fixed
+
+- **Community map showed "API KEY REQUIRED" tiles** — CARTO's basemaps now require an API key. The map (`/explore`, `/communities`) now uses [OpenFreeMap](https://openfreemap.org) vector tiles (free, no key, no account) rendered with MapLibre GL instead of Leaflet: `positron` in light mode, a proper `dark` style in dark mode. The map switches style immediately when the theme is toggled; popups, zoom buttons and attribution follow the theme too
+- **Map popups no longer render community names as HTML** — name, city and postal code are escaped
+- **Logged-out mobile menu looked broken** — the language button was indented twice and sat on its own row below the theme button. Explore, Login and Sign Up now come first, followed by the theme and language buttons side by side in a footer row below a divider
+- The open (X) menu button no longer stays outlined after tapping it on touch screens
+
 ## [2.4.1] - 2026-10-01
 
 ### Fixed
