@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.1] - 2026-10-01
+
+### Fixed
+
+- **Login (and most other requests) failed with `500` after upgrading to 2.3.0/2.4.0** — the new columns (`users.token_version`, `resources.imported`, `skills.imported`, `red_sky_alerts.source_alert_uid`/`expires_at`, `emergency_tickets.client_id`, `mesh_synced_messages.author_id`/`verified`) were only added automatically with `NG_DEBUG=true`, and the Docker image never runs Alembic. Missing columns are now added on every start in every mode, each in its own transaction, with defaults rendered per database dialect (booleans as `TRUE/FALSE` on PostgreSQL) and a fallback for defaults SQLite cannot add. Instances already affected recover on the next restart
+- **Home page hero cards were cut off on the right** — the offset and tilted listing cards extended past the hero, which clips its overflow; the panel now has room for them at every width and in RTL
+
+### Tests
+
+- 4 new tests for the startup column migration (711 total)
+
 ## [2.4.0] - 2026-10-01
 
 Closes the remaining findings from the 2.3.0 QA and design review.

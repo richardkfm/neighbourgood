@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, literal, text
 from sqlalchemy.exc import DataError
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -47,42 +47,72 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # ── Application setup ──────────────────────────────────────────────
 
 
-def _add_missing_columns() -> None:
-    """Inspect every ORM table and ADD columns that the DB is missing.
+def _column_default_sql(col, dialect) -> str:
+    """Render a column's default for ALTER TABLE ... ADD COLUMN, or "" if it has none we can express."""
+    if col.server_default is not None:
+        arg = col.server_default.arg
+        if isinstance(arg, str):
+            value = literal(arg).compile(dialect=dialect, compile_kwargs={"literal_binds": True})
+        elif hasattr(arg, "text"):
+            value = arg.text
+        else:
+            value = arg.compile(dialect=dialect)
+        return f" DEFAULT {value}"
+    default = col.default
+    if default is not None and default.is_scalar and default.arg is not None:
+        # Let the dialect render the literal (e.g. booleans as TRUE/FALSE on PostgreSQL, 1/0 on SQLite)
+        value = literal(default.arg, col.type).compile(
+            dialect=dialect, compile_kwargs={"literal_binds": True}
+        )
+        return f" DEFAULT {value}"
+    return ""
 
-    This is a safety net so that existing databases pick up new nullable
-    columns without requiring a manual ``alembic upgrade head``.  Only
-    additive — never drops or renames columns.
+
+def _add_missing_columns(bind=None) -> list[str]:
+    """Inspect every ORM table and ADD the columns the database is missing.
+
+    Runs on every start so that self-hosted instances upgraded with
+    ``docker compose up --build`` get new columns without a manual
+    ``alembic upgrade head`` (a missing column makes every query on that
+    table fail). Only additive: never drops, renames or alters columns.
+    Each column is added in its own transaction, so one failure does not
+    block the others. Returns the ``table.column`` names that were added.
     """
-    inspector = inspect(engine)
-    with engine.connect() as conn:
-        for table_name, table in Base.metadata.tables.items():
-            if not inspector.has_table(table_name):
+    bind = bind or engine
+    inspector = inspect(bind)
+    added: list[str] = []
+    for table_name, table in Base.metadata.tables.items():
+        if not inspector.has_table(table_name):
+            continue
+        existing = {c["name"] for c in inspector.get_columns(table_name)}
+        for col in table.columns:
+            if col.name in existing:
                 continue
-            existing = {c["name"] for c in inspector.get_columns(table_name)}
-            for col in table.columns:
-                if col.name not in existing:
-                    col_type = col.type.compile(engine.dialect)
-                    sql = f'ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}'
-                    if col.default is not None:
-                        sql += f" DEFAULT {col.default.arg!r}"
-                    if col.server_default is not None:
-                        sql += f" DEFAULT {col.server_default.arg.text}"
-                    conn.execute(text(sql))
-                    logger.info("Added missing column %s.%s", table_name, col.name)
-        conn.commit()
+            col_type = col.type.compile(bind.dialect)
+            base_sql = f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}"
+            default_sql = _column_default_sql(col, bind.dialect)
+            # SQLite refuses non-constant defaults (e.g. CURRENT_TIMESTAMP) in ADD COLUMN,
+            # so fall back to adding the column without one rather than not at all.
+            attempts = [base_sql + default_sql, base_sql] if default_sql else [base_sql]
+            for sql in attempts:
+                try:
+                    with bind.begin() as conn:
+                        conn.execute(text(sql))
+                    break
+                except Exception:
+                    if sql is attempts[-1]:
+                        logger.exception("Could not add missing column %s.%s", table_name, col.name)
+            else:
+                continue
+            added.append(f"{table_name}.{col.name}")
+            logger.warning("Added missing column %s.%s to the database schema", table_name, col.name)
+    return added
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    if settings.debug:
-        _add_missing_columns()
-    else:
-        logger.info(
-            "Skipping additive column auto-migration (NG_DEBUG=false); "
-            "use 'alembic upgrade head' for schema changes."
-        )
+    _add_missing_columns()
     yield
 
 

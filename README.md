@@ -1,6 +1,6 @@
 # 🏘️ NeighbourGood
 
-**v2.4.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v2.4.1** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -110,6 +110,8 @@ docker compose up --build backend
 
 #### Running database migrations inside Docker
 
+New columns are added automatically when the backend starts (the log shows `Added missing column …`), so a normal update needs no extra step. Alembic migrations remain the source of truth for everything else (new constraints, data migrations):
+
 ```bash
 # Apply Alembic migrations on a running stack
 docker compose exec backend alembic upgrade head
@@ -121,6 +123,8 @@ docker compose exec backend alembic upgrade head
 git pull
 docker compose up --build -d
 ```
+
+After an update, open browser tabs show a "new version available" banner once; reload to switch to the new version.
 
 #### Running behind a reverse proxy (nginx / Caddy)
 
