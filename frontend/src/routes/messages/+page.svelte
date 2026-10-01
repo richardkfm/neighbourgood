@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from 'svelte-i18n';
@@ -7,6 +7,7 @@
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
 	import type { UserInfo, Conversation } from '$lib/types';
+	import Icon from '$lib/components/Icon.svelte';
 
 	// Extended locally to include skill_id which the backend returns but $lib/types.MessageOut omits
 	interface Message {
@@ -43,6 +44,9 @@
 	let contacts: UserInfo[] = $state([]);
 	let loadingContacts = $state(false);
 	let contactSearch = $state('');
+	let modalEl: HTMLDivElement | undefined = $state();
+	let searchEl: HTMLInputElement | undefined = $state();
+	let returnFocusTo: HTMLElement | null = null;
 
 	let filteredContacts = $derived(
 		contactSearch
@@ -75,13 +79,48 @@
 	}
 
 	async function openNewMessage() {
+		returnFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		showNewMessage = true;
 		contactSearch = '';
+		await tick();
+		searchEl?.focus();
 		await loadContacts();
 	}
 
-	function selectContact(contact: UserInfo) {
+	async function closeNewMessage() {
 		showNewMessage = false;
+		await tick();
+		returnFocusTo?.focus();
+		returnFocusTo = null;
+	}
+
+	// Escape closes; Tab stays inside the dialog (the page behind it is also inert).
+	function handleWindowKeydown(e: KeyboardEvent) {
+		if (!showNewMessage || !modalEl) return;
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			closeNewMessage();
+			return;
+		}
+		if (e.key !== 'Tab') return;
+		const focusable = Array.from(
+			modalEl.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')
+		);
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		const active = document.activeElement;
+		if (e.shiftKey && (active === first || !modalEl.contains(active))) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && (active === last || !modalEl.contains(active))) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
+
+	function selectContact(contact: UserInfo) {
+		closeNewMessage();
 		selectedPartner = contact;
 		// Check if conversation already exists
 		const existing = conversations.find(c => c.partner.id === contact.id);
@@ -144,7 +183,7 @@
 					body: newMessage.trim(),
 					...(isFirstMessage && skillContext ? { skill_id: skillContext.id } : {})
 				},
-				offline: { label: `Message to ${selectedPartner.display_name}` }
+				offline: { label: $t('messages.offline_to', { values: { name: selectedPartner.display_name } }) }
 			});
 			if (msg) {
 				messages = [...messages, msg];
@@ -209,7 +248,7 @@
 					);
 					selectedPartner = { id: pid, display_name: rep.display_name, email: '' };
 				} catch {
-					selectedPartner = { id: pid, display_name: 'User', email: '' };
+					selectedPartner = { id: pid, display_name: $t('messages.unknown_user'), email: '' };
 				}
 				messages = [];
 			}
@@ -217,27 +256,41 @@
 	});
 </script>
 
+<svelte:window onkeydown={handleWindowKeydown} />
+
 {#if !$isLoggedIn}
 	<div class="empty-state">
 		<p>{$t('messages.login_required')}</p>
 	</div>
 {:else}
-	<div class="messages-page">
+	<div class="messages-page" inert={showNewMessage}>
 		<div class="page-header">
 			<h1>{$t('messages.title')}</h1>
-			<button class="new-msg-btn" onclick={openNewMessage}>
-				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+			<button class="btn btn-primary" onclick={openNewMessage}>
+				<Icon name="plus" size={16} />
 				{$t('messages.new_message')}
 			</button>
 		</div>
 
-		<div class="messages-layout">
+		<div class="messages-layout" class:has-selection={selectedPartner}>
 			<!-- Conversation list -->
 			<div class="conv-list">
 				{#if loading}
-					<p class="loading">{$t('common.loading')}</p>
+					<div class="conv-skeleton" role="status" aria-busy="true">
+						<span class="sr-only">{$t('common.loading')}</span>
+						{#each [1, 2, 3, 4] as n (n)}
+							<div class="conv-skeleton-row" aria-hidden="true">
+								<span class="skeleton skeleton-line" style="width: 50%"></span>
+								<span class="skeleton skeleton-line" style="width: 85%; margin-top: 0.5rem"></span>
+							</div>
+						{/each}
+					</div>
 				{:else if conversations.length === 0}
-					<p class="empty-text">{$t('messages.no_conversations')}</p>
+					<div class="empty-state compact">
+						<span class="empty-icon"><Icon name="message" size={22} /></span>
+						<p>{$t('messages.no_conversations')}</p>
+						<button class="btn btn-primary btn-sm" onclick={openNewMessage}>{$t('messages.new_message')}</button>
+					</div>
 				{:else}
 					{#each conversations as conv}
 						<button
@@ -252,7 +305,7 @@
 							<div class="conv-preview">
 								<span class="conv-body">{conv.last_message_body}</span>
 								{#if conv.unread_count > 0}
-									<span class="unread-badge">{conv.unread_count}</span>
+									<span class="badge badge-solid unread-badge">{conv.unread_count}</span>
 								{/if}
 							</div>
 						</button>
@@ -264,10 +317,14 @@
 			<div class="thread">
 				{#if !selectedPartner}
 					<div class="thread-empty">
+						<span class="empty-icon"><Icon name="message" size={22} /></span>
 						<p>{$t('messages.select_conversation')}</p>
 					</div>
 				{:else}
 					<div class="thread-header">
+						<button class="thread-back" onclick={() => (selectedPartner = null)} aria-label={$t('common.back')}>
+							<Icon name="arrow-left" size={20} class="flip-rtl" />
+						</button>
 						<strong>{selectedPartner.display_name}</strong>
 					</div>
 					{#if skillContext}
@@ -298,13 +355,15 @@
 					{/if}
 					<div class="thread-input">
 						<textarea
+							class="input"
 							bind:value={newMessage}
 							placeholder={$t("messages.type_message")}
 							rows="2"
 							onkeydown={handleKeydown}
 						></textarea>
 						<button
-							class="send-btn"
+							class="btn btn-primary"
+							class:is-loading={sending}
 							onclick={sendMessage}
 							disabled={sending || !newMessage.trim()}
 						>
@@ -318,21 +377,23 @@
 
 	<!-- New message modal -->
 	{#if showNewMessage}
-		<div class="modal-overlay" role="presentation" onclick={() => showNewMessage = false}>
-			<div class="modal" role="dialog" onclick={(e) => e.stopPropagation()}>
+		<div class="modal-overlay" role="presentation" onclick={(e) => { if (e.target === e.currentTarget) closeNewMessage(); }}>
+			<div class="card card-flush modal" role="dialog" aria-modal="true" aria-labelledby="new-message-title" bind:this={modalEl}>
 				<div class="modal-header">
-					<h2>{$t("messages.new_message")}</h2>
-					<button class="modal-close" onclick={() => showNewMessage = false} aria-label="Close">&times;</button>
+					<h2 id="new-message-title">{$t("messages.new_message")}</h2>
+					<button class="btn btn-ghost btn-sm modal-close" onclick={closeNewMessage} aria-label={$t('common.close')}><Icon name="x" size={18} /></button>
 				</div>
 				<div class="modal-body">
 					<input
 						type="text"
-						class="contact-search"
+						class="input contact-search"
 						placeholder={$t("messages.search_contacts")}
+						aria-label={$t("messages.search_contacts")}
+						bind:this={searchEl}
 						bind:value={contactSearch}
 					/>
 					{#if loadingContacts}
-						<p class="loading">{$t("messages.loading_contacts")}</p>
+						<p class="empty-text" role="status">{$t("messages.loading_contacts")}</p>
 					{:else if contacts.length === 0}
 						<p class="empty-text">{$t("messages.no_contacts")}</p>
 					{:else if filteredContacts.length === 0}
@@ -343,7 +404,9 @@
 								<li>
 									<button class="contact-item" onclick={() => selectContact(contact)}>
 										<span class="contact-name">{contact.display_name}</span>
-										<span class="contact-email">{contact.email}</span>
+										{#if contact.neighbourhood}
+											<span class="contact-meta">{contact.neighbourhood}</span>
+										{/if}
 									</button>
 								</li>
 							{/each}
@@ -360,38 +423,10 @@
 		max-width: 900px;
 	}
 
-	.page-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 1.5rem;
-	}
-
 	h1 {
 		font-size: 2.1rem;
 		font-weight: 400;
 		margin: 0;
-	}
-
-	.new-msg-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius-sm);
-		padding: 0.5rem 1rem;
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.new-msg-btn:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-		transform: translateY(-1px);
 	}
 
 	.messages-layout {
@@ -406,14 +441,14 @@
 
 	.conv-list {
 		background: var(--color-surface);
-		border-right: 1px solid var(--color-border);
+		border-inline-end: 1px solid var(--color-border);
 		overflow-y: auto;
 	}
 
 	.conv-item {
 		display: block;
 		width: 100%;
-		text-align: left;
+		text-align: start;
 		padding: 0.75rem 1rem;
 		border: none;
 		border-bottom: 1px solid var(--color-border);
@@ -463,13 +498,12 @@
 	}
 
 	.unread-badge {
-		background: var(--color-primary);
-		color: white;
-		font-size: 0.7rem;
-		font-weight: 700;
-		border-radius: 10px;
-		padding: 0.1rem 0.45rem;
-		margin-left: 0.5rem;
+		margin-inline-start: 0.5rem;
+	}
+
+	.conv-skeleton-row {
+		padding: 0.85rem 1rem;
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.thread {
@@ -480,13 +514,32 @@
 
 	.thread-empty {
 		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
 		align-items: center;
 		justify-content: center;
 		height: 100%;
 		color: var(--color-text-muted);
 	}
 
+	.thread-back {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: var(--tap-target);
+		height: var(--tap-target);
+		margin-block: -0.5rem;
+		margin-inline: -0.75rem 0;
+		background: none;
+		border: none;
+		color: var(--color-text);
+		cursor: pointer;
+	}
+
 	.thread-header {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
 		padding: 0.75rem 1rem;
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-surface);
@@ -508,7 +561,7 @@
 	}
 
 	.skill-context-link {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 		text-decoration: none;
 		overflow: hidden;
@@ -539,7 +592,7 @@
 	.msg-bubble.sent {
 		align-self: flex-end;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	.msg-bubble.received {
@@ -562,7 +615,12 @@
 	}
 
 	.msg-bubble.sent .msg-time {
-		text-align: right;
+		text-align: end;
+	}
+
+	.thread-input textarea {
+		flex: 1;
+		resize: none;
 	}
 
 	.thread-input {
@@ -571,36 +629,6 @@
 		padding: 0.75rem 1rem;
 		border-top: 1px solid var(--color-border);
 		background: var(--color-surface);
-	}
-
-	.thread-input textarea {
-		flex: 1;
-		resize: none;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 0.5rem;
-		font-size: 0.85rem;
-		font-family: inherit;
-	}
-
-	.send-btn {
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius);
-		padding: 0.5rem 1rem;
-		cursor: pointer;
-		font-size: 0.85rem;
-		align-self: flex-end;
-	}
-
-	.send-btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.send-btn:not(:disabled):hover {
-		background: var(--color-primary-hover);
 	}
 
 	.queued-notice {
@@ -616,20 +644,18 @@
 		font-size: 0.82rem;
 		color: var(--color-error);
 		background: var(--color-error-bg);
-		border-left: 3px solid var(--color-error);
+		border-inline-start: 3px solid var(--color-error);
 	}
 
-	.loading, .empty-text {
+	.empty-text {
 		padding: 1.5rem;
 		text-align: center;
 		color: var(--color-text-muted);
 		font-size: 0.85rem;
 	}
 
-	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
-		color: var(--color-text-muted);
+	.empty-state.compact {
+		padding: 2rem 1rem;
 	}
 
 	/* ── New message modal ────────────────────────────────────── */
@@ -645,8 +671,6 @@
 	}
 
 	.modal {
-		background: var(--color-surface);
-		border-radius: var(--radius);
 		box-shadow: var(--shadow-lg);
 		width: 90%;
 		max-width: 440px;
@@ -668,34 +692,13 @@
 		margin: 0;
 	}
 
-	.modal-close {
-		background: none;
-		border: none;
-		font-size: 1.5rem;
-		color: var(--color-text-muted);
-		cursor: pointer;
-		padding: 0;
-		line-height: 1;
-	}
-
-	.modal-close:hover {
-		color: var(--color-text);
-	}
-
 	.modal-body {
 		padding: 1rem 1.25rem;
 		overflow-y: auto;
 	}
 
 	.contact-search {
-		width: 100%;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.9rem;
 		margin-bottom: 0.75rem;
-		background: var(--color-bg);
-		color: var(--color-text);
 	}
 
 	.contact-list {
@@ -716,7 +719,8 @@
 		cursor: pointer;
 		color: var(--color-text);
 		font-size: 0.9rem;
-		text-align: left;
+		text-align: start;
+		min-height: var(--tap-target);
 		transition: background var(--transition-fast);
 	}
 
@@ -728,13 +732,15 @@
 		font-weight: 600;
 	}
 
-	.contact-email {
+	.contact-meta {
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
 	}
 
 	/* ── Responsive ───────────────────────────────────────────── */
 
+	/* Phones: classic master-detail. Show the conversation list, or the open
+	   thread with a back button, never both stacked with an empty pane. */
 	@media (max-width: 640px) {
 		.messages-layout {
 			grid-template-columns: 1fr;
@@ -742,13 +748,25 @@
 		}
 
 		.conv-list {
-			border-right: none;
-			border-bottom: 1px solid var(--color-border);
-			max-height: 200px;
+			border-inline-end: none;
+			max-height: none;
 		}
 
-		.thread {
-			min-height: 300px;
+		.messages-layout.has-selection .conv-list {
+			display: none;
+		}
+
+		.messages-layout:not(.has-selection) .thread {
+			display: none;
+		}
+
+		.messages-layout.has-selection .thread {
+			height: calc(100dvh - 17rem);
+			min-height: 320px;
+		}
+
+		.thread-back {
+			display: inline-flex;
 		}
 	}
 </style>

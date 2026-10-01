@@ -1,38 +1,51 @@
 """Pydantic schemas for communities (neighbourhood groups)."""
 
-import datetime
+from pydantic import BaseModel, Field, model_validator
 
-from pydantic import BaseModel, Field
+from app.schemas.user import UserPublic
+from app.schemas.common import UTCDateTime
+from app.services.mode import is_global_red
 
-from app.schemas.user import UserProfile
+
+class _EffectiveModeMixin(BaseModel):
+    """Derives ``effective_mode`` from the stored ``mode`` and the instance mode."""
+
+    @model_validator(mode="after")
+    def _derive_effective_mode(self):
+        self.effective_mode = "red" if is_global_red() or self.mode == "red" else "blue"
+        return self
 
 
 class CommunityCreate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     name: str = Field(..., min_length=1, max_length=150)
     description: str | None = Field(None, max_length=5000)
     postal_code: str = Field(..., min_length=1, max_length=20)
     city: str = Field(..., min_length=1, max_length=150)
     country_code: str = Field("DE", max_length=5)
     primary_language: str | None = Field(None, max_length=10)
-    latitude: float | None = None
-    longitude: float | None = None
+    latitude: float | None = Field(None, ge=-90, le=90)
+    longitude: float | None = Field(None, ge=-180, le=180)
 
 
 class CommunityUpdate(BaseModel):
+    model_config = {"str_strip_whitespace": True}
+
     name: str | None = Field(None, min_length=1, max_length=150)
     description: str | None = Field(None, max_length=5000)
 
 
 class CommunityMemberOut(BaseModel):
     id: int
-    user: UserProfile
+    user: UserPublic
     role: str
-    joined_at: datetime.datetime
+    joined_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
 
-class CommunityOut(BaseModel):
+class CommunityOut(_EffectiveModeMixin):
     id: int
     name: str
     description: str | None
@@ -41,18 +54,21 @@ class CommunityOut(BaseModel):
     country_code: str
     primary_language: str | None = None
     is_active: bool
+    # Stored per-community mode (toggles and votes change it)
     mode: str = "blue"
+    # What the community behaves as: "red" also while the instance is in Red Sky
+    effective_mode: str = "blue"
     latitude: float | None = None
     longitude: float | None = None
     member_count: int = 0
-    created_by: UserProfile
+    created_by: UserPublic
     merged_into_id: int | None = None
-    created_at: datetime.datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
 
-class CommunityMapItem(BaseModel):
+class CommunityMapItem(_EffectiveModeMixin):
     id: int
     name: str
     city: str
@@ -63,6 +79,7 @@ class CommunityMapItem(BaseModel):
     resource_count: int = 0
     skill_count: int = 0
     mode: str = "blue"
+    effective_mode: str = "blue"
     latitude: float | None = None
     longitude: float | None = None
 

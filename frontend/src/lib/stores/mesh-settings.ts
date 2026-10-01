@@ -7,6 +7,9 @@ import { writable } from 'svelte/store';
 
 const STORAGE_KEY = 'ng_mesh_enabled';
 
+/** localStorage key of the community the mesh page announces and scopes the offline triage view to. */
+export const MESH_COMMUNITY_KEY = 'ng_mesh_community_id';
+
 function loadSetting(): boolean {
 	if (typeof localStorage === 'undefined') return false;
 	return localStorage.getItem(STORAGE_KEY) === 'true';

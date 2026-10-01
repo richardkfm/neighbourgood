@@ -4,7 +4,12 @@ import datetime
 import json
 from unittest.mock import patch
 
+import pytest
+
 from app.models.webhook import TelegramLinkToken
+
+# Webhook calls need a configured bot and the webhook secret header
+pytestmark = pytest.mark.usefixtures("telegram_bot")
 
 
 def test_start_link_no_token_configured(client, auth_headers):

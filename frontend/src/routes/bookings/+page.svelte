@@ -6,6 +6,7 @@
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { statusColor, type Booking, type ReviewOut } from '$lib/types';
 	import { offlineQueue, removeFromQueue, type QueuedRequest } from '$lib/stores/offline';
+	import Icon from '$lib/components/Icon.svelte';
 
 	let bookings: Booking[] = $state([]);
 	let total = $state(0);
@@ -58,8 +59,10 @@
 		}
 	}
 
+	// Until /users/me has resolved nobody is "the owner" or "the borrower", so a
+	// request of your own never shows Approve/Reject for a moment.
 	function isOwnerOf(b: Booking): boolean {
-		return b.borrower_id !== $user?.id;
+		return $user != null && b.borrower_id !== $user.id;
 	}
 
 	function isBorrowerOf(b: Booking): boolean {
@@ -135,7 +138,7 @@
 		</div>
 
 		{#if actionError}
-			<div class="error-banner" role="alert">{actionError}</div>
+			<div class="alert alert-error" role="alert">{actionError}</div>
 		{/if}
 
 		{#if $offlineQueue.length > 0}
@@ -157,10 +160,10 @@
 					<div class="queued-row">
 						<div class="queued-info">
 							<span class="queued-label">{req.label}</span>
-							<span class="queued-date">Queued {new Date(req.createdAt).toLocaleString()}</span>
+							<span class="queued-date">{$t('bookings.queued_at', { values: { date: new Date(req.createdAt).toLocaleString() } })}</span>
 						</div>
-						<button class="btn-cancel-queued" onclick={() => removeFromQueue(req.id)} title="Remove from queue">
-							Cancel
+						<button class="btn btn-danger-outline btn-sm" onclick={() => removeFromQueue(req.id)} title={$t('bookings.remove_from_queue')}>
+							{$t('common.cancel')}
 						</button>
 					</div>
 				{/each}
@@ -168,12 +171,12 @@
 		{/if}
 
 		<div class="filter-bar">
-			<select bind:value={roleFilter}>
+			<select class="input" bind:value={roleFilter}>
 				<option value="">{$t('common.all')}</option>
 				<option value="borrower">{$t('bookings.my_requests')}</option>
 				<option value="owner">{$t('bookings.incoming')}</option>
 			</select>
-			<select bind:value={statusFilter}>
+			<select class="input" bind:value={statusFilter}>
 				<option value="">{$t('bookings.any_status')}</option>
 				<option value="pending">{$t('bookings.status_pending')}</option>
 				<option value="approved">{$t('bookings.status_approved')}</option>
@@ -185,18 +188,30 @@
 		</div>
 
 		{#if loading}
-			<p class="loading">{$t('common.loading')}</p>
+			<div class="booking-table" role="status" aria-live="polite" aria-busy="true">
+				<span class="sr-only">{$t('common.loading')}</span>
+				{#each [1, 2, 3] as n (n)}
+					<div class="card booking-row" aria-hidden="true">
+						<div class="booking-info">
+							<span class="skeleton" style="height: 1.1rem; width: 55%"></span>
+							<span class="skeleton" style="height: 0.8rem; width: 35%; margin-top: 0.6rem"></span>
+						</div>
+					</div>
+				{/each}
+			</div>
 		{:else if bookings.length === 0}
 			<div class="empty-state">
+				<span class="empty-icon"><Icon name="calendar" size={26} /></span>
 				<p>{$t('bookings.no_bookings')}</p>
+				<a href="/resources" class="btn btn-primary">{$t('nav.browse')}</a>
 			</div>
 		{:else}
 			<div class="booking-table">
 				{#each bookings as b}
-					<div class="booking-row">
+					<div class="card booking-row">
 						<div class="booking-info">
 							<a href="/resources/{b.resource_id}" class="resource-link">
-								{b.resource_title ?? `Resource #${b.resource_id}`}
+								{b.resource_title ?? $t('common.resource_number', { values: { id: b.resource_id } })}
 							</a>
 							<div class="booking-meta">
 								<span class="dates">{b.start_date} &rarr; {b.end_date}</span>
@@ -211,30 +226,32 @@
 							{/if}
 						</div>
 						<div class="booking-actions">
-							<span class="status" style="color: {statusColor(b.status)}">{b.status}</span>
+							<span class="status status-pill" style="color: {statusColor(b.status)}">{$t(`bookings.status_${b.status}`)}</span>
 							{#if b.status === 'pending' && isOwnerOf(b)}
-								<button class="btn-approve" onclick={() => updateStatus(b.id, 'approved')}>{$t('bookings.approve')}</button>
-								<button class="btn-reject" onclick={() => updateStatus(b.id, 'rejected')}>{$t('bookings.reject')}</button>
+								<button class="btn btn-primary btn-sm" onclick={() => updateStatus(b.id, 'approved')}>{$t('bookings.approve')}</button>
+								<button class="btn btn-danger-outline btn-sm" onclick={() => updateStatus(b.id, 'rejected')}>{$t('bookings.reject')}</button>
 							{/if}
 							{#if b.status === 'pending' && isBorrowerOf(b)}
-								<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
+								<button class="btn btn-danger-outline btn-sm" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
 							{/if}
 							{#if b.status === 'approved'}
-								<button class="btn-complete" onclick={() => updateStatus(b.id, 'completed')}>{$t('bookings.mark_done')}</button>
+								{#if isOwnerOf(b)}
+									<button class="btn btn-primary btn-sm" onclick={() => updateStatus(b.id, 'completed')}>{$t('bookings.mark_done')}</button>
+								{/if}
 								{#if isBorrowerOf(b)}
-									<button class="btn-cancel" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
+									<button class="btn btn-danger-outline btn-sm" onclick={() => updateStatus(b.id, 'cancelled')}>{$t('bookings.cancel')}</button>
 								{/if}
 							{/if}
 							{#if b.status === 'completed' && !reviewedBookings.has(b.id)}
 								<button
-									class="btn-review"
+									class="btn btn-secondary btn-sm"
 									onclick={() => { reviewingBookingId = reviewingBookingId === b.id ? null : b.id; }}
 								>
 									{$t('bookings.leave_review')}
 								</button>
 							{/if}
 							{#if b.status === 'completed' && reviewedBookings.has(b.id)}
-								<span class="reviewed-badge">{$t('bookings.reviewed')}</span>
+								<span class="badge badge-success"><Icon name="check" size={12} />{$t('bookings.reviewed')}</span>
 							{/if}
 						</div>
 
@@ -243,22 +260,25 @@
 								<div class="star-row">
 									{#each [1, 2, 3, 4, 5] as star}
 										<button
+											type="button"
 											class="star-btn"
 											class:active={reviewRating >= star}
+											aria-pressed={reviewRating >= star}
 											onclick={() => (reviewRating = star)}
-										>&#9733;</button>
+										><Icon name="star" size={24} filled={reviewRating >= star} /></button>
 									{/each}
 								</div>
 								<textarea
+									class="input"
 									bind:value={reviewComment}
 									placeholder={$t('bookings.comment_optional')}
 									rows="2"
 								></textarea>
 								<div class="review-actions">
-									<button class="btn-approve" onclick={submitReview} disabled={submittingReview}>
+									<button class="btn btn-primary btn-sm" class:is-loading={submittingReview} onclick={submitReview} disabled={submittingReview}>
 										{submittingReview ? $t('bookings.submitting') : $t('bookings.submit_review')}
 									</button>
-									<button class="btn-complete" onclick={() => (reviewingBookingId = null)}>{$t('bookings.cancel')}</button>
+									<button class="btn btn-secondary btn-sm" onclick={() => (reviewingBookingId = null)}>{$t('bookings.cancel')}</button>
 								</div>
 							</div>
 						{/if}
@@ -274,43 +294,16 @@
 		max-width: 900px;
 	}
 
-	.error-banner {
-		padding: 0.75rem 1rem;
-		border-radius: var(--radius);
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		border: 1px solid var(--color-error);
-		font-size: 0.9rem;
-		margin-bottom: 1rem;
-	}
-
 	h1 {
 		font-size: 2.1rem;
 		font-weight: 400;
 		margin-bottom: 1.5rem;
 	}
 
-	.filter-bar {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-	}
-
-	.filter-bar select {
-		padding: 0.4rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.85rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-	}
-
 	.result-count {
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.booking-table {
@@ -325,9 +318,6 @@
 		justify-content: space-between;
 		align-items: flex-start;
 		gap: 1rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
 		padding: 1rem;
 	}
 
@@ -344,15 +334,20 @@
 	}
 
 	.resource-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.booking-meta {
 		display: flex;
-		gap: 0.75rem;
+		flex-wrap: wrap;
+		gap: 0.15rem 0.75rem;
 		font-size: 0.82rem;
 		color: var(--color-text-muted);
 		margin-top: 0.25rem;
+	}
+
+	.dates {
+		white-space: nowrap;
 	}
 
 	.role-tag {
@@ -373,70 +368,41 @@
 		flex-shrink: 0;
 	}
 
-	.status {
-		font-weight: 700;
-		text-transform: capitalize;
-		font-size: 0.85rem;
-		min-width: 70px;
+	.booking-actions .status {
+		margin-inline-end: auto;
 	}
 
-	.btn-approve, .btn-reject, .btn-cancel, .btn-complete {
-		padding: 0.3rem 0.65rem;
-		border-radius: var(--radius);
-		font-size: 0.8rem;
-		cursor: pointer;
-		border: 1px solid;
-	}
+	/* Phones: stack the row, let actions wrap full-width with 44px targets */
+	@media (max-width: 600px) {
+		.booking-row {
+			flex-direction: column;
+			flex-wrap: nowrap;
+			gap: 0.75rem;
+		}
 
-	.btn-approve {
-		background: var(--color-success-bg);
-		color: var(--color-success);
-		border-color: var(--color-success);
-	}
-	.btn-approve:hover { filter: brightness(0.95); }
+		.booking-actions {
+			flex-wrap: wrap;
+			width: 100%;
+			padding-top: 0.75rem;
+			border-top: 1px solid var(--color-border);
+		}
 
-	.btn-reject, .btn-cancel {
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		border-color: var(--color-error);
-	}
-	.btn-reject:hover, .btn-cancel:hover { filter: brightness(0.95); }
+		.booking-actions .btn {
+			flex: 1;
+		}
 
-	.btn-complete {
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		border-color: var(--color-border);
-	}
-	.btn-complete:hover { border-color: var(--color-border-hover); }
+		.filter-bar .input {
+			flex: 1;
+			min-width: 0;
+		}
 
-	.loading {
-		color: var(--color-text-muted);
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
-		color: var(--color-text-muted);
+		.result-count {
+			flex-basis: 100%;
+			margin-inline-start: 0;
+		}
 	}
 
 	/* Reviews */
-	.btn-review {
-		padding: 0.3rem 0.65rem;
-		border-radius: var(--radius);
-		font-size: 0.8rem;
-		cursor: pointer;
-		border: 1px solid var(--color-primary);
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-	}
-	.btn-review:hover { background: var(--color-primary); color: white; }
-
-	.reviewed-badge {
-		font-size: 0.78rem;
-		color: var(--color-success);
-		font-weight: 600;
-	}
-
 	.review-form {
 		width: 100%;
 		display: flex;
@@ -452,11 +418,15 @@
 	}
 
 	.star-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: var(--tap-target);
+		min-height: var(--tap-target);
 		background: none;
 		border: none;
-		font-size: 1.4rem;
 		cursor: pointer;
-		color: var(--color-border);
+		color: var(--color-border-hover);
 		padding: 0;
 		line-height: 1;
 		transition: color var(--transition-fast);
@@ -464,17 +434,6 @@
 
 	.star-btn.active {
 		color: var(--color-warning);
-	}
-
-	.review-form textarea {
-		padding: 0.4rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.85rem;
-		font-family: inherit;
-		resize: none;
-		background: var(--color-surface);
-		color: var(--color-text);
 	}
 
 	.review-actions {
@@ -537,19 +496,4 @@
 		color: var(--color-text-muted);
 	}
 
-	.btn-cancel-queued {
-		padding: 0.25rem 0.6rem;
-		border-radius: var(--radius);
-		font-size: 0.78rem;
-		cursor: pointer;
-		border: 1px solid var(--color-error);
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		flex-shrink: 0;
-	}
-
-	.btn-cancel-queued:hover {
-		background: var(--color-error);
-		color: white;
-	}
 </style>

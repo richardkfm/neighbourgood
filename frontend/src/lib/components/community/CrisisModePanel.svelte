@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CrisisStatus } from '$lib/types';
+  import { t } from 'svelte-i18n';
 
   let {
     communityId,
@@ -22,44 +23,60 @@
     onvote: (voteType: string) => void;
     ontoggle: (newMode: string) => void;
   } = $props();
+
+  // What the community behaves as (red whenever the instance is red); toggles
+  // and votes act on the stored mode underneath
+  const effectiveMode = $derived(crisisStatus.effective_mode ?? crisisStatus.mode);
 </script>
 
-<section class="crisis-section slide-up">
+<section class="card crisis-section slide-up">
   <div class="crisis-header">
-    <div class="crisis-indicator" class:crisis-red={crisisStatus.mode === 'red'}>
+    <div class="crisis-indicator" class:crisis-red={effectiveMode === 'red'}>
       <span class="crisis-dot"></span>
       <span class="crisis-label">
-        {crisisStatus.mode === 'red' ? 'Red Sky (Crisis)' : 'Blue Sky (Normal)'}
+        {effectiveMode === 'red' ? $t('crisis.panel.red_sky') : $t('crisis.panel.blue_sky')}
       </span>
     </div>
     {#if showToggle && isAdmin}
       {#if crisisStatus.mode === 'blue'}
-        <button class="btn-crisis-activate" onclick={() => ontoggle('red')} disabled={togglingCrisis}>
-          {togglingCrisis ? 'Activating...' : 'Activate Crisis Mode'}
+        <button class="btn btn-danger" class:is-loading={togglingCrisis} onclick={() => ontoggle('red')} disabled={togglingCrisis}>
+          {togglingCrisis ? $t('crisis.panel.activating') : $t('crisis.panel.activate')}
         </button>
       {:else}
-        <button class="btn-crisis-deactivate" onclick={() => ontoggle('blue')} disabled={togglingCrisis}>
-          {togglingCrisis ? 'Deactivating...' : 'Deactivate Crisis Mode'}
+        <button class="btn btn-primary" class:is-loading={togglingCrisis} onclick={() => ontoggle('blue')} disabled={togglingCrisis}>
+          {togglingCrisis ? $t('crisis.panel.deactivating') : $t('crisis.panel.deactivate')}
         </button>
       {/if}
     {/if}
   </div>
 
+  {#if crisisStatus.instance_red}
+    <p class="alert alert-error instance-red-note" role="note">
+      {$t('crisis.instance_red_notice', {
+        values: { mode: crisisStatus.mode === 'red' ? $t('crisis.mode_red') : $t('crisis.mode_blue') }
+      })}
+    </p>
+  {/if}
+
   {#if isMember && !showToggle}
     <div class="vote-section">
       <div class="vote-bar">
         <div class="vote-info">
-          <span>Activate votes: <strong>{crisisStatus.votes_to_activate}</strong></span>
-          <span>Deactivate votes: <strong>{crisisStatus.votes_to_deactivate}</strong></span>
-          <span class="vote-threshold">Threshold: {crisisStatus.threshold_pct}% of {crisisStatus.total_members} members</span>
+          <span>{$t('crisis.panel.activate_votes')} <strong>{crisisStatus.votes_to_activate}</strong></span>
+          <span>{$t('crisis.panel.deactivate_votes')} <strong>{crisisStatus.votes_to_deactivate}</strong></span>
+          <span class="vote-threshold">{$t('crisis.panel.threshold', { values: { pct: crisisStatus.threshold_pct, total: crisisStatus.total_members } })}</span>
         </div>
         <div class="vote-actions">
-          <button class="btn-vote btn-vote-red" onclick={() => onvote('activate')} disabled={votingCrisis}>
-            Vote to Activate
-          </button>
-          <button class="btn-vote btn-vote-blue" onclick={() => onvote('deactivate')} disabled={votingCrisis}>
-            Vote to Deactivate
-          </button>
+          <!-- Only the vote that can change the stored mode ("activate" while red is a no-op) -->
+          {#if crisisStatus.mode !== 'red'}
+            <button class="btn btn-danger btn-sm" class:is-loading={votingCrisis} onclick={() => onvote('activate')} disabled={votingCrisis}>
+              {$t('crisis.panel.vote_activate')}
+            </button>
+          {:else}
+            <button class="btn btn-primary btn-sm" class:is-loading={votingCrisis} onclick={() => onvote('deactivate')} disabled={votingCrisis}>
+              {$t('crisis.panel.vote_deactivate')}
+            </button>
+          {/if}
         </div>
       </div>
     </div>
@@ -67,20 +84,21 @@
 </section>
 
 <style>
+  .instance-red-note {
+    margin: 0.75rem 0 0;
+  }
   .crisis-section {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
     margin-bottom: 1rem;
   }
   .crisis-red {
-    border-left: 3px solid var(--color-error);
+    border-inline-start: 3px solid var(--color-error);
+    padding-inline-start: 0.75rem;
   }
   .crisis-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 1rem;
   }
   .crisis-indicator {
@@ -125,43 +143,4 @@
     display: flex;
     gap: 0.5rem;
   }
-  .btn-vote {
-    padding: 0.4rem 0.9rem;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: inherit;
-  }
-  .btn-vote:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-vote-red { background: var(--color-error); color: white; }
-  .btn-vote-blue { background: var(--color-primary); color: white; }
-  .btn-crisis-activate {
-    padding: 0.45rem 0.9rem;
-    background: var(--color-error);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: inherit;
-  }
-  .btn-crisis-activate:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-crisis-deactivate {
-    padding: 0.45rem 0.9rem;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: var(--radius);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: inherit;
-  }
-  .btn-crisis-deactivate:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>

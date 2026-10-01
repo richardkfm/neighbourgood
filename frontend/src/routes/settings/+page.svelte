@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isLoggedIn, user } from '$lib/stores/auth';
+	import { isLoggedIn, token, user, logout, type UserProfile } from '$lib/stores/auth';
 	import { api } from '$lib/api';
 	import type { Webhook } from '$lib/types';
 	import { meshEnabled } from '$lib/stores/mesh-settings';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 
 	let passwordForm = $state({
 		current_password: '',
@@ -37,6 +38,15 @@
 		url: '',
 		secret: '',
 		event_types: [] as string[],
+		error: '',
+		loading: false
+	});
+
+	let exportState = $state({ loading: false, error: '', success: false });
+
+	let deleteForm = $state({
+		confirming: false,
+		password: '',
 		error: '',
 		loading: false
 	});
@@ -78,7 +88,7 @@
 			});
 			telegramState.botUrl = data.bot_url;
 		} catch (err) {
-			telegramState.error = err instanceof Error ? err.message : 'Telegram not configured on this instance';
+			telegramState.error = err instanceof Error ? err.message : $t('settings.telegram_not_configured');
 		} finally {
 			telegramState.loading = false;
 		}
@@ -90,10 +100,10 @@
 		try {
 			await api('/users/me/telegram', { method: 'DELETE', auth: true });
 			user.update(u => u ? { ...u, telegram_chat_id: null } : u);
-			telegramState.success = 'Telegram unlinked.';
+			telegramState.success = $t('settings.telegram_unlinked');
 			setTimeout(() => { telegramState.success = ''; }, 3000);
 		} catch (err) {
-			telegramState.error = err instanceof Error ? err.message : 'Failed to unlink';
+			telegramState.error = err instanceof Error ? err.message : $t('settings.telegram_unlink_failed');
 		} finally {
 			telegramState.unlinking = false;
 		}
@@ -103,7 +113,7 @@
 		e.preventDefault();
 		webhookForm.error = '';
 		if (!webhookForm.url || !webhookForm.secret || webhookForm.event_types.length === 0) {
-			webhookForm.error = 'URL, secret, and at least one event type are required';
+			webhookForm.error = $t('settings.webhook_required');
 			return;
 		}
 		webhookForm.loading = true;
@@ -122,7 +132,7 @@
 			webhookForm.secret = '';
 			webhookForm.event_types = [];
 		} catch (err) {
-			webhookForm.error = err instanceof Error ? err.message : 'Failed to add webhook';
+			webhookForm.error = err instanceof Error ? err.message : $t('settings.webhook_add_failed');
 		} finally {
 			webhookForm.loading = false;
 		}
@@ -145,30 +155,87 @@
 		}
 	}
 
+	async function downloadMyData() {
+		exportState.loading = true;
+		exportState.error = '';
+		exportState.success = false;
+		try {
+			const data = await api<unknown>('/federation/export/my-data', { auth: true });
+			const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `neighbourgood-data-${new Date().toISOString().slice(0, 10)}.json`;
+			document.body.appendChild(link);
+			link.click();
+			link.remove();
+			URL.revokeObjectURL(url);
+			exportState.success = true;
+		} catch (err) {
+			exportState.error = err instanceof Error ? err.message : $t('settings.export_failed');
+		} finally {
+			exportState.loading = false;
+		}
+	}
+
+	function beginDelete() {
+		deleteForm.confirming = true;
+		deleteForm.error = '';
+		deleteForm.password = '';
+	}
+
+	function cancelDelete() {
+		deleteForm.confirming = false;
+		deleteForm.error = '';
+		deleteForm.password = '';
+	}
+
+	async function handleDeleteAccount(e: Event) {
+		e.preventDefault();
+		if (!deleteForm.password) return;
+		deleteForm.error = '';
+		deleteForm.loading = true;
+		try {
+			// A wrong password comes back as a 400, so the session stays intact.
+			await api('/users/me', {
+				method: 'DELETE',
+				body: { password: deleteForm.password },
+				auth: true
+			});
+			// Also wipes this device's offline crisis data (mesh queue, triage store)
+			await logout();
+			await goto('/');
+		} catch (err) {
+			deleteForm.error = err instanceof Error ? err.message : $t('settings.delete_failed');
+			deleteForm.loading = false;
+		}
+	}
+
 	async function handlePasswordChange(e: Event) {
 		e.preventDefault();
 		passwordForm.error = '';
 		passwordForm.success = false;
 
 		if (!passwordForm.current_password || !passwordForm.new_password) {
-			passwordForm.error = 'All fields are required';
+			passwordForm.error = $t('settings.all_fields_required');
 			return;
 		}
 
 		if (passwordForm.new_password !== passwordForm.confirm_password) {
-			passwordForm.error = 'New passwords do not match';
+			passwordForm.error = $t('settings.passwords_mismatch');
 			return;
 		}
 
 		if (passwordForm.new_password === passwordForm.current_password) {
-			passwordForm.error = 'New password must be different from current password';
+			passwordForm.error = $t('settings.password_same');
 			return;
 		}
 
 		passwordForm.loading = true;
 
 		try {
-			await api('/users/me/change-password', {
+			// Changing the password signs out all other sessions; keep this one alive.
+			const changed = await api<{ access_token: string }>('/users/me/change-password', {
 				method: 'POST',
 				body: {
 					current_password: passwordForm.current_password,
@@ -176,6 +243,7 @@
 				},
 				auth: true
 			});
+			token.set(changed.access_token);
 
 			passwordForm.success = true;
 			passwordForm.current_password = '';
@@ -186,7 +254,7 @@
 				passwordForm.success = false;
 			}, 3000);
 		} catch (err) {
-			passwordForm.error = err instanceof Error ? err.message : 'Failed to change password';
+			passwordForm.error = err instanceof Error ? err.message : $t('settings.password_change_failed');
 		} finally {
 			passwordForm.loading = false;
 		}
@@ -198,19 +266,19 @@
 		emailForm.success = false;
 
 		if (!emailForm.new_email || !emailForm.password) {
-			emailForm.error = 'Email and password are required';
+			emailForm.error = $t('settings.email_password_required');
 			return;
 		}
 
 		if (emailForm.new_email === $user?.email) {
-			emailForm.error = 'New email must be different from current email';
+			emailForm.error = $t('settings.email_same');
 			return;
 		}
 
 		emailForm.loading = true;
 
 		try {
-			const updatedUser = await api('/users/me/change-email', {
+			const updatedUser = await api<UserProfile & { access_token: string }>('/users/me/change-email', {
 				method: 'POST',
 				body: {
 					new_email: emailForm.new_email,
@@ -219,6 +287,7 @@
 				auth: true
 			});
 
+			token.set(updatedUser.access_token);
 			user.set(updatedUser);
 			emailForm.success = true;
 			emailForm.new_email = '';
@@ -228,7 +297,7 @@
 				emailForm.success = false;
 			}, 3000);
 		} catch (err) {
-			emailForm.error = err instanceof Error ? err.message : 'Failed to change email';
+			emailForm.error = err instanceof Error ? err.message : $t('settings.email_change_failed');
 		} finally {
 			emailForm.loading = false;
 		}
@@ -236,7 +305,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings - NeighbourGood</title>
+	<title>{$t('nav.settings')} - NeighbourGood</title>
 </svelte:head>
 
 <div class="settings-page">
@@ -245,23 +314,23 @@
 	<div class="settings-section">
 		<h2>{$t('settings.account_info')}</h2>
 		<div class="info-group">
-			<label>{$t('settings.display_name')}</label>
+			<span class="info-label">{$t('settings.display_name')}</span>
 			<p class="info-value">{$user?.display_name}</p>
 		</div>
 
 		<div class="info-group">
-			<label>{$t('settings.email')}</label>
+			<span class="info-label">{$t('settings.email')}</span>
 			<p class="info-value">{$user?.email}</p>
 		</div>
 
 		<div class="info-group">
-			<label>{$t('settings.neighbourhood')}</label>
+			<span class="info-label">{$t('settings.neighbourhood')}</span>
 			<p class="info-value">{$user?.neighbourhood || $t('common.not_set')}</p>
 			<p class="info-hint"><a href="/communities">{$t('settings.manage_communities')}</a></p>
 		</div>
 
 		<div class="info-group">
-			<label>{$t('settings.member_since')}</label>
+			<span class="info-label">{$t('settings.member_since')}</span>
 			<p class="info-value">{new Date($user?.created_at || '').toLocaleDateString()}</p>
 		</div>
 	</div>
@@ -277,8 +346,8 @@
 			<div class="alert alert-error">{passwordForm.error}</div>
 		{/if}
 
-		<form class="form" onsubmit={handlePasswordChange}>
-			<div class="form-group">
+		<form class="form-stack" onsubmit={handlePasswordChange}>
+			<div class="field">
 				<label for="current-password">{$t('settings.current_password')}</label>
 				<input
 					id="current-password"
@@ -289,7 +358,7 @@
 				/>
 			</div>
 
-			<div class="form-group">
+			<div class="field">
 				<label for="new-password">{$t('settings.new_password')}</label>
 				<input
 					id="new-password"
@@ -297,11 +366,11 @@
 					bind:value={passwordForm.new_password}
 					required
 					disabled={passwordForm.loading}
-					placeholder="Min 8 chars, 1 uppercase, 1 lowercase, 1 digit"
+					placeholder={$t('settings.password_placeholder')}
 				/>
 			</div>
 
-			<div class="form-group">
+			<div class="field">
 				<label for="confirm-password">{$t('settings.confirm_password')}</label>
 				<input
 					id="confirm-password"
@@ -312,7 +381,7 @@
 				/>
 			</div>
 
-			<button type="submit" class="btn btn-primary" disabled={passwordForm.loading}>
+			<button type="submit" class="btn btn-primary" class:is-loading={passwordForm.loading} disabled={passwordForm.loading}>
 				{passwordForm.loading ? $t('settings.changing') : $t('settings.change_password')}
 			</button>
 		</form>
@@ -329,8 +398,8 @@
 			<div class="alert alert-error">{emailForm.error}</div>
 		{/if}
 
-		<form class="form" onsubmit={handleEmailChange}>
-			<div class="form-group">
+		<form class="form-stack" onsubmit={handleEmailChange}>
+			<div class="field">
 				<label for="new-email">{$t('settings.new_email')}</label>
 				<input
 					id="new-email"
@@ -341,7 +410,7 @@
 				/>
 			</div>
 
-			<div class="form-group">
+			<div class="field">
 				<label for="email-password">{$t('settings.password_confirm_label')}</label>
 				<input
 					id="email-password"
@@ -352,7 +421,7 @@
 				/>
 			</div>
 
-			<button type="submit" class="btn btn-primary" disabled={emailForm.loading}>
+			<button type="submit" class="btn btn-primary" class:is-loading={emailForm.loading} disabled={emailForm.loading}>
 				{emailForm.loading ? $t('settings.changing') : $t('settings.change_email')}
 			</button>
 		</form>
@@ -363,7 +432,7 @@
 	<div class="settings-section">
 		<h2>{$t('settings.telegram')}</h2>
 		<p class="section-desc">
-			Link your Telegram account to receive instant alerts for messages, bookings, and community events.
+			{$t('settings.telegram_desc')}
 		</p>
 
 		{#if telegramState.success}
@@ -374,9 +443,10 @@
 
 		{#if ($user as any)?.telegram_chat_id}
 			<div class="telegram-linked">
-				<span class="linked-badge">{$t('settings.telegram_linked')}</span>
+				<span class="badge badge-success"><Icon name="check" size={13} />{$t('settings.telegram_linked')}</span>
 				<button
-					class="btn btn-danger"
+					class="btn btn-danger-outline"
+					class:is-loading={telegramState.unlinking}
 					onclick={unlinkTelegram}
 					disabled={telegramState.unlinking}
 				>
@@ -385,15 +455,15 @@
 			</div>
 		{:else if telegramState.botUrl}
 			<div class="telegram-link-step">
-				<p>Open the link below in Telegram and press Start:</p>
-				<a href={telegramState.botUrl} target="_blank" rel="noopener" class="btn btn-telegram">
-					Open in Telegram
+				<p>{$t('settings.telegram_open_hint')}</p>
+				<a href={telegramState.botUrl} target="_blank" rel="noopener" class="btn btn-primary">
+					{$t('settings.telegram_open')}
 				</a>
-				<p class="info-hint">After pressing Start in Telegram, reload this page to confirm the link.</p>
+				<p class="info-hint">{$t('settings.telegram_reload_hint')}</p>
 			</div>
 		{:else}
 			<button
-				class="btn btn-telegram"
+				class="btn btn-primary"
 				onclick={startTelegramLink}
 				disabled={telegramState.loading}
 			>
@@ -424,41 +494,41 @@
 	<div class="settings-section">
 		<h2>{$t('settings.webhooks')}</h2>
 		<p class="section-desc">
-			Register URLs to receive signed HTTP POST callbacks when events happen — for Slack, Discord, or any custom integration.
+			{$t('settings.webhooks_desc')}
 		</p>
 
 		{#if webhooks.length > 0}
 			<div class="webhook-list">
 				{#each webhooks as wh}
-					<div class="webhook-row">
+					<div class="card webhook-row">
 						<div class="webhook-info">
 							<span class="webhook-url">{wh.url}</span>
 							<span class="webhook-events">{wh.event_types.join(', ')}</span>
 						</div>
-						<button class="btn-icon-danger" onclick={() => deleteWebhook(wh.id)} title="Delete webhook">
-							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+						<button class="btn btn-ghost btn-sm btn-icon-danger" onclick={() => deleteWebhook(wh.id)} title={$t('settings.webhook_delete')} aria-label={$t('settings.webhook_delete')}>
+							<Icon name="trash" size={16} />
 						</button>
 					</div>
 				{/each}
 			</div>
 		{/if}
 
-		<form class="form webhook-form" onsubmit={addWebhook}>
+		<form class="card form-stack webhook-form" onsubmit={addWebhook}>
 			{#if webhookForm.error}
 				<div class="alert alert-error">{webhookForm.error}</div>
 			{/if}
-			<div class="form-group">
+			<div class="field">
 				<label for="webhook-url">{$t('settings.webhook_url')}</label>
 				<input id="webhook-url" type="url" bind:value={webhookForm.url} placeholder="https://..." required disabled={webhookForm.loading} />
 			</div>
-			<div class="form-group">
+			<div class="field">
 				<label for="webhook-secret">{$t('settings.webhook_secret')}</label>
-				<input id="webhook-secret" type="text" bind:value={webhookForm.secret} placeholder="Min 8 characters" required disabled={webhookForm.loading} />
-				<span class="form-hint">Used to generate the X-NeighbourGood-Signature header so you can verify deliveries.</span>
+				<input id="webhook-secret" type="text" bind:value={webhookForm.secret} placeholder={$t('settings.webhook_secret_placeholder')} required disabled={webhookForm.loading} />
+				<span class="field-hint">{$t('settings.webhook_secret_hint')}</span>
 			</div>
-			<div class="form-group">
-				<label>{$t('settings.webhook_events')}</label>
-				<div class="event-grid">
+			<div class="field">
+				<span class="field-label" id="webhook-events-label">{$t('settings.webhook_events')}</span>
+				<div class="event-grid" role="group" aria-labelledby="webhook-events-label">
 					{#each ALL_EVENTS as evt}
 						<label class="event-checkbox">
 							<input
@@ -476,6 +546,94 @@
 				{webhookForm.loading ? $t('settings.adding') : $t('settings.add_webhook')}
 			</button>
 		</form>
+	</div>
+
+	<hr class="section-divider" />
+
+	<div class="settings-section">
+		<h2>{$t('settings.export_title')}</h2>
+		<p class="section-desc">{$t('settings.export_desc')}</p>
+
+		{#if exportState.error}
+			<div class="alert alert-error" role="alert">{exportState.error}</div>
+		{:else if exportState.success}
+			<div class="alert alert-success" role="status">{$t('settings.export_done')}</div>
+		{/if}
+
+		<button
+			type="button"
+			class="btn btn-secondary"
+			class:is-loading={exportState.loading}
+			onclick={downloadMyData}
+			disabled={exportState.loading}
+		>
+			{#if !exportState.loading}<Icon name="download" size={16} />{/if}
+			{exportState.loading ? $t('settings.exporting') : $t('settings.export_btn')}
+		</button>
+	</div>
+
+	<hr class="section-divider" />
+
+	<div class="card settings-section danger-zone" aria-labelledby="danger-zone-heading">
+		<h2 id="danger-zone-heading">{$t('settings.danger_zone')}</h2>
+		<h3 class="danger-title">{$t('settings.delete_title')}</h3>
+		<p class="section-desc">{$t('settings.delete_desc')}</p>
+
+		<p class="consequences-title">{$t('settings.delete_consequences_title')}</p>
+		<ul class="consequences">
+			<li>{$t('settings.delete_consequence_listings')}</li>
+			<li>{$t('settings.delete_consequence_bookings')}</li>
+			<li>{$t('settings.delete_consequence_communities')}</li>
+			<li>{$t('settings.delete_consequence_kept')}</li>
+		</ul>
+
+		{#if deleteForm.confirming}
+			<form class="form-stack delete-confirm" onsubmit={handleDeleteAccount}>
+				<h3 class="danger-title">{$t('settings.delete_confirm_heading')}</h3>
+				<p class="section-desc">{$t('settings.delete_confirm_hint')}</p>
+
+				{#if deleteForm.error}
+					<div class="alert alert-error" role="alert">{deleteForm.error}</div>
+				{/if}
+
+				<div class="field">
+					<label for="delete-password">{$t('settings.delete_password_label')}</label>
+					<input
+						id="delete-password"
+						type="password"
+						bind:value={deleteForm.password}
+						required
+						maxlength="128"
+						autocomplete="current-password"
+						disabled={deleteForm.loading}
+					/>
+				</div>
+
+				<div class="delete-actions">
+					<button
+						type="submit"
+						class="btn btn-danger"
+						class:is-loading={deleteForm.loading}
+						disabled={deleteForm.loading || !deleteForm.password}
+					>
+						{deleteForm.loading ? $t('settings.deleting') : $t('settings.delete_confirm_btn')}
+					</button>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={cancelDelete}
+						disabled={deleteForm.loading}
+					>
+						{$t('common.cancel')}
+					</button>
+				</div>
+			</form>
+		{:else}
+			<button type="button" class="btn btn-danger-outline" onclick={beginDelete}>
+				<Icon name="trash" size={16} />
+				{$t('settings.delete_begin')}
+			</button>
+		{/if}
 	</div>
 </div>
 
@@ -514,7 +672,7 @@
 		margin-bottom: 0;
 	}
 
-	.info-group label {
+	.info-label {
 		display: block;
 		font-size: 0.85rem;
 		font-weight: 600;
@@ -544,89 +702,48 @@
 		margin: 2rem 0;
 	}
 
-	.form {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
+	.danger-zone {
+		border-color: var(--color-error);
+		padding: 0 1.25rem 1.25rem;
 	}
 
-	.form-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.form-group label {
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.form-group input {
-		padding: 0.75rem 1rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.95rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-		transition: border-color var(--transition-fast);
-	}
-
-	.form-group input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 2px var(--color-primary-light);
-	}
-
-	.form-group input:disabled {
-		background: var(--color-border);
-		cursor: not-allowed;
-		opacity: 0.6;
-	}
-
-	.btn {
-		padding: 0.75rem 1.5rem;
-		border: none;
-		border-radius: var(--radius-sm);
-		font-size: 0.95rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-		transform: translateY(-2px);
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.alert {
-		padding: 1rem;
-		border-radius: var(--radius-sm);
-		margin-bottom: 1rem;
-		font-size: 0.95rem;
-	}
-
-	.alert-success {
-		background-color: rgba(34, 197, 94, 0.1);
-		border: 1px solid rgba(34, 197, 94, 0.3);
-		color: var(--color-success);
-	}
-
-	.alert-error {
-		background-color: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.3);
+	.danger-zone h2 {
 		color: var(--color-error);
+	}
+
+	.danger-title {
+		font-size: 1rem;
+		font-weight: 600;
+		margin: 0 0 0.5rem 0;
+		color: var(--color-text);
+	}
+
+	.consequences-title {
+		font-size: 0.85rem;
+		font-weight: 600;
+		margin: 0 0 0.25rem 0;
+		color: var(--color-text-muted);
+	}
+
+	.consequences {
+		margin: 0 0 1.25rem 0;
+		padding-inline-start: 1.25rem;
+		font-size: 0.9rem;
+		color: var(--color-text-muted);
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.delete-confirm {
+		border-top: 1px solid var(--color-border);
+		padding-top: 1.25rem;
+	}
+
+	.delete-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
 	}
 
 	.section-desc {
@@ -641,73 +758,10 @@
 		gap: 1rem;
 	}
 
-	.linked-badge {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.35rem 0.75rem;
-		background: rgba(34, 197, 94, 0.1);
-		border: 1px solid rgba(34, 197, 94, 0.3);
-		border-radius: var(--radius-sm);
-		color: var(--color-success);
-		font-size: 0.85rem;
-		font-weight: 600;
-	}
-
 	.telegram-link-step {
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
-	}
-
-	.btn-telegram {
-		background: #0088cc;
-		color: white;
-		border: none;
-		border-radius: var(--radius-sm);
-		padding: 0.7rem 1.4rem;
-		font-size: 0.95rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		text-decoration: none;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		width: fit-content;
-	}
-
-	.btn-telegram:hover:not(:disabled) {
-		background: #006fa8;
-		box-shadow: var(--shadow-md);
-		text-decoration: none;
-	}
-
-	.btn-telegram:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-danger {
-		background: none;
-		border: 1px solid var(--color-error);
-		color: var(--color-error);
-		border-radius: var(--radius-sm);
-		padding: 0.4rem 0.9rem;
-		font-size: 0.85rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-danger:hover:not(:disabled) {
-		background: var(--color-error);
-		color: white;
-	}
-
-	.btn-danger:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
 	}
 
 	.webhook-list {
@@ -723,9 +777,6 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 0.75rem 1rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
 	}
 
 	.webhook-info {
@@ -748,32 +799,17 @@
 	}
 
 	.btn-icon-danger {
-		background: none;
-		border: none;
-		color: var(--color-text-muted);
-		cursor: pointer;
-		padding: 0.3rem;
-		border-radius: var(--radius-sm);
-		transition: all var(--transition-fast);
 		flex-shrink: 0;
+		color: var(--color-text-muted);
 	}
 
-	.btn-icon-danger:hover {
+	.btn-icon-danger:hover:not(:disabled) {
 		color: var(--color-error);
-		background: var(--color-error-bg, rgba(239, 68, 68, 0.1));
+		background: var(--color-error-bg);
 	}
 
 	.webhook-form {
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
 		padding: 1.25rem;
-		background: var(--color-surface);
-	}
-
-	.form-hint {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		margin-top: 0.25rem;
 	}
 
 	.event-grid {
@@ -826,7 +862,18 @@
 		}
 
 		.event-grid {
-			grid-template-columns: 1fr 1fr;
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.event-checkbox {
+			min-height: var(--tap-target);
+			overflow-wrap: anywhere;
+		}
+
+		.event-checkbox input[type="checkbox"] {
+			width: 20px;
+			height: 20px;
+			flex-shrink: 0;
 		}
 	}
 </style>

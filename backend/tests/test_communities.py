@@ -29,6 +29,12 @@ def _create_community(client, headers, name="Nachbarschaft Mitte", plz="10115", 
     return res.json()
 
 
+def _other_creator(client, n, **kwargs):
+    """Register a fresh user, have them create a community, return (headers, community)."""
+    headers = _register(client, f"creator{n}@test.com", f"Creator {n}")
+    return headers, _create_community(client, headers, **kwargs)
+
+
 # ── Create ─────────────────────────────────────────────────────────
 
 
@@ -50,6 +56,25 @@ def test_create_community(client, auth_headers):
     assert data["city"] == "Berlin"
     assert data["is_active"] is True
     assert data["member_count"] == 1  # Creator is auto-member
+
+
+def test_create_community_blocked_when_already_member(client, auth_headers):
+    _create_community(client, auth_headers, name="First")
+    res = client.post(
+        "/communities",
+        headers=auth_headers,
+        json={"name": "Second", "postal_code": "10999", "city": "Berlin"},
+    )
+    assert res.status_code == 409
+    assert "leave your current community" in res.json()["detail"].lower()
+
+
+def test_create_community_allowed_after_leaving(client, auth_headers):
+    first = _create_community(client, auth_headers, name="First")
+    # Sole member may leave (nobody else to manage the community)
+    assert client.delete(f"/communities/{first['id']}/leave", headers=auth_headers).status_code == 204
+    second = _create_community(client, auth_headers, name="Second", plz="10999")
+    assert second["name"] == "Second"
 
 
 def test_create_community_requires_auth(client):
@@ -129,7 +154,7 @@ def test_join_community_already_member(client, auth_headers):
 
 def test_join_community_blocked_when_already_in_different_community(client, auth_headers):
     community_a = _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    community_b = _create_community(client, auth_headers, name="Group B", plz="10999", city="Berlin")
+    _, community_b = _other_creator(client, 2, name="Group B", plz="10999", city="Berlin")
     other = _register(client, "joiner@test.com", "Joiner")
 
     res_a = client.post(f"/communities/{community_a['id']}/join", headers=other)
@@ -142,7 +167,7 @@ def test_join_community_blocked_when_already_in_different_community(client, auth
 
 def test_join_community_after_leaving_allowed(client, auth_headers):
     community_a = _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    community_b = _create_community(client, auth_headers, name="Group B", plz="10999", city="Berlin")
+    _, community_b = _other_creator(client, 2, name="Group B", plz="10999", city="Berlin")
     other = _register(client, "switcher@test.com", "Switcher")
 
     client.post(f"/communities/{community_a['id']}/join", headers=other)
@@ -186,13 +211,12 @@ def test_list_members(client, auth_headers):
 
 def test_my_communities(client, auth_headers):
     _create_community(client, auth_headers, name="Group A", plz="10115")
-    _create_community(client, auth_headers, name="Group B", plz="10999")
+    _other_creator(client, 2, name="Group B", plz="10999")
 
     res = client.get("/communities/my/memberships", headers=auth_headers)
     assert res.status_code == 200
     names = {c["name"] for c in res.json()}
-    assert "Group A" in names
-    assert "Group B" in names
+    assert names == {"Group A"}
 
 
 # ── Search ─────────────────────────────────────────────────────────
@@ -200,7 +224,7 @@ def test_my_communities(client, auth_headers):
 
 def test_search_communities_by_name(client, auth_headers):
     _create_community(client, auth_headers, name="Kiez Kreuzberg", plz="10999", city="Berlin")
-    _create_community(client, auth_headers, name="Dorf Gemeinschaft", plz="01234", city="Dresden")
+    _other_creator(client, 2, name="Dorf Gemeinschaft", plz="01234", city="Dresden")
 
     res = client.get("/communities/search?q=kreuzberg")
     assert res.status_code == 200
@@ -211,7 +235,7 @@ def test_search_communities_by_name(client, auth_headers):
 
 def test_search_communities_by_postal_code(client, auth_headers):
     _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group B", plz="10999", city="Berlin")
+    _other_creator(client, 2, name="Group B", plz="10999", city="Berlin")
 
     res = client.get("/communities/search?postal_code=10115")
     assert res.status_code == 200
@@ -222,7 +246,7 @@ def test_search_communities_by_postal_code(client, auth_headers):
 
 def test_search_communities_by_city(client, auth_headers):
     _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group B", plz="01234", city="Dresden")
+    _other_creator(client, 2, name="Group B", plz="01234", city="Dresden")
 
     res = client.get("/communities/search?city=Berlin")
     assert res.status_code == 200
@@ -233,7 +257,7 @@ def test_search_communities_by_city(client, auth_headers):
 
 def test_search_all_communities(client, auth_headers):
     _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group B", plz="01234", city="Dresden")
+    _other_creator(client, 2, name="Group B", plz="01234", city="Dresden")
 
     res = client.get("/communities/search")
     assert res.status_code == 200
@@ -243,9 +267,9 @@ def test_search_all_communities(client, auth_headers):
 # ── Merge ──────────────────────────────────────────────────────────
 
 
-def test_merge_communities(client, auth_headers):
+def test_merge_communities(client, auth_headers, admin_headers):
     source = _create_community(client, auth_headers, name="Small Group", plz="10115", city="Berlin")
-    target = _create_community(client, auth_headers, name="Big Group", plz="10115", city="Berlin")
+    _, target = _other_creator(client, 2, name="Big Group", plz="10115", city="Berlin")
 
     # Add a unique member to source
     other = _register(client, "source_member@test.com", "SourceMember")
@@ -253,14 +277,14 @@ def test_merge_communities(client, auth_headers):
 
     res = client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": source["id"], "target_id": target["id"]},
     )
     assert res.status_code == 200
     data = res.json()
     assert data["id"] == target["id"]
-    # Target should now have: creator (already in both) + source_member = at least 2
-    assert data["member_count"] >= 2
+    # Target now has its creator plus the source's two members
+    assert data["member_count"] == 3
 
     # Source should be inactive and merged
     source_res = client.get(f"/communities/{source['id']}")
@@ -278,22 +302,22 @@ def test_merge_self_fails(client, auth_headers):
     assert res.status_code == 422
 
 
-def test_merge_already_merged_fails(client, auth_headers):
+def test_merge_already_merged_fails(client, auth_headers, admin_headers):
     a = _create_community(client, auth_headers, name="A", plz="10115", city="Berlin")
-    b = _create_community(client, auth_headers, name="B", plz="10115", city="Berlin")
-    c = _create_community(client, auth_headers, name="C", plz="10115", city="Berlin")
+    _, b = _other_creator(client, 2, name="B", plz="10115", city="Berlin")
+    _, c = _other_creator(client, 3, name="C", plz="10115", city="Berlin")
 
     # Merge A into B
     client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": a["id"], "target_id": b["id"]},
     )
 
     # Try to merge A into C (already merged)
     res = client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": a["id"], "target_id": c["id"]},
     )
     assert res.status_code == 409
@@ -313,13 +337,13 @@ def test_merge_non_admin_forbidden(client, auth_headers):
     assert res.status_code == 403
 
 
-def test_join_merged_community_redirects(client, auth_headers):
+def test_join_merged_community_redirects(client, auth_headers, admin_headers):
     source = _create_community(client, auth_headers, name="Old Group", plz="10115", city="Berlin")
-    target = _create_community(client, auth_headers, name="New Group", plz="10115", city="Berlin")
+    _, target = _other_creator(client, 2, name="New Group", plz="10115", city="Berlin")
 
     client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": source["id"], "target_id": target["id"]},
     )
 
@@ -329,9 +353,9 @@ def test_join_merged_community_redirects(client, auth_headers):
     assert str(target["id"]) in res.json()["detail"]
 
 
-def test_merge_migrated_member_not_blocked_and_memberships_filtered(client, auth_headers):
+def test_merge_migrated_member_not_blocked_and_memberships_filtered(client, auth_headers, admin_headers):
     source = _create_community(client, auth_headers, name="Old Group", plz="10115", city="Berlin")
-    target = _create_community(client, auth_headers, name="New Group", plz="10115", city="Berlin")
+    _, target = _other_creator(client, 2, name="New Group", plz="10115", city="Berlin")
 
     member = _register(client, "migrated@test.com", "Migrated")
     join_res = client.post(f"/communities/{source['id']}/join", headers=member)
@@ -339,7 +363,7 @@ def test_merge_migrated_member_not_blocked_and_memberships_filtered(client, auth
 
     merge_res = client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": source["id"], "target_id": target["id"]},
     )
     assert merge_res.status_code == 200
@@ -361,8 +385,8 @@ def test_merge_migrated_member_not_blocked_and_memberships_filtered(client, auth
 
 def test_merge_suggestions_same_plz(client, auth_headers):
     a = _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group B", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group C", plz="99999", city="Hamburg")
+    _other_creator(client, 2, name="Group B", plz="10115", city="Berlin")
+    _other_creator(client, 3, name="Group C", plz="99999", city="Hamburg")
 
     res = client.get(
         f"/communities/merge/suggestions?community_id={a['id']}",
@@ -376,7 +400,7 @@ def test_merge_suggestions_same_plz(client, auth_headers):
 
 def test_merge_suggestions_same_city(client, auth_headers):
     a = _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group B", plz="10999", city="Berlin")
+    _other_creator(client, 2, name="Group B", plz="10999", city="Berlin")
 
     res = client.get(
         f"/communities/merge/suggestions?community_id={a['id']}",
@@ -388,13 +412,13 @@ def test_merge_suggestions_same_city(client, auth_headers):
     assert suggestions[0]["reason"].startswith("Same city")
 
 
-def test_search_excludes_merged(client, auth_headers):
+def test_search_excludes_merged(client, auth_headers, admin_headers):
     source = _create_community(client, auth_headers, name="Old", plz="10115", city="Berlin")
-    target = _create_community(client, auth_headers, name="New", plz="10115", city="Berlin")
+    _, target = _other_creator(client, 2, name="New", plz="10115", city="Berlin")
 
     client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": source["id"], "target_id": target["id"]},
     )
 

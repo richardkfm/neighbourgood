@@ -5,6 +5,7 @@ executes them against the database.  When the AI client is not configured,
 falls back to a help message listing the available slash commands.
 """
 
+import html
 import json
 import logging
 
@@ -15,9 +16,17 @@ from app.models.crisis import EmergencyTicket
 from app.models.resource import Resource
 from app.models.skill import Skill
 from app.models.user import User
+from app.services.activity import record_activity
 from app.services.ai_client import get_ai_client
+from app.services.webhooks import dispatch_event
+from app.services.mode import effective_mode
 
 logger = logging.getLogger(__name__)
+
+
+def _e(value) -> str:
+    """Escape user-controlled text for Telegram's HTML parse mode."""
+    return html.escape(str(value), quote=False)
 
 # ── Mode-aware system prompts ─────────────────────────────────────────────────
 #
@@ -109,12 +118,12 @@ def _exec_search_resource(query: str, community: Community | None, db: Session) 
         filters.append(Resource.title.ilike(f"%{q}%"))
     results = db.query(Resource).filter(*filters).limit(5).all()
     if not results:
-        noun = f'matching "<b>{q}</b>"' if q else "available"
-        return f"No resources {noun} in <b>{community.name}</b> right now."
-    lines = [f"Resources in <b>{community.name}</b>:"]
+        noun = f'matching "<b>{_e(q)}</b>"' if q else "available"
+        return f"No resources {noun} in <b>{_e(community.name)}</b> right now."
+    lines = [f"Resources in <b>{_e(community.name)}</b>:"]
     for r in results:
         cond = f" ({r.condition})" if r.condition else ""
-        lines.append(f"• {r.title}{cond}")
+        lines.append(f"• {_e(r.title)}{_e(cond)}")
     return "\n".join(lines)
 
 
@@ -134,19 +143,19 @@ def _exec_search_skill(query: str, community: Community | None, db: Session) -> 
         filters.append(Skill.title.ilike(f"%{q}%"))
     results = db.query(Skill).filter(*filters).limit(5).all()
     if not results:
-        noun = f'matching "<b>{q}</b>"' if q else "offered"
-        return f"No skills {noun} in <b>{community.name}</b> right now."
-    lines = [f"Skills offered in <b>{community.name}</b>:"]
+        noun = f'matching "<b>{_e(q)}</b>"' if q else "offered"
+        return f"No skills {noun} in <b>{_e(community.name)}</b> right now."
+    lines = [f"Skills offered in <b>{_e(community.name)}</b>:"]
     for s in results:
-        lines.append(f"• {s.title} ({s.category})")
+        lines.append(f"• {_e(s.title)} ({_e(s.category)})")
     return "\n".join(lines)
 
 
 def _exec_summarize_crisis(community: Community | None, db: Session) -> str:
     if not community:
         return "You need to be in a community to view crisis tickets."
-    if community.mode != "red":
-        return f"<b>{community.name}</b> is in Blue Sky mode — no active crisis."
+    if effective_mode(community) != "red":
+        return f"<b>{_e(community.name)}</b> is in Blue Sky mode — no active crisis."
     tickets = (
         db.query(EmergencyTicket)
         .filter(
@@ -158,10 +167,10 @@ def _exec_summarize_crisis(community: Community | None, db: Session) -> str:
         .all()
     )
     if not tickets:
-        return f"No open emergency tickets in <b>{community.name}</b>."
-    lines = [f"Open tickets in <b>{community.name}</b> (Red Sky):"]
+        return f"No open emergency tickets in <b>{_e(community.name)}</b>."
+    lines = [f"Open tickets in <b>{_e(community.name)}</b> (Red Sky):"]
     for t in tickets:
-        lines.append(f"• [{t.urgency.upper()}] {t.title} ({t.ticket_type})")
+        lines.append(f"• [{t.urgency.upper()}] {_e(t.title)} ({t.ticket_type})")
     return "\n".join(lines)
 
 
@@ -170,11 +179,13 @@ def _exec_create_request(
 ) -> str:
     if not community:
         return "You need to be in a community to create an emergency request."
-    if community.mode != "red":
+    if effective_mode(community) != "red":
         return (
-            f"<b>{community.name}</b> is in Blue Sky mode. "
+            f"<b>{_e(community.name)}</b> is in Blue Sky mode. "
             "Emergency requests can only be created during Red Sky (crisis) mode."
         )
+    title = str(title or "")
+    description = str(description or "")
     if not title.strip():
         return "Please describe what you need so I can create the request."
     ticket = EmergencyTicket(
@@ -188,9 +199,28 @@ def _exec_create_request(
     )
     db.add(ticket)
     db.commit()
+    record_activity(
+        db,
+        event_type="ticket_created",
+        summary=f'created request ticket "{ticket.title}" (via Telegram)',
+        actor_id=user.id,
+        community_id=community.id,
+    )
+    dispatch_event(
+        db,
+        "ticket.created",
+        {
+            "title": ticket.title,
+            "ticket_type": "request",
+            "urgency": "high",
+            "community_name": community.name,
+        },
+        [],
+        community.id,
+    )
     return (
-        f"Emergency request created in <b>{community.name}</b>:\n"
-        f"<b>{ticket.title}</b>\n"
+        f"Emergency request created in <b>{_e(community.name)}</b>:\n"
+        f"<b>{_e(ticket.title)}</b>\n"
         "Community leaders have been notified. Stay safe."
     )
 
@@ -243,7 +273,7 @@ def handle_nl_message(
 ) -> str:
     """Classify *text* and execute the matched intent. Always returns a reply string."""
     ai_client = get_ai_client()
-    community_mode = community.mode if community else "blue"
+    community_mode = effective_mode(community) if community else "blue"
 
     intent_data = _classify_intent(text, community_mode)
     intent = intent_data.get("intent", "help")

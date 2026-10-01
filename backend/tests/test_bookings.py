@@ -20,8 +20,8 @@ def _create_resource(client, headers, community_id, title="Shared Drill"):
     return res.json()["id"]
 
 
-def _register(client, email, name="User"):
-    """Helper: register a user and return auth headers."""
+def _register(client, email, name="User", community_id=None):
+    """Helper: register a user (optionally joining a community) and return auth headers."""
     res = client.post(
         "/auth/register",
         json={
@@ -30,7 +30,10 @@ def _register(client, email, name="User"):
             "display_name": name,
         },
     )
-    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+    headers = {"Authorization": f"Bearer {res.json()['access_token']}"}
+    if community_id is not None:
+        assert client.post(f"/communities/{community_id}/join", headers=headers).status_code == 200
+    return headers
 
 
 # ── Create booking ──────────────────────────────────────────────────
@@ -38,7 +41,7 @@ def _register(client, email, name="User"):
 
 def test_create_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     res = client.post(
@@ -46,8 +49,8 @@ def test_create_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
             "message": "Can I borrow this?",
         },
     )
@@ -56,13 +59,13 @@ def test_create_booking(client, auth_headers):
     assert data["resource_id"] == resource_id
     assert data["status"] == "pending"
     assert data["message"] == "Can I borrow this?"
-    assert data["start_date"] == "2026-03-01"
-    assert data["end_date"] == "2026-03-05"
+    assert data["start_date"] == "2099-03-01"
+    assert data["end_date"] == "2099-03-05"
 
 
 def test_create_booking_invalid_dates(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     res = client.post(
@@ -70,8 +73,8 @@ def test_create_booking_invalid_dates(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-10",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-10",
+            "end_date": "2099-03-05",
         },
     )
     assert res.status_code == 422
@@ -86,8 +89,8 @@ def test_cannot_book_own_resource(client, auth_headers):
         headers=auth_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     assert res.status_code == 409
@@ -96,7 +99,7 @@ def test_cannot_book_own_resource(client, auth_headers):
 
 def test_cannot_book_unavailable_resource(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     # Mark resource unavailable
@@ -111,8 +114,8 @@ def test_cannot_book_unavailable_resource(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     assert res.status_code == 409
@@ -121,8 +124,8 @@ def test_cannot_book_unavailable_resource(client, auth_headers):
 
 def test_booking_date_conflict(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower1 = _register(client, "b1@test.com", "Borrower1")
-    borrower2 = _register(client, "b2@test.com", "Borrower2")
+    borrower1 = _register(client, "b1@test.com", "Borrower1", cid)
+    borrower2 = _register(client, "b2@test.com", "Borrower2", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     # First booking
@@ -131,8 +134,8 @@ def test_booking_date_conflict(client, auth_headers):
         headers=borrower1,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-10",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-10",
         },
     )
     assert res.status_code == 201
@@ -143,8 +146,8 @@ def test_booking_date_conflict(client, auth_headers):
         headers=borrower2,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-05",
-            "end_date": "2026-03-15",
+            "start_date": "2099-03-05",
+            "end_date": "2099-03-15",
         },
     )
     assert res.status_code == 409
@@ -153,8 +156,8 @@ def test_booking_date_conflict(client, auth_headers):
 
 def test_booking_non_overlapping_dates_ok(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower1 = _register(client, "b1@test.com", "Borrower1")
-    borrower2 = _register(client, "b2@test.com", "Borrower2")
+    borrower1 = _register(client, "b1@test.com", "Borrower1", cid)
+    borrower2 = _register(client, "b2@test.com", "Borrower2", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     res = client.post(
@@ -162,8 +165,8 @@ def test_booking_non_overlapping_dates_ok(client, auth_headers):
         headers=borrower1,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     assert res.status_code == 201
@@ -174,8 +177,8 @@ def test_booking_non_overlapping_dates_ok(client, auth_headers):
         headers=borrower2,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-06",
-            "end_date": "2026-03-10",
+            "start_date": "2099-03-06",
+            "end_date": "2099-03-10",
         },
     )
     assert res.status_code == 201
@@ -187,8 +190,8 @@ def test_booking_resource_not_found(client, auth_headers):
         headers=auth_headers,
         json={
             "resource_id": 9999,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     assert res.status_code == 404
@@ -199,8 +202,8 @@ def test_create_booking_requires_auth(client):
         "/bookings",
         json={
             "resource_id": 1,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     assert res.status_code == 403
@@ -211,7 +214,7 @@ def test_create_booking_requires_auth(client):
 
 def test_list_bookings_as_borrower(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     client.post(
@@ -219,8 +222,8 @@ def test_list_bookings_as_borrower(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
 
@@ -233,7 +236,7 @@ def test_list_bookings_as_borrower(client, auth_headers):
 
 def test_list_bookings_as_owner(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     client.post(
@@ -241,8 +244,8 @@ def test_list_bookings_as_owner(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
 
@@ -255,7 +258,7 @@ def test_list_bookings_as_owner(client, auth_headers):
 
 def test_list_bookings_status_filter(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     client.post(
@@ -263,8 +266,8 @@ def test_list_bookings_status_filter(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
 
@@ -282,7 +285,7 @@ def test_list_bookings_status_filter(client, auth_headers):
 
 def test_owner_approves_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -290,8 +293,8 @@ def test_owner_approves_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -307,7 +310,7 @@ def test_owner_approves_booking(client, auth_headers):
 
 def test_owner_rejects_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -315,8 +318,8 @@ def test_owner_rejects_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -332,7 +335,7 @@ def test_owner_rejects_booking(client, auth_headers):
 
 def test_borrower_cancels_pending_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -340,8 +343,8 @@ def test_borrower_cancels_pending_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -357,7 +360,7 @@ def test_borrower_cancels_pending_booking(client, auth_headers):
 
 def test_borrower_cannot_approve(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -365,8 +368,8 @@ def test_borrower_cannot_approve(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -381,7 +384,7 @@ def test_borrower_cannot_approve(client, auth_headers):
 
 def test_complete_approved_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -389,8 +392,8 @@ def test_complete_approved_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -414,7 +417,7 @@ def test_complete_approved_booking(client, auth_headers):
 
 def test_cannot_approve_rejected_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -422,8 +425,8 @@ def test_cannot_approve_rejected_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -449,7 +452,7 @@ def test_cannot_approve_rejected_booking(client, auth_headers):
 
 def test_get_booking(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -457,8 +460,8 @@ def test_get_booking(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -474,7 +477,7 @@ def test_get_booking(client, auth_headers):
 
 def test_get_booking_forbidden(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     stranger_headers = _register(client, "stranger@test.com", "Stranger")
     resource_id = _create_resource(client, auth_headers, cid)
 
@@ -483,8 +486,8 @@ def test_get_booking_forbidden(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-01",
-            "end_date": "2026-03-05",
+            "start_date": "2099-03-01",
+            "end_date": "2099-03-05",
         },
     )
     booking_id = create_res.json()["id"]
@@ -504,7 +507,7 @@ def test_get_booking_not_found(client, auth_headers):
 
 def test_calendar_endpoint(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     # Create a booking in March 2026
@@ -513,21 +516,21 @@ def test_calendar_endpoint(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-10",
-            "end_date": "2026-03-15",
+            "start_date": "2099-03-10",
+            "end_date": "2099-03-15",
         },
     )
 
-    res = client.get(f"/bookings/resource/{resource_id}/calendar?month=3&year=2026")
+    res = client.get(f"/bookings/resource/{resource_id}/calendar?month=3&year=2099")
     assert res.status_code == 200
     data = res.json()
     assert len(data) == 1
-    assert data[0]["start_date"] == "2026-03-10"
+    assert data[0]["start_date"] == "2099-03-10"
 
 
 def test_calendar_excludes_cancelled(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     create_res = client.post(
@@ -535,8 +538,8 @@ def test_calendar_excludes_cancelled(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-10",
-            "end_date": "2026-03-15",
+            "start_date": "2099-03-10",
+            "end_date": "2099-03-15",
         },
     )
     booking_id = create_res.json()["id"]
@@ -548,14 +551,14 @@ def test_calendar_excludes_cancelled(client, auth_headers):
         json={"status": "cancelled"},
     )
 
-    res = client.get(f"/bookings/resource/{resource_id}/calendar?month=3&year=2026")
+    res = client.get(f"/bookings/resource/{resource_id}/calendar?month=3&year=2099")
     assert res.status_code == 200
     assert len(res.json()) == 0
 
 
 def test_calendar_different_month(client, auth_headers):
     cid = _create_community(client, auth_headers)
-    borrower_headers = _register(client, "borrower@test.com", "Borrower")
+    borrower_headers = _register(client, "borrower@test.com", "Borrower", cid)
     resource_id = _create_resource(client, auth_headers, cid)
 
     client.post(
@@ -563,12 +566,12 @@ def test_calendar_different_month(client, auth_headers):
         headers=borrower_headers,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-03-10",
-            "end_date": "2026-03-15",
+            "start_date": "2099-03-10",
+            "end_date": "2099-03-15",
         },
     )
 
     # Query April — should return no bookings
-    res = client.get(f"/bookings/resource/{resource_id}/calendar?month=4&year=2026")
+    res = client.get(f"/bookings/resource/{resource_id}/calendar?month=4&year=2099")
     assert res.status_code == 200
     assert len(res.json()) == 0

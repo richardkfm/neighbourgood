@@ -23,6 +23,7 @@ from app.schemas.event import (
 )
 from app.services.activity import record_activity
 from app.services.webhooks import dispatch_event
+from app.utils.authorization import is_community_member
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -242,6 +243,19 @@ def update_event(
         if val is not None:
             setattr(event, field, val)
 
+    if event.end_at is not None and event.end_at < event.start_at:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="end_at must not be before start_at",
+        )
+    if event.max_attendees is not None and event.max_attendees < len(event.attendees):
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="max_attendees cannot be lower than the number of people already attending",
+        )
+
     db.commit()
     db.refresh(event)
     _ = event.organizer
@@ -273,6 +287,12 @@ def attend_event(
 ):
     """RSVP to an event."""
     event = _load_event(event_id, db)
+
+    if not is_community_member(db, event.community_id, current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a member of this community to RSVP to its events",
+        )
 
     already = (
         db.query(EventAttendee)

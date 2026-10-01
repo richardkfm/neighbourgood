@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
+	import { SKILL_CATEGORY_ICON, TRUST_BADGE_ICON } from '$lib/icons';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { api } from '$lib/api';
@@ -41,25 +43,16 @@
 	let hasReviewed = $state(false);
 	let confirmDelete = $state(false);
 
+	// Edit form (owner only)
+	const EDIT_CATEGORIES = ['tutoring', 'repairs', 'cooking', 'languages', 'music', 'gardening', 'tech', 'crafts', 'fitness', 'other'];
+	let editing = $state(false);
+	let editSaving = $state(false);
+	let editError = $state('');
+	let editForm = $state({ title: '', description: '', category: 'other', skill_type: 'offer' });
+
 	const isOwner = $derived(
 		$isLoggedIn && skill !== null && $user?.id === skill.owner_id
 	);
-
-	const CATEGORY_ICONS: Record<string, string> = {
-		tutoring: '📚', repairs: '🔧', cooking: '🍳', languages: '🌐',
-		music: '🎵', gardening: '🌱', tech: '💻', crafts: '✂️',
-		fitness: '💪', other: '⭐'
-	};
-
-	const BADGE_ICONS: Record<string, string> = {
-		reliable_borrower: '🤝',
-		trusted_lender: '📦',
-		skilled_helper: '⭐'
-	};
-
-	function renderStars(rating: number): string {
-		return '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating));
-	}
 
 	function formatDate(dateStr: string): string {
 		return new Date(dateStr).toLocaleDateString(undefined, {
@@ -98,7 +91,7 @@
 			hasReviewed = true;
 			await loadReviews(skill.id);
 		} catch (err) {
-			reviewError = err instanceof Error ? err.message : 'Failed to submit review';
+			reviewError = err instanceof Error ? err.message : $_('skills.review_failed');
 		} finally {
 			submittingReview = false;
 		}
@@ -110,7 +103,7 @@
 			skill = await api<Skill>(`/skills/${id}`);
 			await loadReviews(skill.id);
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Skill not found';
+			error = err instanceof Error ? err.message : $_('skills.not_found');
 		} finally {
 			loading = false;
 		}
@@ -123,11 +116,52 @@
 		try {
 			await api(`/skills/${skill.id}`, {
 				method: 'DELETE', auth: true,
-				offline: { label: `Delete skill: ${skill.title}` }
+				offline: { label: $_('skills.offline_delete', { values: { title: skill.title } }) }
 			});
 			goto('/skills');
 		} catch (err) {
 			error = err instanceof Error ? err.message : $_('common.error');
+		}
+	}
+
+	function startEdit() {
+		if (!skill) return;
+		editForm = {
+			title: skill.title,
+			description: skill.description ?? '',
+			category: skill.category,
+			skill_type: skill.skill_type
+		};
+		editError = '';
+		editing = true;
+	}
+
+	function cancelEdit() {
+		editing = false;
+		editError = '';
+	}
+
+	async function saveEdit(e: Event) {
+		e.preventDefault();
+		if (!skill) return;
+		editError = '';
+		editSaving = true;
+		try {
+			skill = await api<Skill>(`/skills/${skill.id}`, {
+				method: 'PATCH',
+				auth: true,
+				body: {
+					title: editForm.title,
+					description: editForm.description.trim() || null,
+					category: editForm.category,
+					skill_type: editForm.skill_type
+				}
+			});
+			editing = false;
+		} catch (err) {
+			editError = err instanceof Error ? err.message : $_('skills.edit_failed');
+		} finally {
+			editSaving = false;
 		}
 	}
 
@@ -137,46 +171,98 @@
 </script>
 
 {#if loading}
-	<p class="loading">{$_('common.loading')}</p>
+	<div class="skeleton-stack" role="status" aria-busy="true">
+		<span class="sr-only">{$_('common.loading')}</span>
+		<span class="skeleton skeleton-line is-short"></span>
+		<span class="skeleton" style="height: 2.4rem; width: 60%"></span>
+		<div class="skeleton skeleton-card" style="height: 12rem; margin-top: 1rem"></div>
+	</div>
 {:else if error}
 	<div class="error-page">
-		<h1>Oops</h1>
+		<h1>{$_('common.oops')}</h1>
 		<p>{error}</p>
-		<a href="/skills">{$_('skills.back')}</a>
+		<a href="/skills" class="btn btn-primary">{$_('skills.back')}</a>
 	</div>
 {:else if skill}
 	<article class="skill-detail">
-		<a href="/skills" class="back-link">&larr; {$_('skills.back')}</a>
+		<a href="/skills" class="back-link"><Icon name="arrow-left" size={16} class="flip-rtl" /> {$_('skills.back')}</a>
 
 		<div class="detail-header">
 			<div class="icon-section">
-				<span class="skill-icon">{CATEGORY_ICONS[skill.category] ?? '⭐'}</span>
+				<span class="skill-icon"><Icon name={SKILL_CATEGORY_ICON[skill.category] ?? 'star'} size={30} strokeWidth={1.75} /></span>
 			</div>
 			<div class="header-content">
 				<div class="badges">
-					<span class="category-badge">{skill.category}</span>
-					<span class="type-badge" class:type-offer={skill.skill_type === 'offer'} class:type-request={skill.skill_type === 'request'}>
-						{skill.skill_type === 'offer' ? 'Offering' : 'Looking for'}
+					<span class="badge badge-primary badge-caps">{$_('skills.categories.' + skill.category)}</span>
+					<span class="badge badge-caps" class:badge-success={skill.skill_type === 'offer'} class:badge-warning={skill.skill_type === 'request'}>
+						{skill.skill_type === 'offer' ? $_('skills.offering') : $_('skills.looking_for')}
 					</span>
 				</div>
 				<h1>{skill.title}</h1>
-				<p class="meta">Listed {formatDate(skill.created_at)}</p>
+				<p class="meta">{$_('common.listed_on', { values: { date: formatDate(skill.created_at) } })}</p>
 			</div>
 		</div>
 
 		<div class="detail-grid">
 			<div class="detail-main">
-				<div class="section-card">
-					<h3>About</h3>
-					{#if skill.description}
-						<p>{skill.description}</p>
-					{:else}
-						<p class="no-description">No description added yet.</p>
-					{/if}
-				</div>
+				{#if editing && isOwner}
+					<form class="card section-card edit-form" onsubmit={saveEdit} aria-labelledby="edit-skill-heading">
+						<h3 id="edit-skill-heading">{$_('skills.edit_title')}</h3>
+
+						{#if editError}
+							<p class="alert alert-error" role="alert">{editError}</p>
+						{/if}
+
+						<div class="field">
+							<label for="edit-skill-title">{$_('skills.title_label')}</label>
+							<input id="edit-skill-title" type="text" bind:value={editForm.title} required maxlength="200" disabled={editSaving} />
+						</div>
+
+						<div class="field">
+							<label for="edit-skill-description">{$_('skills.description_label')}</label>
+							<textarea id="edit-skill-description" bind:value={editForm.description} rows="4" maxlength="5000" disabled={editSaving}></textarea>
+						</div>
+
+						<div class="field-row">
+							<div class="field">
+								<label for="edit-skill-category">{$_('skills.category_label')}</label>
+								<select id="edit-skill-category" bind:value={editForm.category} disabled={editSaving}>
+									{#each EDIT_CATEGORIES as cat}
+										<option value={cat}>{$_('skills.categories.' + cat)}</option>
+									{/each}
+								</select>
+							</div>
+							<div class="field">
+								<label for="edit-skill-type">{$_('skills.type_label')}</label>
+								<select id="edit-skill-type" bind:value={editForm.skill_type} disabled={editSaving}>
+									<option value="offer">{$_('skills.type_offering')}</option>
+									<option value="request">{$_('skills.type_seeking')}</option>
+								</select>
+							</div>
+						</div>
+
+						<div class="form-actions">
+							<button type="submit" class="btn btn-primary" class:is-loading={editSaving} disabled={editSaving}>
+								{editSaving ? $_('skills.edit_saving') : $_('skills.edit_save')}
+							</button>
+							<button type="button" class="btn btn-secondary" onclick={cancelEdit} disabled={editSaving}>
+								{$_('common.cancel')}
+							</button>
+						</div>
+					</form>
+				{:else}
+					<div class="card section-card">
+						<h3>{$_('skills.about')}</h3>
+						{#if skill.description}
+							<p>{skill.description}</p>
+						{:else}
+							<p class="no-description">{$_('skills.no_description')}</p>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Reviews Section -->
-				<div class="section-card">
+				<div class="card section-card">
 					<h3>{$_('profile.reviews')} ({reviews.length})</h3>
 					{#if reviews.length === 0}
 						<p class="no-reviews-text">{$_('profile.no_reviews')}</p>
@@ -186,7 +272,7 @@
 								<div class="review-item">
 									<div class="review-item-header">
 										<a href="/profile/{review.reviewer_id}" class="reviewer-name">{review.reviewer.display_name}</a>
-										<span class="review-item-stars">{renderStars(review.rating)}</span>
+										<span class="review-item-stars">{#each [1, 2, 3, 4, 5] as s}<Icon name="star" size={14} filled={s <= Math.round(review.rating)} />{/each}</span>
 										<span class="review-item-date">{formatDate(review.created_at)}</span>
 									</div>
 									{#if review.comment}
@@ -200,13 +286,13 @@
 
 				<!-- Leave a Review -->
 				{#if $isLoggedIn && !isOwner && !hasReviewed}
-					<div class="section-card">
+					<div class="card section-card">
 						<h3>{$_('review.leave_review')}</h3>
 						{#if reviewError}
-							<p class="error">{reviewError}</p>
+							<p class="alert alert-error" role="alert">{reviewError}</p>
 						{/if}
 						{#if reviewSuccess}
-							<p class="success">{reviewSuccess}</p>
+							<p class="alert alert-success" role="status">{reviewSuccess}</p>
 						{/if}
 						<div class="review-form">
 							<div class="star-picker">
@@ -215,18 +301,20 @@
 									<button
 										class="star-btn"
 										class:active={star <= reviewRating}
+										aria-pressed={star <= reviewRating}
 										onclick={() => (reviewRating = star)}
 										type="button"
-									>★</button>
+									><Icon name="star" size={26} filled={star <= reviewRating} /></button>
 								{/each}
 							</div>
 							<textarea
-								bind:value={reviewComment}
+							class="input"
+							bind:value={reviewComment}
 								rows="3"
 								placeholder={$_('review.comment_placeholder')}
 								maxlength="5000"
 							></textarea>
-							<button class="btn-primary" onclick={submitReview} disabled={submittingReview}>
+							<button class="btn btn-primary" class:is-loading={submittingReview} onclick={submitReview} disabled={submittingReview}>
 								{submittingReview ? $_('common.loading') : $_('review.submit')}
 							</button>
 						</div>
@@ -238,7 +326,7 @@
 
 			<aside class="detail-side">
 				<!-- Owner card -->
-				<div class="section-card owner-card">
+				<div class="card section-card owner-card">
 					<h3>{$_('profile.listed_by')}</h3>
 					<div class="owner-row">
 						<span class="owner-avatar" aria-hidden="true">{skill.owner.display_name.charAt(0).toUpperCase()}</span>
@@ -252,33 +340,37 @@
 					{#if skill.owner_trust}
 						<div class="owner-trust-row">
 							{#if skill.owner_trust.total_reviews > 0}
-								<span class="trust-stars">★ {skill.owner_trust.average_rating.toFixed(1)}</span>
+								<span class="trust-stars"><Icon name="star" size={14} />{skill.owner_trust.average_rating.toFixed(1)}</span>
 								<span class="trust-count">({skill.owner_trust.total_reviews} {$_('profile.reviews')})</span>
 							{/if}
 							{#each skill.owner_trust.badges as badge}
-								<span class="trust-badge-mini">{BADGE_ICONS[badge] ?? '🏆'}</span>
+								<span class="trust-badge-mini"><Icon name={TRUST_BADGE_ICON[badge] ?? 'star'} size={16} /></span>
 							{/each}
-							<span class="trust-level">{skill.owner_trust.reputation_level}</span>
+							<span class="trust-level">{$_('dashboard.level_' + skill.owner_trust.reputation_level.toLowerCase(), { default: skill.owner_trust.reputation_level })}</span>
 						</div>
 					{/if}
 					{#if $isLoggedIn && $user?.id !== skill.owner_id}
-						<button class="btn-message-owner" onclick={() => startConversation(skill!.owner_id, skill!.id)}>
-							Message {skill.skill_type === 'offer' ? 'Tutor' : 'Requester'}
+						<button class="btn btn-secondary btn-block btn-message-owner" onclick={() => startConversation(skill!.owner_id, skill!.id)}>
+							<Icon name="message" size={16} />
+							{skill.skill_type === 'offer' ? $_('skills.message_tutor') : $_('skills.message_requester')}
 						</button>
 					{/if}
 				</div>
 
 				<!-- Owner actions -->
 				{#if isOwner}
-					<div class="section-card owner-panel">
+					<div class="card section-card owner-panel">
 						<h3>{$_('skills.manage')}</h3>
 						<div class="owner-actions">
+							<button class="btn btn-secondary" onclick={startEdit} disabled={editing}>
+								{$_('skills.edit_btn')}
+							</button>
 							{#if confirmDelete}
 								<span class="confirm-text">{$_('common.confirm_delete')}</span>
-								<button class="btn-danger" onclick={deleteSkill}>{$_('common.delete')}</button>
-								<button class="btn-secondary" onclick={() => confirmDelete = false}>{$_('common.cancel')}</button>
+								<button class="btn btn-danger" onclick={deleteSkill}>{$_('common.delete')}</button>
+								<button class="btn btn-secondary" onclick={() => confirmDelete = false}>{$_('common.cancel')}</button>
 							{:else}
-								<button class="btn-danger" onclick={deleteSkill}>{$_('skills.delete_listing')}</button>
+								<button class="btn btn-danger-outline" onclick={deleteSkill}>{$_('skills.delete_listing')}</button>
 							{/if}
 						</div>
 					</div>
@@ -293,12 +385,14 @@
 		font-size: 0.9rem;
 		color: var(--color-text-muted);
 		text-decoration: none;
-		display: inline-block;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		margin-bottom: 1rem;
 	}
 
 	.back-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.skill-detail {
@@ -351,7 +445,7 @@
 		height: 64px;
 		border-radius: var(--radius-lg);
 		background: var(--color-primary-light);
-		font-size: 1.9rem;
+		color: var(--color-primary-text);
 	}
 
 	.header-content {
@@ -375,36 +469,7 @@
 		flex-wrap: wrap;
 	}
 
-	.category-badge, .type-badge {
-		font-size: 0.75rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-		font-weight: 600;
-	}
-
-	.category-badge {
-		background: var(--color-bg);
-		color: var(--color-primary);
-	}
-
-	.type-badge {
-		color: white;
-	}
-
-	.type-offer {
-		background: var(--color-success);
-	}
-
-	.type-request {
-		background: var(--color-warning);
-	}
-
 	.section-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
 		padding: 1.5rem;
 		margin-bottom: 1.5rem;
 	}
@@ -442,7 +507,7 @@
 		height: 44px;
 		border-radius: 50%;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		font-weight: 600;
 		font-size: 1.1rem;
 		flex-shrink: 0;
@@ -454,7 +519,7 @@
 
 	.owner-name-link {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 1.05rem;
 	}
@@ -478,6 +543,9 @@
 	}
 
 	.trust-stars {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.2rem;
 		color: var(--color-warning);
 		font-weight: 600;
 	}
@@ -487,35 +555,21 @@
 	}
 
 	.trust-badge-mini {
-		font-size: 0.9rem;
+		display: inline-flex;
+		color: var(--color-primary-text);
 	}
 
 	.trust-level {
 		padding: 0.1rem 0.5rem;
 		border-radius: 999px;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 		font-size: 0.75rem;
 	}
 
 	.btn-message-owner {
 		margin-top: 1rem;
-		width: 100%;
-		padding: 0.5rem 0.9rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-primary);
-		border-radius: var(--radius);
-		color: var(--color-primary);
-		font-size: 0.85rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-message-owner:hover {
-		background: var(--color-primary);
-		color: white;
 	}
 
 	/* Review list */
@@ -544,7 +598,7 @@
 
 	.reviewer-name {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 		font-size: 0.9rem;
 	}
@@ -554,14 +608,14 @@
 	}
 
 	.review-item-stars {
+		display: inline-flex;
 		color: var(--color-warning);
-		font-size: 0.85rem;
 	}
 
 	.review-item-date {
 		color: var(--color-text-subtle);
 		font-size: 0.78rem;
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.review-item-comment {
@@ -591,16 +645,20 @@
 	.star-label {
 		font-size: 0.85rem;
 		font-weight: 500;
-		margin-right: 0.5rem;
+		margin-inline-end: 0.5rem;
 	}
 
 	.star-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: var(--tap-target);
+		min-height: var(--tap-target);
 		background: none;
 		border: none;
-		font-size: 1.5rem;
 		cursor: pointer;
-		color: var(--color-border);
-		transition: color 100ms;
+		color: var(--color-border-hover);
+		transition: color var(--transition-fast);
 		padding: 0;
 	}
 
@@ -609,38 +667,7 @@
 	}
 
 	.review-form textarea {
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		background: var(--color-surface);
-		color: var(--color-text);
 		resize: vertical;
-	}
-
-	.review-form textarea:focus {
-		outline: none;
-		border-color: var(--color-primary);
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius);
-		padding: 0.5rem 1rem;
-		font-size: 0.9rem;
-		cursor: pointer;
-		align-self: flex-start;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.already-reviewed {
@@ -648,18 +675,6 @@
 		color: var(--color-text-muted);
 		font-style: italic;
 		margin-bottom: 1rem;
-	}
-
-	.error {
-		color: var(--color-error);
-		font-size: 0.9rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.success {
-		color: var(--color-success);
-		font-size: 0.9rem;
-		margin-bottom: 0.5rem;
 	}
 
 	.owner-panel {
@@ -672,23 +687,21 @@
 		flex-wrap: wrap;
 	}
 
-	.btn-danger {
-		padding: 0.5rem 1rem;
-		border: 1px solid var(--color-error);
-		border-radius: var(--radius);
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		cursor: pointer;
-		font-size: 0.9rem;
+	/* Edit form */
+	.edit-form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
 
-	.btn-danger:hover {
-		background: var(--color-error);
-		color: white;
+	.edit-form h3 {
+		margin-bottom: 0;
 	}
 
-	.loading {
-		color: var(--color-text-muted);
+	.edit-form .form-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
 	}
 
 	.error-page {

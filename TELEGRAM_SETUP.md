@@ -25,27 +25,38 @@ Add the following to your `.env` file (or Docker environment):
 NG_TELEGRAM_BOT_TOKEN=123456789:AAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 NG_TELEGRAM_BOT_NAME=your_bot_username     # without the @ prefix
 
-# Recommended — protects the webhook endpoint from unauthorized callers
-NG_TELEGRAM_WEBHOOK_SECRET=some-random-string-at-least-32-chars
+# Optional — the webhook is always protected by a secret. When this is unset,
+# one is derived from NG_SECRET_KEY and the bot token.
+# NG_TELEGRAM_WEBHOOK_SECRET=some-random-string-at-least-32-chars
+
+# Needed for automatic webhook registration (public HTTPS URL of the backend)
+NG_INSTANCE_URL=https://your-domain
 ```
 
-Generate a strong webhook secret:
-
-```bash
-openssl rand -hex 32
-```
+Telegram updates without the matching `X-Telegram-Bot-Api-Secret-Token` header are rejected with `403`. If you set your own secret, generate a strong one with `openssl rand -hex 32`.
 
 ---
 
 ## 3. Register the webhook with Telegram
 
-After the backend is running and publicly reachable, register the webhook once:
+After the backend is running and publicly reachable, register the webhook once. As a platform admin (see `NG_ADMIN_EMAILS`), call:
+
+```bash
+curl -X POST "https://<your-domain>/telegram/webhook/register" \
+  -H "Authorization: Bearer <your access token>"
+```
+
+This registers `NG_INSTANCE_URL/telegram/webhook` together with the webhook secret (explicit or derived), so you never have to copy the secret around.
+
+If you set `NG_TELEGRAM_WEBHOOK_SECRET` yourself you can also register manually:
 
 ```bash
 curl "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d "url=https://<your-domain>/telegram/webhook" \
   -d "secret_token=<NG_TELEGRAM_WEBHOOK_SECRET>"
 ```
+
+**Upgrading from 2.2 or earlier:** webhooks registered without a secret stop working, because unauthenticated updates are now rejected. Register the webhook again once using either method above.
 
 Replace `<your-domain>` with the public HTTPS URL of your NeighbourGood instance. For local development use a tunnel such as [ngrok](https://ngrok.com/) or [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
 

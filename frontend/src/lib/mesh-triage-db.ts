@@ -116,6 +116,19 @@ export async function clearOfflineTickets(): Promise<void> {
 	});
 }
 
+/** Remove tickets that were synced to the server (they show in /triage from then on). */
+export async function deleteOfflineTickets(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
+	const db = await openDB();
+	const tx = db.transaction(TICKETS_STORE, 'readwrite');
+	const store = tx.objectStore(TICKETS_STORE);
+	for (const id of ids) store.delete(id);
+	return new Promise((resolve, reject) => {
+		tx.oncomplete = () => { db.close(); resolve(); };
+		tx.onerror = () => { db.close(); reject(tx.error); };
+	});
+}
+
 /** Mark a ticket as synced with a server ID. */
 export async function markTicketSynced(ticketId: string, serverId: number): Promise<void> {
 	const db = await openDB();

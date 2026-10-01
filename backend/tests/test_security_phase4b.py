@@ -62,11 +62,13 @@ def test_rate_limit_store_upload_bucket():
     assert retry_after > 0
 
 
-def test_rate_limit_store_general_bucket_allows_60():
-    from app.middleware.rate_limit import RateLimitStore
+def test_rate_limit_store_general_bucket_allows_limit():
+    from app.middleware.rate_limit import RateLimitStore, _GENERAL_LIMIT
+
+    from app.middleware.rate_limit import _GENERAL_LIMIT
 
     store = RateLimitStore()
-    for _ in range(60):
+    for _ in range(_GENERAL_LIMIT):
         allowed, _ = store.check_and_record("1.2.3.4", "/resources")
         assert allowed
     allowed, _ = store.check_and_record("1.2.3.4", "/resources")
@@ -75,12 +77,15 @@ def test_rate_limit_store_general_bucket_allows_60():
 
 # ── Account lockout (unit-level) ─────────────────────────────────────────────
 
+IP_A = "203.0.113.10"
+IP_B = "203.0.113.20"
+
 
 def test_lockout_not_triggered_initially():
     from app.services.lockout import check_lockout, clear_failures
 
-    clear_failures("fresh@example.com")
-    locked, _ = check_lockout("fresh@example.com")
+    clear_failures("fresh@example.com", IP_A)
+    locked, _ = check_lockout("fresh@example.com", IP_A)
     assert not locked
 
 
@@ -88,74 +93,107 @@ def test_lockout_triggered_after_five_failures():
     from app.services.lockout import check_lockout, clear_failures, record_failure
 
     email = "brute@example.com"
-    clear_failures(email)
+    clear_failures(email, IP_A)
     for _ in range(5):
-        record_failure(email)
-    locked, retry_after = check_lockout(email)
+        record_failure(email, IP_A)
+    locked, retry_after = check_lockout(email, IP_A)
     assert locked
     assert retry_after > 0
+    clear_failures(email, IP_A)
 
 
 def test_lockout_cleared_after_success():
     from app.services.lockout import check_lockout, clear_failures, record_failure
 
     email = "cleared@example.com"
-    clear_failures(email)
+    clear_failures(email, IP_A)
     for _ in range(5):
-        record_failure(email)
-    assert check_lockout(email)[0]
-    clear_failures(email)
-    locked, _ = check_lockout(email)
+        record_failure(email, IP_A)
+    assert check_lockout(email, IP_A)[0]
+    clear_failures(email, IP_A)
+    locked, _ = check_lockout(email, IP_A)
     assert not locked
 
 
 def test_lockout_case_insensitive():
     from app.services.lockout import check_lockout, clear_failures, record_failure
 
-    clear_failures("CASE@example.com")
+    clear_failures("CASE@example.com", IP_A)
     for _ in range(5):
-        record_failure("CASE@example.com")
-    locked, _ = check_lockout("case@example.com")
+        record_failure("CASE@example.com", IP_A)
+    locked, _ = check_lockout("case@example.com", IP_A)
     assert locked
+    clear_failures("case@example.com", IP_A)
+
+
+def test_lockout_is_per_email_and_ip():
+    """Failures from one IP must not lock the same email for another IP."""
+    from app.services.lockout import check_lockout, clear_failures, record_failure
+
+    email = "victim@example.com"
+    clear_failures(email, IP_A)
+    clear_failures(email, IP_B)
+    for _ in range(5):
+        record_failure(email, IP_A)
+    assert check_lockout(email, IP_A)[0]
+    assert not check_lockout(email, IP_B)[0]
+    assert not check_lockout("other@example.com", IP_A)[0]
+    clear_failures(email, IP_A)
 
 
 # ── Account lockout (integration — through the API) ─────────────────────────
 
 
-def test_login_records_failure_and_locks(client):
-    """Five wrong-password attempts should lock the account."""
+def _as_ip(monkeypatch, ip_holder):
+    """Make the login endpoint see the client IP stored in ``ip_holder[0]``."""
+    monkeypatch.setattr("app.routers.auth._client_ip", lambda request: ip_holder[0])
+
+
+def test_login_records_failure_and_locks(client, monkeypatch):
+    """Five wrong-password attempts from one IP should lock that (email, IP) pair."""
     from app.services.lockout import clear_failures
 
+    ip = [IP_A]
+    _as_ip(monkeypatch, ip)
     email = "lockme@example.com"
-    clear_failures(email)
+    clear_failures(email, IP_A)
+    clear_failures(email, IP_B)
 
-    # Register the account
     client.post(
         "/auth/register",
         json={"email": email, "password": "Correct123", "display_name": "Lock Me"},
     )
 
-    # 5 failed attempts
     for _ in range(5):
         res = client.post("/auth/login", json={"email": email, "password": "Wrong123!"})
         assert res.status_code == 401
+        assert res.json()["detail"] == "Invalid credentials"
 
-    # 6th attempt should be locked
+    # 6th attempt from the same IP is locked, even with the right password
     res = client.post("/auth/login", json={"email": email, "password": "Correct123"})
     assert res.status_code == 429
     assert "Retry-After" in res.headers
     assert "locked" in res.json()["detail"].lower()
 
-    # Cleanup
-    clear_failures(email)
+    # The legitimate owner on another IP is not locked out
+    ip[0] = IP_B
+    res = client.post("/auth/login", json={"email": email, "password": "Correct123"})
+    assert res.status_code == 200
+    # ...and a wrong password from that IP still gets the generic 401, not a lock
+    res = client.post("/auth/login", json={"email": email, "password": "Wrong123!"})
+    assert res.status_code == 401
+
+    clear_failures(email, IP_A)
+    clear_failures(email, IP_B)
 
 
-def test_successful_login_clears_failures(client):
-    """A successful login should reset the failure counter."""
+def test_successful_login_clears_failures(client, monkeypatch):
+    """A successful login should reset the failure counter for that (email, IP)."""
     from app.services.lockout import check_lockout, clear_failures
 
+    _as_ip(monkeypatch, [IP_A])
     email = "recover@example.com"
-    clear_failures(email)
+    clear_failures(email, IP_A)
 
     client.post(
         "/auth/register",
@@ -171,10 +209,10 @@ def test_successful_login_clears_failures(client):
     assert res.status_code == 200
 
     # Counter should be reset
-    locked, _ = check_lockout(email)
+    locked, _ = check_lockout(email, IP_A)
     assert not locked
 
-    clear_failures(email)
+    clear_failures(email, IP_A)
 
 
 def test_login_unified_error_message(client):
@@ -302,3 +340,18 @@ def test_csrf_middleware_blocks_wrong_origin(client, monkeypatch):
     )
     assert res.status_code == 403
     assert "Origin" in res.json()["detail"]
+
+
+def test_rate_limit_store_viewing_images_is_not_an_upload():
+    from app.middleware.rate_limit import RateLimitStore
+
+    store = RateLimitStore()
+    for _ in range(30):
+        allowed, _ = store.check_and_record("1.2.3.4", "/resources/1/image", "GET")
+        assert allowed
+    # uploads keep their own, stricter bucket
+    for _ in range(10):
+        allowed, _ = store.check_and_record("1.2.3.4", "/resources/1/image", "POST")
+        assert allowed
+    allowed, _ = store.check_and_record("1.2.3.4", "/resources/1/image", "POST")
+    assert not allowed

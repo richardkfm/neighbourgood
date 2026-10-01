@@ -6,7 +6,8 @@
 export interface UserInfo {
 	id: number;
 	display_name: string;
-	email: string;
+	/** Only present on the signed-in user's own profile; payloads about other users omit it. */
+	email?: string;
 	neighbourhood?: string | null;
 	role?: string;
 	language_code?: string;
@@ -70,7 +71,10 @@ export interface CommunityOut {
 	city: string;
 	country_code: string;
 	primary_language?: string | null;
+	/** Stored per-community mode (toggles and votes change it). */
 	mode: string;
+	/** What the community behaves as: also "red" while the whole instance is in Red Sky. */
+	effective_mode?: string;
 	latitude: number | null;
 	longitude: number | null;
 	member_count: number;
@@ -98,6 +102,7 @@ export interface MapCommunity {
 	resource_count: number;
 	skill_count: number;
 	mode: string;
+	effective_mode?: string;
 	latitude: number | null;
 	longitude: number | null;
 }
@@ -133,7 +138,7 @@ export interface ActivityOut {
 	summary: string;
 	actor_id: number;
 	community_id: number | null;
-	actor: { id: number; display_name: string; email: string };
+	actor: { id: number; display_name: string };
 	created_at: string;
 }
 
@@ -146,7 +151,12 @@ export type ResourceItem = Resource;
 
 export interface CrisisStatus {
 	community_id: number;
+	/** Stored per-community mode. */
 	mode: string;
+	/** "red" when the community or the whole instance is in Red Sky. */
+	effective_mode?: string;
+	/** The instance (NG_PLATFORM_MODE=red) forces Red Sky on every community. */
+	instance_red?: boolean;
 	votes_to_activate: number;
 	votes_to_deactivate: number;
 	total_members: number;
@@ -180,30 +190,7 @@ export interface Webhook {
 
 // ── Mesh networking types (BitChat BLE gateway) ──────────────────────────────
 
-export type NGMeshMessageType =
-	| 'emergency_ticket'
-	| 'ticket_comment'
-	| 'crisis_vote'
-	| 'crisis_status'
-	| 'direct_message'
-	| 'heartbeat';
-
-export interface NGMeshMessage {
-	ng: 1;
-	type: NGMeshMessageType;
-	community_id: number;
-	sender_name: string;
-	ts: number;
-	id: string;
-	data: Record<string, unknown>;
-}
-
-export interface MeshTicketData {
-	title: string;
-	description: string;
-	ticket_type: 'request' | 'offer' | 'emergency_ping';
-	urgency: 'low' | 'medium' | 'high' | 'critical';
-}
+export type { NGMeshMessage, NGMeshMessageType, MeshTicketData } from '$lib/bluetooth/protocol';
 
 export interface MeshVoteData {
 	vote_type: 'activate' | 'deactivate';
@@ -211,8 +198,14 @@ export interface MeshVoteData {
 
 export interface MeshSyncResult {
 	synced: number;
+	/** Of the synced messages, how many carried a valid author signature. */
+	verified?: number;
 	duplicates: number;
 	errors: number;
+	/** Messages refused by policy (too old, unsigned relayed vote/check-in, crisis mode change); not retried. */
+	rejected?: number;
+	/** Mesh IDs of the messages that failed and should be retried (absent on older servers). */
+	failed_ids?: string[];
 }
 
 export interface EventAttendeeProfile {
@@ -305,7 +298,9 @@ export interface RedSkyAlertInfo {
 	title: string;
 	description: string;
 	severity: string;
+	/** False once dismissed by an admin or past expires_at. */
 	is_active: boolean;
+	expires_at?: string | null;
 	created_at: string;
 }
 
@@ -349,6 +344,8 @@ export interface ReviewOut {
 	booking_id: number | null;
 	skill_id: number | null;
 	review_type: string;
+	/** Booking reviews only: the role the reviewee played in the booking. */
+	reviewee_role?: 'lender' | 'borrower' | null;
 	reviewer_id: number;
 	reviewee_id: number;
 	rating: number;

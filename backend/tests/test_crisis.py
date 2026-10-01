@@ -143,7 +143,7 @@ def test_duplicate_vote_rejected(client, auth_headers):
     assert res.status_code == 409
 
 
-def test_change_vote(client, auth_headers):
+def test_change_vote_to_noop_rejected(client, auth_headers):
     c = _create_community(client, auth_headers)
     cid = c["id"]
 
@@ -161,8 +161,9 @@ def test_change_vote(client, auth_headers):
         headers=auth_headers,
         json={"vote_type": "deactivate"},
     )
-    assert res.status_code == 200
-    assert res.json()["vote_type"] == "deactivate"
+    # While blue, "deactivate" is a no-op vote: 409, and the earlier vote stays
+    assert res.status_code == 409
+    assert client.get(f"/communities/{cid}/crisis/status").json()["votes_to_activate"] == 1
 
 
 def test_retract_vote(client, auth_headers):
@@ -596,7 +597,7 @@ def test_leader_can_update_ticket(client, auth_headers):
 
 def test_communities_map_endpoint(client, auth_headers):
     _create_community(client, auth_headers, name="Group A", plz="10115", city="Berlin")
-    _create_community(client, auth_headers, name="Group B", plz="80331", city="Munich")
+    _create_community(client, _register(client, "mapper2@test.com"), name="Group B", plz="80331", city="Munich")
 
     res = client.get("/communities/map")
     assert res.status_code == 200
@@ -605,13 +606,13 @@ def test_communities_map_endpoint(client, auth_headers):
     assert all("name" in c and "city" in c for c in data)
 
 
-def test_map_excludes_merged(client, auth_headers):
+def test_map_excludes_merged(client, auth_headers, admin_headers):
     a = _create_community(client, auth_headers, name="Old", plz="10115", city="Berlin")
-    b = _create_community(client, auth_headers, name="New", plz="10115", city="Berlin")
+    b = _create_community(client, _register(client, "mapper2@test.com"), name="New", plz="10115", city="Berlin")
 
     client.post(
         "/communities/merge",
-        headers=auth_headers,
+        headers=admin_headers,
         json={"source_id": a["id"], "target_id": b["id"]},
     )
 

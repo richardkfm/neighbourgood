@@ -1,8 +1,7 @@
 """Pydantic schemas for webhooks and Telegram integration."""
 
-import datetime
-
 from pydantic import BaseModel, Field, field_validator
+from app.schemas.common import UTCDateTime
 
 
 WEBHOOK_EVENTS = [
@@ -48,7 +47,7 @@ class WebhookOut(BaseModel):
     url: str
     event_types: list[str]
     is_active: bool
-    created_at: datetime.datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
@@ -72,3 +71,7 @@ class TelegramLinkStart(BaseModel):
 
 class TelegramGroupLinkStart(BaseModel):
     token: str
+
+
+class TelegramWebhookRegistered(BaseModel):
+    url: str

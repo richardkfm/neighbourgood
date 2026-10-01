@@ -4,7 +4,8 @@ import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas.user import UserProfile
+from app.schemas.user import UserPublic
+from app.schemas.common import UTCDateTime
 
 VALID_BOOKING_STATUSES = ["pending", "approved", "rejected", "cancelled", "completed"]
 
@@ -32,13 +33,13 @@ class BookingOut(BaseModel):
     resource_id: int
     resource_title: str | None = None
     borrower_id: int
-    borrower: UserProfile
+    borrower: UserPublic
     start_date: datetime.date
     end_date: datetime.date
     message: str | None
     status: str
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

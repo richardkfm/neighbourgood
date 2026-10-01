@@ -2,7 +2,7 @@
 
 import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -35,15 +35,41 @@ class KnownInstance(Base):
 
 
 class RedSkyAlert(Base):
+    """An alert received from another instance and verified against its source."""
+
     __tablename__ = "red_sky_alerts"
+    __table_args__ = (
+        UniqueConstraint("source_instance_url", "source_alert_uid", name="uq_red_sky_alert_source_uid"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_instance_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    # ID of the alert on the source instance, used to fetch it back for verification
+    source_alert_uid: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     source_instance_name: Mapped[str] = mapped_column(String(200), nullable=False)
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     severity: Mapped[str] = mapped_column(String(20), default="warning", nullable=False)  # info, warning, critical
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Chosen by the sender; after this the alert counts as inactive (null = legacy, no expiry)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False
+    )
+
+
+class SentAlert(Base):
+    """An alert this instance broadcast. Receivers fetch it back to verify it is genuine."""
+
+    __tablename__ = "sent_red_sky_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alert_uid: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    severity: Mapped[str] = mapped_column(String(20), default="warning", nullable=False)
+    sent_by_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False
     )

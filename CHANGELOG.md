@@ -4,12 +4,118 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [2.4.0] - 2026-10-01
+
+Closes the remaining findings from the 2.3.0 QA and design review.
+
+### Security
+
+- **Signed mesh messages** — each browser creates an ECDSA P-256 key pair (private key non-extractable) and registers the public key with a proof of possession (`POST /mesh/keys`, list/revoke via `GET /mesh/keys/me`, `DELETE /mesh/keys/me/{key_id}`). `/mesh/sync` verifies signatures over a canonical serialisation (spec in `services/mesh_signing.py`, identical TS implementation with a shared test vector), credits relayed content to its real author, deduplicates per author, and only accepts relayed votes and check-ins when signed by their author. Unsigned messages keep the "original sender unverified" path
+- **Sessions end on password change** — `users.token_version` is embedded in the JWT and bumped on password change, email change and password reset; the current session receives a fresh token
+- **Lockout per (email, IP)** — a stranger can no longer lock a known email out of its owner's network; a password reset clears the lockout from every IP
+- **Webhook SSRF guard** — webhook URLs must be http(s) and resolve to public addresses, checked on create and again at every delivery; `NG_WEBHOOK_ALLOW_PRIVATE=true` allows LAN targets
+- **NUL bytes** in JSON bodies, query strings and paths are rejected with `422` (PostgreSQL would have raised a 500)
+- **Request body size limit** (`NG_MAX_REQUEST_BODY_BYTES`, default 1 MB; image uploads keep their 5 MB limit) returns `413`
+- Account deletion revokes the user's mesh signing keys
+
+### Added
+
+- **Password reset** — `POST /auth/password-reset/request` (always `202`, no account enumeration, rate-limited) and `/confirm`; single-use hashed tokens valid for 1 hour; "Forgot your password?" flow in the frontend. Without SMTP the link is written to the backend log
+- **Delete account** — `DELETE /users/me` with password re-authentication; the account is anonymised, listings removed (or kept as tombstones when other people's booking history depends on them), open bookings cancelled with notifications, admin role handed to the longest-standing member, and the crisis-vote threshold re-checked
+- **Data export in settings** — download button for `/federation/export/my-data`, which now also contains lender-side bookings (borrower names only, no emails)
+- **Edit resources and skills** in the UI, including photo replacement
+- **Promote members to community admin** (`POST /communities/{id}/members/{user_id}/promote`, "Make admin" button)
+- **Alert lifecycle** — senders choose how long an alert stays active (`duration_hours`, default 48), expired alerts disappear, every member can open an alert detail page, dismissal is per alert
+- **Global red** — `NG_PLATFORM_MODE=red` makes every community behave as Red Sky (pings, unmet needs, mesh panel, Telegram requests); each community keeps its stored mode for when the instance returns to blue
+- **Red Sky navigation** shows only crisis-relevant items; other pages stay reachable by URL
+- **Mesh fragmentation** for packets larger than one BLE write, heartbeats on `/mesh`, key management on the Mesh page
+- `npm test` (frontend `node:test` suite) and `npm run check:i18n` (key parity and unknown-key check)
+
+### Changed
+
+- **Membership rules** — only members can book a community's items or RSVP to its events (personal items: users who share a community with the owner); creating a community while already in one returns `409`; the last admin cannot leave while other members remain; merging requires admin rights in both communities (or platform admin)
+- **Bookings** — only the lender can mark a booking complete; start dates in the past are rejected; items with `quantity_available > 1` stay bookable until all units are taken for the overlapping dates
+- **Reputation** — imported items (`/federation/migrate/import`, now capped at 200 per request) earn no points
+- **Crisis votes** — no-op votes return `409`, the threshold is re-checked when a member leaves or deletes their account, and stale votes are cleared on every mode change
+- **Emergency tickets** carry a client-generated `client_id`, so a ticket sent over the mesh and via the offline queue is stored once
+- **Logout clears offline crisis data** on the device (mesh queue, offline triage store, request queue); a request that fails on offline replay now shows a message instead of disappearing
+- **Emergency page** uses the server's triage order, so overdue tickets surface
+- Crisis datetimes are serialised as UTC; tz-aware `due_at` values are converted before storage
+- Booking reviews show Lending or Borrowing correctly (every review was labelled "Lending"); `ReviewOut.reviewee_role`
+- Mesh resources use the same categories as REST-created ones (`tool` used to be stored as `other`)
+
+### Design
+
+- Split `--color-primary` into fill and `--color-primary-text` tokens and added `--color-on-*` tokens: every checked text/fill pair meets WCAG AA in light, dark and Red Sky (dark-mode buttons now use dark text on violet)
+- Shared `.btn`, `.card`, `.field`, `.badge`, `.empty-state` and skeleton primitives; about 30 pages and components migrated, per-page duplicates removed
+- Inline SVG icon set (`Icon.svelte`, Lucide paths) replaces functional emoji
+- Skeleton loading and empty states with a primary action across the app
+- Accessible new-message dialog (focus trap, Escape, focus return), labelled settings controls, booking date pickers start today, `/triage/{id}` works without `?community=`, dashboard and bookings no longer misclassify your own requests while the profile loads
+- svelte-check warnings down from 65 to 2
+
+### Translations
+
+- About 330 hardcoded English strings moved to i18n keys (216 new keys)
+- All 11 non-English locales completed by AI translation (about 4,800 strings) and existing translations corrected (Arabic/Ukrainian plurals, stray characters in Farsi, German switched to "du"). **Needs native review** — see `frontend/src/lib/i18n/TRANSLATIONS.md`
+- `<html lang/dir>` follows the active locale on every load (RTL after a logged-out reload)
+
+### Tests
+
+- 707 backend tests (186 new since 2.3.0), plus 15 frontend tests
+
+## [2.3.0] - 2026-09-30
+
+Results of a full QA pass (Blue Sky and Red Sky/mesh), a UI/UX review, and follow-up security hardening.
+
+### Security
+
+- **Cross-instance Red Sky alerts can no longer be forged** — `POST /federation/alerts/receive` used to trust the source URL written in the request body. Receivers now fetch the alert back from the known instance's directory URL (`GET /federation/alerts/outgoing/{alert_uid}`) and store only what the source publishes; unverifiable notifications are refused with `422`, and repeated deliveries are idempotent. Broadcasting requires `NG_INSTANCE_URL`
+- **Only platform admins can add or re-crawl federation directory entries**, since known instances are trusted alert sources
+- **`NG_ADMIN_EMAILS`** — new setting that grants the platform admin role to the listed accounts on their next request. Before, nothing could make an account admin, so alert broadcast/dismiss and directory removal were unreachable
+- **Telegram webhook is always authenticated** — when `NG_TELEGRAM_WEBHOOK_SECRET` is unset a secret is derived from `NG_SECRET_KEY` and the bot token; updates without the matching header get `403`, and the webhook returns `404` when no bot is configured. New admin endpoint `POST /telegram/webhook/register` registers the webhook with its secret. **Upgrade note:** re-register existing webhooks once
+- **Mesh sync replay protection** — messages older than `NG_MESH_MAX_MESSAGE_AGE_HOURS` (default 72) or dated more than an hour ahead are refused; crisis mode can no longer be switched via mesh (it stays admin-only through `POST /crisis/toggle`); votes and check-ins relayed on behalf of someone else are refused; relayed tickets, comments, messages and resources are labelled with the unverified original sender. Refused messages are reported as `rejected` (not in `failed_ids`), so clients drop them instead of retrying
+- **Email and Telegram chat id no longer exposed** in community member lists, resource/skill owners, bookings, events, reviews, activity, crisis payloads, messages and the message contacts list (new `UserPublic` schema; the contact picker shows the neighbourhood instead)
+- Telegram notifications HTML-escape user text; mesh packets and BLE payloads are validated; federation alert broadcast validates severity and lengths
+
+### Fixed — Blue Sky
+
+- Event and feed times were shifted by the viewer's UTC offset; datetimes now serialise as UTC
+- Pages misjudged ownership/membership on a hard reload; profile page kept showing the previous user
+- A wrong current password on change-password/change-email logged the user out (now `400`)
+- Emails are case-insensitive, preventing duplicate accounts
+- Outsiders could post resources/skills into any community; community merge left resources, skills and events behind
+- Deleting a resource with live bookings orphaned them; deleting a skill with messages failed on PostgreSQL
+- Validation gaps: event end before start, whitespace-only names, invite/coordinate/import bounds, out-of-range integers (`500` → `422`)
+- Viewing resource images counted against the 10/min upload rate limit
+- Webhooks for `resource.shared`, `skill.created` and `member.joined` never fired
+- Invite link lost for signed-out visitors; language preference not saved or applied; federated category filter; copy-invite on plain HTTP; failed image upload replaced the whole page
+
+### Fixed — Red Sky and mesh
+
+- Mesh backlogs over 100 messages never synced; the queue was cleared even when the server rejected messages; persistence races lost messages
+- One malformed BLE packet permanently crashed the mesh and emergency pages
+- Mesh sync was not atomic, so retries could create duplicate tickets; heartbeats could squat real message IDs
+- Mesh crisis votes ignored the 60% threshold; mesh comments could target tickets of another community; check-in coordinates unchecked
+- Red Sky UI was evaluated only once at start-up and community pages overwrote the global mode; low-bandwidth mode stuck after a crisis
+- "Take this" and assignee status buttons were rejected by the API; tickets can now be unassigned; emergency page and dashboard only loaded 20 tickets
+- Switching to Red Sky by community vote sent no webhook/Telegram notification; unmet-needs endpoint returned `500` for long titles; Telegram-created requests missing from the activity feed
+
+### Changed — UI/UX
+
+- Mobile bottom tab bar with a "More" sheet; Emergency gets its own tab in Red Sky mode
+- Red Sky identity: complete always-dark palette, crisis pill, urgency tokens and tinted urgency badges
+- WCAG AA contrast fixes, visible focus ring, skip link, `prefers-reduced-motion`, 44px tap targets
+- Reworked phone layouts for bookings, messages (list/thread), resources, dashboard and settings; RTL uses logical CSS properties
+- Auth forms: autocomplete attributes, announced errors, password rules hint
 
 ### Docs
 
-- **CLAUDE.md brought up to date with the actual codebase** — it had drifted to describing v1.9.6/441 tests while the project was already at v2.2.2/444 tests. Corrected version/test-count banner, marked Security Phase 4b (rate limiting, account lockout, CSRF protection) as implemented instead of pending (it shipped in v1.7.0), expanded the i18n language list from 7 to the actual 12 locales, added missing `/events` and `/mesh` routers and `Event`/mesh/federation-sync models to the reference tables, extended the version history table through 2.2.2, and fixed the test file count/list
-- **README.md** — removed a stray `### Local Development` heading that had been accidentally left inside the "Useful Docker commands" bash code block
+- **CLAUDE.md brought up to date with the actual codebase** — corrected version/test-count banner, marked Security Phase 4b (rate limiting, account lockout, CSRF protection) as implemented, expanded the i18n language list to the actual 12 locales, added missing `/events` and `/mesh` routers and `Event`/mesh/federation-sync models to the reference tables, extended the version history table, and fixed the test file count/list
+- **README.md** — removed a stray `### Local Development` heading inside the "Useful Docker commands" code block
+
+### Tests
+
+- 3 new test files (`test_blue_sky_qa.py`, `test_redsky_qa.py`, `test_security_hardening.py`) and updated federation, mesh and Telegram tests (521 tests total)
 
 ## [2.2.2] - 2026-07-15
 

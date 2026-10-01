@@ -5,6 +5,9 @@
  * The native app handles mesh routing; we just read/write one GATT characteristic.
  */
 
+import { get } from 'svelte/store';
+import { t } from 'svelte-i18n';
+
 // BitChat BLE protocol constants
 const BITCHAT_SERVICE_UUID = '0000fff0-0000-1000-8000-00805f9b34fb';
 const BITCHAT_CHARACTERISTIC_UUID = 'a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d';
@@ -26,7 +29,7 @@ export function isBluetoothSupported(): boolean {
 /** Prompt user to select a nearby BitChat device. */
 export async function scanForBitchatNode(): Promise<BluetoothDevice> {
 	if (!isBluetoothSupported()) {
-		throw new Error('Web Bluetooth is not supported in this browser');
+		throw new Error(get(t)('mesh.not_supported'));
 	}
 	const selected = await navigator.bluetooth.requestDevice({
 		filters: [{ services: [BITCHAT_SERVICE_UUID] }],
@@ -110,7 +113,7 @@ export async function reconnectToLastDevice(): Promise<boolean> {
 /** Send raw bytes to the connected BitChat node. */
 export async function sendMessage(data: Uint8Array): Promise<void> {
 	if (!characteristic) {
-		throw new Error('Not connected to a BitChat node');
+		throw new Error(get(t)('mesh.not_connected'));
 	}
 	await characteristic.writeValueWithoutResponse(data);
 }

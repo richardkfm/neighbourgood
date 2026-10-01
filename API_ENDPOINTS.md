@@ -14,6 +14,8 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | ---------------- | ------ | ---- | ------------------------- |
 | `/auth/register` | POST   | No   | Create account, returns JWT |
 | `/auth/login`    | POST   | No   | Authenticate, returns JWT |
+| `/auth/password-reset/request` | POST | No | Email a single-use reset link (valid 1 hour). Always 202 with the same body, whether or not the email exists |
+| `/auth/password-reset/confirm` | POST | No | Set a new password with `{token, new_password}`; token works once; clears lockout |
 
 ## Users
 
@@ -21,6 +23,7 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | ------------------------ | ------ | ---- | ------------------------------------ |
 | `/users/me`              | GET    | Yes  | Get current user profile             |
 | `/users/me`              | PATCH  | Yes  | Update profile (name, neighbourhood) |
+| `/users/me`              | DELETE | Yes  | Delete (anonymise) your account; body `{password}`, 400 on wrong password |
 | `/users/me/reputation`   | GET    | Yes  | Get your reputation score            |
 | `/users/{id}/reputation` | GET    | No   | Get a user's reputation score        |
 
@@ -63,14 +66,15 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | Endpoint                                 | Method | Auth | Description                        |
 | ---------------------------------------- | ------ | ---- | ---------------------------------- |
 | `/communities/search`                    | GET    | No   | Search communities (name/PLZ/city) |
-| `/communities`                           | POST   | Yes  | Create a new community             |
+| `/communities`                           | POST   | Yes  | Create a community (409 if already in one) |
 | `/communities/{id}`                      | GET    | No   | Get community details              |
 | `/communities/{id}`                      | PATCH  | Yes  | Update community (admin only)      |
 | `/communities/{id}/join`                 | POST   | Yes  | Join a community                   |
-| `/communities/{id}/leave`                | POST   | Yes  | Leave a community                  |
+| `/communities/{id}/leave`                | POST   | Yes  | Leave a community (409 for the last admin) |
+| `/communities/{id}/members/{user_id}/promote` | POST | Yes | Make a member an admin (community admin only) |
 | `/communities/{id}/members`              | GET    | No   | List community members             |
 | `/communities/my`                        | GET    | Yes  | List your communities              |
-| `/communities/{id}/merge`                | POST   | Yes  | Merge community into another       |
+| `/communities/{id}/merge`                | POST   | Yes  | Merge into another (admin of both, or platform admin) |
 | `/communities/{id}/merge-suggestions`    | GET    | Yes  | Auto-suggest merge candidates      |
 
 ## Skills
@@ -120,22 +124,24 @@ Full reference for the NeighbourGood REST API. Interactive docs available at `/d
 | Endpoint                   | Method | Auth  | Description                              |
 | -------------------------- | ------ | ----- | ---------------------------------------- |
 | `/directory`               | GET    | No    | List known NeighbourGood instances       |
-| `/directory`               | POST   | Yes   | Add instance by URL (auto-fetches info)  |
+| `/directory`               | POST   | Admin | Add instance by URL (auto-fetches info)  |
 | `/directory/{id}`          | DELETE | Admin | Remove instance from directory           |
-| `/directory/refresh`       | POST   | Yes   | Re-crawl all instances for updates       |
+| `/directory/refresh`       | POST   | Admin | Re-crawl all instances for updates       |
 
 ## Federation – Red Sky Alerts
 
 | Endpoint                      | Method | Auth  | Description                              |
 | ----------------------------- | ------ | ----- | ---------------------------------------- |
-| `/alerts`                     | GET    | No    | List Red Sky alerts (active by default)  |
-| `/alerts/send`                | POST   | Admin | Broadcast alert to all known instances   |
-| `/alerts/receive`             | POST   | No    | Receive alert from remote instance       |
+| `/alerts`                     | GET    | No    | List Red Sky alerts (active = not dismissed and not expired, by default) |
+| `/alerts/{id}`                | GET    | Yes   | One received alert, incl. `expires_at` (any logged-in user) |
+| `/alerts/send`                | POST   | Admin | Broadcast alert to all known instances; `duration_hours` 1–336, default 48 |
+| `/alerts/receive`             | POST   | No    | Receive alert notification from a known instance; the alert is fetched back from its source to verify it |
+| `/alerts/outgoing/{alert_uid}` | GET   | No    | An alert this instance broadcast, with `expires_at` (used by receivers to verify) |
 | `/alerts/{id}/dismiss`        | PATCH  | Admin | Dismiss a Red Sky alert                  |
 
 ## Data Export & Migration
 
 | Endpoint              | Method | Auth | Description                              |
 | --------------------- | ------ | ---- | ---------------------------------------- |
-| `/export/my-data`     | GET    | Yes  | Export all user data as portable JSON    |
-| `/migrate/import`     | POST   | Yes  | Import resources/skills from export data |
+| `/export/my-data`     | GET    | Yes  | Export all user data as portable JSON (`bookings` = as borrower, `lending_bookings` = as lender) |
+| `/migrate/import`     | POST   | Yes  | Import resources/skills (max 200 items; imported items earn no reputation) |

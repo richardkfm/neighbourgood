@@ -55,7 +55,7 @@
 			<p class="subtitle">{$t('explore.subtitle')}</p>
 		</div>
 		{#if !$isLoggedIn}
-			<a href="/register" class="btn-cta">{$t('explore.join_neighbourgood')}</a>
+			<a href="/register" class="btn btn-primary btn-lg">{$t('explore.join_neighbourgood')}</a>
 		{/if}
 	</div>
 
@@ -69,7 +69,7 @@
 		<div class="no-communities fade-in">
 			<h2>{$t('explore.no_communities')}</h2>
 			<p>{$t('explore.first_community')}</p>
-			<a href="/register" class="btn-primary">{$t('explore.sign_up_create')}</a>
+			<a href="/register" class="btn btn-primary">{$t('explore.sign_up_create')}</a>
 		</div>
 	{/if}
 
@@ -80,16 +80,16 @@
 				{#each sortedCommunities as c (c.id)}
 					{@const level = activityLevel(c)}
 					<a href="/register"
-					   class="list-card"
+					   class="card card-interactive list-card"
 					   class:card-active={level === 'high'}
 					   class:card-medium={level === 'medium'}>
 						<div class="list-card-header">
 							<h3>{c.name}</h3>
 							{#if level === 'high'}
-								<span class="badge-active">{$t('explore.active_badge')}</span>
+								<span class="badge badge-solid badge-caps">{$t('explore.active_badge')}</span>
 							{/if}
-							{#if c.mode === 'red'}
-								<span class="badge-crisis">{$t('explore.crisis_badge')}</span>
+							{#if (c.effective_mode ?? c.mode) === 'red'}
+								<span class="badge badge-error badge-caps">{$t('explore.crisis_badge')}</span>
 							{/if}
 						</div>
 						<div class="list-card-meta">
@@ -97,11 +97,11 @@
 							<span class="tag">{c.city}</span>
 						</div>
 						<div class="list-card-stats">
-							<span>{c.member_count} member{c.member_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.member_count', { values: { count: c.member_count } })}</span>
 							<span class="stat-sep">&middot;</span>
-							<span>{c.resource_count} item{c.resource_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.item_count', { values: { count: c.resource_count } })}</span>
 							<span class="stat-sep">&middot;</span>
-							<span>{c.skill_count} skill{c.skill_count !== 1 ? 's' : ''}</span>
+							<span>{$t('communities.skill_count', { values: { count: c.skill_count } })}</span>
 						</div>
 					</a>
 				{/each}
@@ -115,7 +115,7 @@
 			<p>{$t('explore.cta_desc')}</p>
 			<div class="cta-actions">
 				<a href="/register" class="btn-cta">{$t('auth.register_btn')}</a>
-				<a href="/login" class="btn-secondary">{$t('auth.have_account')}</a>
+				<a href="/login" class="btn btn-secondary btn-lg">{$t('auth.have_account')}</a>
 			</div>
 		</section>
 	{/if}
@@ -168,29 +168,21 @@
 	.list-card {
 		display: block;
 		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-decoration: none;
-		color: var(--color-text);
-		transition: all var(--transition-fast);
 	}
 
 	.list-card:hover {
 		border-color: var(--color-primary);
-		box-shadow: var(--shadow-md);
 		transform: translateY(-2px);
-		text-decoration: none;
 	}
 
 	.card-active {
 		border-color: var(--color-primary);
-		border-left: 3px solid var(--color-primary);
+		border-inline-start: 3px solid var(--color-primary);
 		background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-primary-light) 100%);
 	}
 
 	.card-medium {
-		border-left: 3px solid var(--color-accent);
+		border-inline-start: 3px solid var(--color-accent);
 	}
 
 	.list-card-header {
@@ -203,28 +195,6 @@
 	.list-card-header h3 {
 		font-size: 0.95rem;
 		font-weight: 500;
-	}
-
-	.badge-active {
-		font-size: 0.6rem;
-		font-weight: 600;
-		padding: 0.1rem 0.4rem;
-		border-radius: 999px;
-		background: var(--color-primary);
-		color: white;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-
-	.badge-crisis {
-		font-size: 0.65rem;
-		font-weight: 600;
-		padding: 0.1rem 0.4rem;
-		border-radius: 999px;
-		background: var(--color-error);
-		color: white;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
 	}
 
 	.list-card-meta {
@@ -296,66 +266,6 @@
 		justify-content: center;
 		gap: 0.75rem;
 		flex-wrap: wrap;
-	}
-
-	/* ── Buttons ──────────────────────────────── */
-
-	.btn-cta {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.6rem 1.25rem;
-		background: var(--color-primary);
-		color: white !important;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-cta:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-md);
-		transform: translateY(-1px);
-		text-decoration: none;
-	}
-
-	.btn-primary {
-		display: inline-block;
-		padding: 0.5rem 1.25rem;
-		background: var(--color-primary);
-		color: white !important;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		text-decoration: none;
-	}
-
-	.btn-secondary {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.6rem 1.25rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 500;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-secondary:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-		text-decoration: none;
 	}
 
 	@media (max-width: 640px) {

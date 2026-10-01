@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     app_name: str = "NeighbourGood"
-    app_version: str = "2.2.2"
+    app_version: str = "2.4.0"
     debug: bool = False
     database_url: str = "sqlite:///./neighbourgood.db"
 
@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     # Uploads
     upload_dir: str = "uploads"
     max_image_size: int = 5 * 1024 * 1024  # 5 MB
+    # Largest accepted request body (JSON etc.); multipart uploads get max_image_size
+    max_request_body_bytes: int = 1024 * 1024  # 1 MB
 
     # Email / SMTP (optional – logs to console when unconfigured)
     smtp_host: str = ""
@@ -49,10 +51,22 @@ class Settings(BaseSettings):
     admin_name: str = ""
     admin_contact: str = ""
 
+    # Accounts with these emails are given the platform admin role (case-insensitive)
+    admin_emails: list[str] = []
+
+    # BLE mesh: messages older than this (or dated more than an hour ahead) are
+    # refused on sync, so captured packets cannot be replayed indefinitely
+    mesh_max_message_age_hours: int = 72
+
+    # Outbound webhooks: allow targets on private/loopback/link-local addresses
+    # (e.g. LAN services). Off by default to prevent SSRF.
+    webhook_allow_private: bool = False
+
     # Telegram bot integration (optional — leave empty to disable)
     telegram_bot_token: str = ""
     telegram_bot_name: str = ""        # Username without @, e.g. "NeighbourGoodBot"
-    telegram_webhook_secret: str = ""  # Random string to validate inbound callbacks
+    # Validates inbound webhook calls; derived from secret_key + bot token when unset
+    telegram_webhook_secret: str = ""
 
     # AI / LLM integration (optional — matching works rule-based when unset)
     ai_provider: str | None = None      # "ollama" or "openai" (any OpenAI-compatible API)

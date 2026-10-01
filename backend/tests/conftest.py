@@ -31,6 +31,31 @@ def setup_db():
     Base.metadata.drop_all(bind=engine)
 
 
+@pytest.fixture(autouse=True)
+def fake_dns(monkeypatch):
+    """Resolve hostnames without real DNS so SSRF checks are deterministic.
+
+    IP literals resolve to themselves, ``localhost`` to loopback, hostnames
+    starting with ``internal.`` to a private address, everything else to a
+    public address.
+    """
+    import ipaddress
+
+    def _resolve(hostname, port):
+        try:
+            ipaddress.ip_address(hostname)
+            return [hostname]
+        except ValueError:
+            pass
+        if hostname == "localhost":
+            return ["127.0.0.1"]
+        if hostname.startswith("internal."):
+            return ["10.0.0.5"]
+        return ["93.184.216.34"]
+
+    monkeypatch.setattr("app.utils.net._resolve", _resolve)
+
+
 @pytest.fixture()
 def db():
     session = TestSession()
@@ -115,3 +140,41 @@ def create_community_fn(client, auth_headers):
         assert resp.status_code == 201, resp.text
         return resp.json()
     return _create
+
+
+@pytest.fixture()
+def telegram_bot(client, monkeypatch):
+    """Configure a (fake) Telegram bot and send the webhook secret on every request.
+
+    Outbound Bot API calls are stubbed; tests that assert on them patch
+    ``app.services.telegram.send_message`` themselves.
+    """
+    from app.config import settings
+    from app.services import telegram as tg
+
+    monkeypatch.setattr(settings, "telegram_bot_token", "123456:test-bot-token")
+    monkeypatch.setattr(settings, "telegram_webhook_secret", "")
+    monkeypatch.setattr(tg, "send_message", lambda *a, **kw: None)
+    client.headers["X-Telegram-Bot-Api-Secret-Token"] = tg.webhook_secret()
+    yield
+    client.headers.pop("X-Telegram-Bot-Api-Secret-Token", None)
+
+
+@pytest.fixture
+def admin_headers(client, db):
+    """Headers for a platform admin (role='admin')."""
+    from app.models.user import User
+
+    resp = client.post(
+        "/auth/register",
+        json={
+            "email": "platform-admin@example.com",
+            "password": "Testpass123",
+            "display_name": "Platform Admin",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    user = db.query(User).filter(User.email == "platform-admin@example.com").first()
+    user.role = "admin"
+    db.commit()
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}

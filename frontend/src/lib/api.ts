@@ -4,10 +4,20 @@
  */
 
 import { get } from 'svelte/store';
+import { t as i18n } from 'svelte-i18n';
 import { token } from '$lib/stores/auth';
 import { isOnline, enqueueRequest } from '$lib/stores/offline';
 
 const BASE = '/api';
+
+/** Translate a message; falls back to English if i18n is not initialised yet (SSR / early boot). */
+function msg(key: string, fallback: string, values?: Record<string, string | number>): string {
+	try {
+		return get(i18n)(key, { values, default: fallback });
+	} catch {
+		return fallback;
+	}
+}
 
 interface OfflineOptions {
 	/** Human-readable label shown in the offline queue UI. */
@@ -22,10 +32,12 @@ interface RequestOptions {
 	auth?: boolean;
 	/** If provided, queues the request when offline instead of throwing. */
 	offline?: OfflineOptions;
+	/** Use SvelteKit's load-scoped fetch when calling from a `load` function. */
+	fetch?: typeof fetch;
 }
 
 export async function api<T = unknown>(path: string, opts: RequestOptions = {}): Promise<T> {
-	const { method = 'GET', body, auth = false, offline } = opts;
+	const { method = 'GET', body, auth = false, offline, fetch: fetchFn = fetch } = opts;
 
 	// Queue the request if offline and the caller opted in
 	if (offline && !get(isOnline)) {
@@ -44,7 +56,7 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 		if (t) headers['Authorization'] = `Bearer ${t}`;
 	}
 
-	const res = await fetch(`${BASE}${path}`, {
+	const res = await fetchFn(`${BASE}${path}`, {
 		method,
 		headers,
 		body: body ? JSON.stringify(body) : undefined
@@ -52,7 +64,7 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 
 	if (res.status === 401 && auth) {
 		await handleUnauthorized();
-		throw new Error('Session expired');
+		throw new Error(msg('common.session_expired', 'Session expired'));
 	}
 
 	if (!res.ok) {
@@ -61,14 +73,20 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
 		// Handle Pydantic validation errors (detail is an array of objects)
 		let errorMsg = '';
 		if (Array.isArray(err.detail)) {
-			errorMsg = err.detail.map((e: any) => e.msg || e.toString()).join('; ');
+			// Pydantic prefixes custom validator messages with "Value error, "
+			errorMsg = err.detail
+				.map((e: any) => (e.msg ? String(e.msg).replace(/^Value error, /, '') : e.toString()))
+				.join('; ');
 		} else if (typeof err.detail === 'string') {
 			errorMsg = err.detail;
 		} else if (err.detail) {
 			errorMsg = err.detail.toString();
 		}
 
-		throw new Error(errorMsg || `Request failed: ${res.status}`);
+		// The service worker's offline fallback response carries an English detail
+		if (res.status === 503 && errorMsg === 'You are offline') errorMsg = msg('offline.you_are_offline', errorMsg);
+
+		throw new Error(errorMsg || msg('common.request_failed', `Request failed: ${res.status}`, { status: res.status }));
 	}
 
 	if (res.status === 204) return undefined as T;
@@ -84,7 +102,9 @@ async function handleUnauthorized(): Promise<void> {
 	if (typeof window === 'undefined') return;
 	try {
 		const { logout } = await import('$lib/stores/auth');
-		logout();
+		// An expired session is usually followed by the same person signing in
+		// again; offline data is wiped if a different account signs in instead.
+		await logout({ keepOfflineData: true });
 	} catch {
 		// Auth store not available; fall through to redirect.
 	}
@@ -116,7 +136,7 @@ export async function apiUpload<T = unknown>(path: string, file: File): Promise<
 
 	if (res.status === 401 && t) {
 		await handleUnauthorized();
-		throw new Error('Session expired');
+		throw new Error(msg('common.session_expired', 'Session expired'));
 	}
 
 	if (!res.ok) {
@@ -132,7 +152,9 @@ export async function apiUpload<T = unknown>(path: string, file: File): Promise<
 			errorMsg = err.detail.toString();
 		}
 
-		throw new Error(errorMsg || `Upload failed: ${res.status}`);
+		if (res.status === 503 && errorMsg === 'You are offline') errorMsg = msg('offline.you_are_offline', errorMsg);
+
+		throw new Error(errorMsg || msg('common.upload_failed', `Upload failed: ${res.status}`, { status: res.status }));
 	}
 
 	return res.json();

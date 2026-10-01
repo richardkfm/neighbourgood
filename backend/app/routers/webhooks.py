@@ -6,11 +6,13 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.models.webhook import Webhook
 from app.schemas.webhook import WEBHOOK_EVENTS, WebhookCreate, WebhookOut
+from app.utils.net import is_safe_url
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -47,6 +49,12 @@ def create_webhook(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="event_types must not be empty",
+        )
+
+    if not is_safe_url(body.url, allow_private=settings.webhook_allow_private):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Webhook URL must be an http(s) address that resolves to a public host",
         )
 
     hook = Webhook(

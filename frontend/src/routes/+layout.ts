@@ -9,13 +9,18 @@
  * (typically a returning logged-in user opening the app).
  */
 
+import { get } from 'svelte/store';
 import { waitLocale } from 'svelte-i18n';
+import { browser } from '$app/environment';
+import { api } from '$lib/api';
 import { setupI18n, detectInitialLocale } from '$lib/i18n';
+import { token, user } from '$lib/stores/auth';
+import type { UserProfile } from '$lib/stores/auth';
 import type { LayoutLoad } from './$types';
 
 let initialised = false;
 
-export const load: LayoutLoad = async () => {
+export const load: LayoutLoad = async ({ fetch }) => {
 	if (!initialised) {
 		// detectInitialLocale safely returns 'en' on the server (no
 		// localStorage/navigator) and the visitor's preference in the browser.
@@ -23,4 +28,16 @@ export const load: LayoutLoad = async () => {
 		initialised = true;
 	}
 	await waitLocale();
+
+	// Child pages mount (and run their onMount) before the layout's own onMount,
+	// so on a hard reload `$user` would still be null while pages decide
+	// ownership / membership / "already reviewed". Load the profile here so it
+	// is in place before any page renders.
+	if (browser && get(token) && !get(user)) {
+		try {
+			user.set(await api<UserProfile>('/users/me', { auth: true, fetch }));
+		} catch {
+			// Invalid session or backend down: the layout's onMount handles it.
+		}
+	}
 };

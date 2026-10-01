@@ -1,11 +1,13 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { t as _ } from 'svelte-i18n';
 	import type { TrustSummary, ReviewOut } from '$lib/types';
+	import Icon from '$lib/components/Icon.svelte';
+	import { TRUST_BADGE_ICON, REPUTATION_LEVEL_ICON } from '$lib/icons';
 
 	let trust: TrustSummary | null = null;
 	let reviews: ReviewOut[] = [];
@@ -19,38 +21,37 @@
 
 	$: userId = Number($page.params.id);
 
-	const BADGE_ICONS: Record<string, string> = {
-		reliable_borrower: '🤝',
-		trusted_lender: '📦',
-		skilled_helper: '⭐'
-	};
-
 	const BADGE_COLORS: Record<string, string> = {
 		reliable_borrower: 'var(--color-success)',
-		trusted_lender: 'var(--color-primary)',
+		trusted_lender: 'var(--color-primary-text)',
 		skilled_helper: 'var(--color-warning)'
 	};
 
-	const LEVEL_ICONS: Record<string, string> = {
-		Newcomer: '🌱',
-		Neighbour: '🏠',
-		Helper: '🤲',
-		Trusted: '🛡️',
-		Pillar: '🏛️'
-	};
+	// What a review is about: skill endorsement, or the reviewee's role in a booking
+	function reviewLabel(review: ReviewOut): string {
+		if (review.review_type === 'skill') return $_('profile.skill_review');
+		if (review.reviewee_role === 'lender') return $_('profile.review_lending');
+		if (review.reviewee_role === 'borrower') return $_('profile.review_borrowing');
+		return $_('profile.review_booking');
+	}
 
-	function renderStars(rating: number): string {
-		const full = Math.floor(rating);
-		const half = rating - full >= 0.5 ? 1 : 0;
-		const empty = 5 - full - half;
-		return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(empty);
+	// Backend badge descriptions are English templates; rebuild them from the trust summary
+	function badgeDescription(badge: { key: string; description: string }): string {
+		if (!trust) return badge.description;
+		if (badge.key === 'trusted_lender')
+			return $_('trust.desc_trusted_lender', { values: { avg: trust.lender_rating.toFixed(1), count: trust.lender_reviews } });
+		if (badge.key === 'reliable_borrower')
+			return $_('trust.desc_reliable_borrower', { values: { avg: trust.borrower_rating.toFixed(1), count: trust.borrower_reviews } });
+		if (badge.key === 'skilled_helper')
+			return $_('trust.desc_skilled_helper', { values: { avg: trust.skill_rating.toFixed(1), count: trust.skill_reviews } });
+		return badge.description;
 	}
 
 	async function loadTrust() {
 		try {
 			trust = await api<TrustSummary>(`/users/${userId}/trust`);
 		} catch (e: any) {
-			error = e.message || 'Failed to load profile';
+			error = e.message || $_('profile.load_failed');
 		}
 	}
 
@@ -91,22 +92,46 @@
 		});
 	}
 
-	onMount(async () => {
+	// Reload whenever the :id param changes (e.g. following a reviewer link from
+	// one profile to another) – the route component is reused, so onMount alone
+	// would leave the previous user's data on screen.
+	let loadedFor: number | null = null;
+	async function loadProfile() {
+		trust = null;
+		error = '';
+		loading = true;
+		activeTab = 'received';
 		await loadTrust();
-		await loadReviews();
+		await loadReviews(true);
 		loading = false;
-	});
+	}
+	$: if (browser && userId && userId !== loadedFor) {
+		loadedFor = userId;
+		loadProfile();
+	}
 </script>
 
 <svelte:head>
 	<title>{trust?.display_name ?? $_('profile.title')} — NeighbourGood</title>
 </svelte:head>
 
+{#snippet stars(rating: number, size: number)}
+	<span class="star-row" aria-label={rating.toFixed(1)}>
+		{#each [1, 2, 3, 4, 5] as s}
+			<Icon name="star" {size} filled={s <= Math.round(rating)} />
+		{/each}
+	</span>
+{/snippet}
+
 <div class="profile-page">
 	{#if loading}
-		<div class="loading">{$_('profile.loading')}</div>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$_('profile.loading')}</span>
+			<div class="skeleton skeleton-card" style="height: 5rem" aria-hidden="true"></div>
+			<div class="skeleton skeleton-card" aria-hidden="true"></div>
+		</div>
 	{:else if error}
-		<div class="alert alert-error">{error}</div>
+		<div class="alert alert-error" role="alert">{error}</div>
 	{:else if trust}
 		<!-- Profile Header -->
 		<section class="profile-header">
@@ -117,9 +142,9 @@
 					<p class="neighbourhood">{trust.neighbourhood}</p>
 				{/if}
 				<p class="member-since">{$_('profile.member_since')} {formatDate(trust.member_since)}</p>
-				<span class="level-badge">
-					{LEVEL_ICONS[trust.reputation_level] ?? '🌱'}
-					{trust.reputation_level}
+				<span class="badge badge-primary level-badge">
+					<Icon name={REPUTATION_LEVEL_ICON[trust.reputation_level] ?? 'leaf'} size={15} />
+					{$_('dashboard.level_' + trust.reputation_level.toLowerCase(), { default: trust.reputation_level })}
 				</span>
 			</div>
 		</section>
@@ -128,19 +153,19 @@
 		{#if trust.badges.length > 0}
 			<section class="badges-section">
 				{#each trust.badges as badge}
-					<span class="trust-badge" style="--badge-color: {BADGE_COLORS[badge.key] ?? 'var(--color-primary)'}">
-						<span class="badge-icon">{BADGE_ICONS[badge.key] ?? '🏆'}</span>
-						<span class="badge-label">{badge.label}</span>
-						<span class="badge-desc">{badge.description}</span>
+					<span class="trust-badge" style="--badge-color: {BADGE_COLORS[badge.key] ?? 'var(--color-primary-text)'}">
+						<span class="badge-icon"><Icon name={TRUST_BADGE_ICON[badge.key] ?? 'star'} size={18} /></span>
+						<span class="badge-label">{$_('trust.' + badge.key, { default: badge.label })}</span>
+						<span class="badge-desc">{badgeDescription(badge)}</span>
 					</span>
 				{/each}
 			</section>
 		{/if}
 
 		<!-- Rating Overview -->
-		<section class="section-card rating-overview">
+		<section class="card rating-overview">
 			<div class="overall-rating">
-				<span class="stars">{renderStars(trust.average_rating)}</span>
+				<span class="stars">{@render stars(trust.average_rating, 18)}</span>
 				<span class="rating-number">{trust.average_rating.toFixed(1)}</span>
 				<span class="review-count">({trust.total_reviews} {$_('profile.reviews')})</span>
 			</div>
@@ -149,21 +174,21 @@
 				{#if trust.lender_reviews > 0}
 					<div class="breakdown-row">
 						<span class="breakdown-label">{$_('trust.trusted_lender')}</span>
-						<span class="breakdown-stars">{renderStars(trust.lender_rating)}</span>
+						<span class="breakdown-stars">{@render stars(trust.lender_rating, 14)}</span>
 						<span class="breakdown-count">{trust.lender_rating.toFixed(1)} ({trust.lender_reviews})</span>
 					</div>
 				{/if}
 				{#if trust.borrower_reviews > 0}
 					<div class="breakdown-row">
 						<span class="breakdown-label">{$_('trust.reliable_borrower')}</span>
-						<span class="breakdown-stars">{renderStars(trust.borrower_rating)}</span>
+						<span class="breakdown-stars">{@render stars(trust.borrower_rating, 14)}</span>
 						<span class="breakdown-count">{trust.borrower_rating.toFixed(1)} ({trust.borrower_reviews})</span>
 					</div>
 				{/if}
 				{#if trust.skill_reviews > 0}
 					<div class="breakdown-row">
 						<span class="breakdown-label">{$_('trust.skilled_helper')}</span>
-						<span class="breakdown-stars">{renderStars(trust.skill_rating)}</span>
+						<span class="breakdown-stars">{@render stars(trust.skill_rating, 14)}</span>
 						<span class="breakdown-count">{trust.skill_rating.toFixed(1)} ({trust.skill_reviews})</span>
 					</div>
 				{/if}
@@ -172,15 +197,15 @@
 
 		<!-- Stats -->
 		<section class="stats-row">
-			<div class="stat-card">
+			<div class="card stat-card">
 				<span class="stat-value">{trust.resources_count}</span>
 				<span class="stat-label">{$_('profile.resources_shared')}</span>
 			</div>
-			<div class="stat-card">
+			<div class="card stat-card">
 				<span class="stat-value">{trust.skills_count}</span>
 				<span class="stat-label">{$_('profile.skills_offered')}</span>
 			</div>
-			<div class="stat-card">
+			<div class="card stat-card">
 				<span class="stat-value">{trust.reputation_score}</span>
 				<span class="stat-label">{$_('profile.reputation_points')}</span>
 			</div>
@@ -210,14 +235,14 @@
 			{:else}
 				<div class="review-list">
 					{#each reviews as review}
-						<div class="review-card">
+						<div class="card review-card">
 							<div class="review-header">
 								<a href="/profile/{activeTab === 'received' ? review.reviewer_id : review.reviewee_id}" class="review-author">
 									{activeTab === 'received' ? review.reviewer.display_name : review.reviewee.display_name}
 								</a>
-								<span class="review-stars">{renderStars(review.rating)}</span>
-								<span class="review-type-badge" class:skill={review.review_type === 'skill'}>
-									{review.review_type === 'skill' ? $_('profile.skill_review') : $_('profile.booking_review')}
+								<span class="review-stars">{@render stars(review.rating, 14)}</span>
+								<span class="badge badge-caps" class:badge-warning={review.review_type === 'skill'}>
+									{reviewLabel(review)}
 								</span>
 							</div>
 							{#if review.comment}
@@ -230,7 +255,7 @@
 			{/if}
 
 			{#if hasMore && reviews.length > 0}
-				<button class="load-more" on:click={() => loadReviews()} disabled={loadingMore}>
+				<button class="btn btn-secondary load-more" class:is-loading={loadingMore} on:click={() => loadReviews()} disabled={loadingMore}>
 					{loadingMore ? $_('profile.loading') : $_('profile.load_more')}
 				</button>
 			{/if}
@@ -243,12 +268,6 @@
 		max-width: 680px;
 		margin: 2rem auto;
 		padding: 0 1rem;
-	}
-
-	.loading {
-		text-align: center;
-		padding: 3rem;
-		color: var(--color-text-muted);
 	}
 
 	/* Header */
@@ -264,7 +283,7 @@
 		height: 72px;
 		border-radius: 50%;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		font-size: 2rem;
 		font-weight: 700;
 		display: flex;
@@ -291,13 +310,8 @@
 	}
 
 	.level-badge {
-		display: inline-block;
-		padding: 0.2rem 0.75rem;
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		font-weight: 600;
 		font-size: 0.82rem;
+		padding: 0.2rem 0.75rem;
 	}
 
 	/* Trust Badges */
@@ -320,7 +334,14 @@
 	}
 
 	.badge-icon {
-		font-size: 1rem;
+		display: inline-flex;
+		color: var(--badge-color, var(--color-primary-text));
+	}
+
+	.star-row {
+		display: inline-flex;
+		gap: 0.1rem;
+		vertical-align: middle;
 	}
 
 	.badge-label {
@@ -335,10 +356,6 @@
 
 	/* Rating Overview */
 	.rating-overview {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 1.25rem;
 		margin-bottom: 1.25rem;
 	}
 
@@ -351,7 +368,6 @@
 
 	.stars {
 		color: var(--color-warning);
-		font-size: 1.1rem;
 	}
 
 	.rating-number {
@@ -401,9 +417,6 @@
 
 	.stat-card {
 		flex: 1;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
 		padding: 1rem;
 		text-align: center;
 	}
@@ -412,7 +425,7 @@
 		display: block;
 		font-size: 1.5rem;
 		font-weight: 700;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.stat-label {
@@ -420,33 +433,6 @@
 		color: var(--color-text-muted);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-	}
-
-	/* Tabs */
-	.browse-tabs {
-		display: flex;
-		gap: 0.25rem;
-		border-bottom: 2px solid var(--color-border);
-		margin-bottom: 1rem;
-	}
-
-	.browse-tab {
-		padding: 0.6rem 1.25rem;
-		font-size: 0.95rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-		background: none;
-		border: none;
-		border-bottom: 3px solid transparent;
-		margin-bottom: -2px;
-		cursor: pointer;
-		transition: all 150ms;
-	}
-
-	.browse-tab.active {
-		color: var(--color-primary);
-		border-bottom-color: var(--color-primary);
-		font-weight: 600;
 	}
 
 	/* Review Cards */
@@ -457,9 +443,6 @@
 	}
 
 	.review-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
 		padding: 1rem;
 	}
 
@@ -473,7 +456,7 @@
 
 	.review-author {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 
@@ -482,23 +465,6 @@
 	}
 
 	.review-stars {
-		color: var(--color-warning);
-		font-size: 0.9rem;
-	}
-
-	.review-type-badge {
-		font-size: 0.72rem;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		background: var(--color-bg);
-		color: var(--color-text-muted);
-		font-weight: 600;
-	}
-
-	.review-type-badge.skill {
-		background: var(--color-warning-bg);
 		color: var(--color-warning);
 	}
 
@@ -522,33 +488,7 @@
 	}
 
 	.load-more {
-		display: block;
 		margin: 1rem auto;
-		padding: 0.5rem 1.5rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		color: var(--color-primary);
-		font-weight: 600;
-		cursor: pointer;
-		transition: border-color 150ms;
-	}
-
-	.load-more:hover:not(:disabled) {
-		border-color: var(--color-primary);
-	}
-
-	.load-more:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
-	.alert-error {
-		padding: 1rem;
-		border-radius: var(--radius-sm);
-		background-color: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--color-error);
 	}
 
 	@media (max-width: 640px) {

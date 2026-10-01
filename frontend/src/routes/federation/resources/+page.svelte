@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import type { FederatedResource, KnownInstance } from '$lib/types';
@@ -64,24 +65,23 @@
 			<h1>{$t('federation.federated_resources')}</h1>
 			<p class="subtitle">{$t('federation.resources_subtitle')}</p>
 		</div>
-		<a href="/communities#federation" class="back-link">&larr; {$t('federation.back_to_directory')}</a>
+		<a href="/communities#federation" class="btn btn-ghost btn-sm"><Icon name="arrow-left" size={14} class="flip-rtl" /> {$t('federation.back_to_directory')}</a>
 	</header>
 
-	<div class="filters">
-		<select bind:value={filterCategory} onchange={applyFilters}>
+	<div class="filter-bar">
+		<select class="input" bind:value={filterCategory} onchange={applyFilters}>
 			<option value="">{$t('resources.all_categories')}</option>
-			<option value="tools">{$t('resources.categories.tools')}</option>
+			<option value="tool">{$t('resources.categories.tool')}</option>
+			<option value="vehicle">{$t('resources.categories.vehicle')}</option>
 			<option value="electronics">{$t('resources.categories.electronics')}</option>
 			<option value="furniture">{$t('resources.categories.furniture')}</option>
 			<option value="food">{$t('resources.categories.food')}</option>
 			<option value="clothing">{$t('resources.categories.clothing')}</option>
-			<option value="kitchen">{$t('resources.categories.kitchen')}</option>
-			<option value="garden">{$t('resources.categories.garden')}</option>
-			<option value="books">{$t('resources.categories.books')}</option>
+			<option value="skill">{$t('resources.categories.skill')}</option>
 			<option value="other">{$t('resources.categories.other')}</option>
 		</select>
 
-		<select bind:value={filterInstance} onchange={applyFilters}>
+		<select class="input" bind:value={filterInstance} onchange={applyFilters}>
 			<option value="">{$t('federation.all_instances')}</option>
 			{#each instances as inst}
 				<option value={String(inst.id)}>{inst.name}</option>
@@ -90,25 +90,31 @@
 	</div>
 
 	{#if loading}
-		<p class="loading">{$t('common.loading')}</p>
+		<div class="resource-grid" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3, 4] as n (n)}
+				<div class="skeleton skeleton-card" style="height: 8.5rem" aria-hidden="true"></div>
+			{/each}
+		</div>
 	{:else if resources.length === 0}
 		<div class="empty-state">
+			<span class="empty-icon"><Icon name="globe" size={26} /></span>
 			<p>{$t('federation.no_federated_resources')}</p>
 		</div>
 	{:else}
 		<div class="resource-grid">
 			{#each resources as res}
-				<div class="resource-card">
+				<div class="card resource-card">
 					<div class="card-header">
 						<h3>{res.title}</h3>
-						<span class="category-badge">{res.category}</span>
+						<span class="badge badge-primary">{$t('resources.categories.' + res.category, { default: res.category })}</span>
 					</div>
 					{#if res.description}
 						<p class="card-desc">{res.description}</p>
 					{/if}
 					<div class="card-meta">
 						{#if res.condition}
-							<span class="meta-item">{res.condition}</span>
+							<span class="meta-item">{$t('resources.conditions.' + res.condition, { default: res.condition })}</span>
 						{/if}
 						{#if res.community_name}
 							<span class="meta-item">{res.community_name}</span>
@@ -130,15 +136,6 @@
 		margin: 0 auto;
 	}
 
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-		gap: 1rem;
-	}
-
 	.page-header h1 {
 		font-family: var(--font-heading);
 		font-weight: 400;
@@ -153,45 +150,10 @@
 		margin: 0.25rem 0 0;
 	}
 
-	.back-link {
-		color: var(--color-primary);
-		text-decoration: none;
-		font-size: 0.88rem;
-		font-weight: 500;
-	}
-
-	.back-link:hover {
-		text-decoration: underline;
-	}
-
-	.filters {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-	}
-
-	.filters select {
-		padding: 0.45rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.88rem;
-	}
-
 	.resource-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
 		gap: 1rem;
-	}
-
-	.resource-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 1rem;
-		transition: box-shadow var(--transition-fast);
 	}
 
 	.resource-card:hover {
@@ -212,22 +174,13 @@
 		color: var(--color-text);
 	}
 
-	.category-badge {
-		font-size: 0.72rem;
-		font-weight: 600;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		text-transform: capitalize;
-	}
-
 	.card-desc {
 		font-size: 0.88rem;
 		color: var(--color-text-muted);
 		margin: 0 0 0.5rem;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
@@ -259,19 +212,7 @@
 
 	.source {
 		font-weight: 600;
-		color: var(--color-primary);
-	}
-
-	.loading {
-		text-align: center;
-		color: var(--color-text-muted);
-		padding: 2rem;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
-		color: var(--color-text-muted);
+		color: var(--color-primary-text);
 	}
 
 	@media (max-width: 768px) {

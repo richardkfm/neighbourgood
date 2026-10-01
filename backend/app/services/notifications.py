@@ -101,3 +101,17 @@ def notify_booking_status(borrower_email: str, resource_title: str, new_status: 
             f"Log in to see details: {_url('/bookings')}\n"
         ),
     )
+
+
+def notify_password_reset(to_email: str, token: str):
+    """Email a password reset link. The link carries the raw token; only its hash is stored."""
+    send_email(
+        to=to_email,
+        subject="Reset your NeighbourGood password",
+        body_text=(
+            "Someone asked to reset the password for your NeighbourGood account.\n\n"
+            "Choose a new password here (the link works once and expires in 1 hour): "
+            f"{_url('/reset-password?token=' + token)}\n\n"
+            "If you did not ask for this, you can ignore this email.\n"
+        ),
+    )

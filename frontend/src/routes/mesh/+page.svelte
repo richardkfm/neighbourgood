@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isLoggedIn, token } from '$lib/stores/auth';
+	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
+	import { meshEnabled, MESH_COMMUNITY_KEY } from '$lib/stores/mesh-settings';
+	import { api } from '$lib/api';
 	import { t } from 'svelte-i18n';
+	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import {
 		meshStatus,
 		meshDeviceName,
@@ -13,23 +16,38 @@
 		meshIsSupported,
 		connectToMesh,
 		disconnectFromMesh,
-		clearMeshMessages,
-		getMeshMessages,
-		broadcastHeartbeat,
+		syncMeshMessagesToServer,
+		startHeartbeat,
+		stopHeartbeat,
 		meshRelayEnabled,
 		meshRelayCount,
 		meshAckStatus,
 		toggleRelay
 	} from '$lib/stores/mesh';
-	import { api } from '$lib/api';
 	import type { MeshStatus } from '$lib/stores/mesh';
 	import type { NGMeshMessage } from '$lib/bluetooth/protocol';
+	import type { CommunityOut, MeshSyncResult } from '$lib/types';
+	import {
+		currentMeshKeyId,
+		ensureMeshKeyRegistered,
+		listMeshKeys,
+		revokeMeshKey,
+		type MeshKeyInfo
+	} from '$lib/mesh-keys';
 
 	let error = $state('');
 	let syncStatus = $state<'idle' | 'syncing' | 'done' | 'error'>('idle');
-	let syncResult = $state<{ synced: number; duplicates: number; errors: number } | null>(null);
+	let syncResult = $state<MeshSyncResult | null>(null);
 	let lastSyncTime = $state<string | null>(null);
-	let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
+	// The community heartbeats announce and the offline triage view is scoped to.
+	// Remembered locally so it is known offline too.
+	let communities = $state<CommunityOut[]>([]);
+	let communityId = $state<number | null>(null);
+
+	let keys = $state<MeshKeyInfo[]>([]);
+	let thisKeyId = $state<string | null>(null);
+	let keysError = $state('');
 
 	// Reactive derivations
 	let status: MeshStatus = $derived($meshStatus);
@@ -49,11 +67,75 @@
 		}
 		// Restore last sync time from session
 		lastSyncTime = sessionStorage.getItem('ng_mesh_last_sync');
+		try {
+			const stored = Number(localStorage.getItem(MESH_COMMUNITY_KEY));
+			if (stored) communityId = stored;
+		} catch {
+			// storage unavailable
+		}
+		if (!$meshEnabled) return;
+		loadCommunities();
+		loadKeys();
 	});
 
 	onDestroy(() => {
-		if (heartbeatInterval) clearInterval(heartbeatInterval);
+		stopHeartbeat();
 	});
+
+	// Announce ourselves to nearby peers while connected
+	$effect(() => {
+		const name = $user?.display_name;
+		if ($meshEnabled && status === 'connected' && communityId && name) {
+			startHeartbeat(communityId, name);
+			return () => stopHeartbeat();
+		}
+	});
+
+	async function loadCommunities() {
+		try {
+			communities = await api<CommunityOut[]>('/communities/my/memberships', { auth: true });
+		} catch {
+			return; // offline: keep the remembered community
+		}
+		if (!communities.some((c) => c.id === communityId)) {
+			const initial = communities.find((c) => (c.effective_mode ?? c.mode) === 'red') ?? communities[0];
+			selectCommunity(initial?.id ?? null);
+		}
+	}
+
+	function selectCommunity(id: number | null) {
+		communityId = id;
+		try {
+			if (id) localStorage.setItem(MESH_COMMUNITY_KEY, String(id));
+			else localStorage.removeItem(MESH_COMMUNITY_KEY);
+		} catch {
+			// storage unavailable
+		}
+	}
+
+	async function loadKeys() {
+		const uid = $user?.id;
+		if (!$isOnline || !uid) return;
+		keysError = '';
+		try {
+			await ensureMeshKeyRegistered(uid);
+			thisKeyId = await currentMeshKeyId(uid);
+			keys = await listMeshKeys();
+		} catch (e) {
+			keysError = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	async function handleRevoke(keyId: string) {
+		keysError = '';
+		try {
+			await revokeMeshKey(keyId);
+			// Revoking this browser's own key: register a fresh one right away
+			await loadKeys();
+		} catch (e) {
+			keysError = e instanceof Error ? e.message : String(e);
+		}
+	}
 
 	async function handleConnect() {
 		error = '';
@@ -69,10 +151,6 @@
 	}
 
 	function handleDisconnect() {
-		if (heartbeatInterval) {
-			clearInterval(heartbeatInterval);
-			heartbeatInterval = null;
-		}
 		disconnectFromMesh();
 	}
 
@@ -81,50 +159,44 @@
 		syncStatus = 'syncing';
 		syncResult = null;
 		try {
-			const result = await api<{ synced: number; duplicates: number; errors: number }>(
-				'/mesh/sync',
-				{
-					method: 'POST',
-					body: { messages },
-					auth: true
-				}
-			);
+			// Batches of 100; synced messages are removed from the queue only if the server reported no errors
+			const result = await syncMeshMessagesToServer();
+			if (!result) {
+				syncStatus = 'idle';
+				return;
+			}
 			syncResult = result;
 			syncStatus = 'done';
 			lastSyncTime = new Date().toLocaleTimeString();
 			sessionStorage.setItem('ng_mesh_last_sync', lastSyncTime);
-			// Clear synced messages if all succeeded or were duplicates
-			if (result.errors === 0) {
-				clearMeshMessages();
-			}
 		} catch (err: any) {
 			syncStatus = 'error';
-			error = err?.message || 'Sync failed';
+			error = err?.message || $t('mesh.sync_failed');
 		}
 	}
 
 	function messageTypeLabel(type: string): string {
 		const labels: Record<string, string> = {
-			emergency_ticket: 'Emergency Ticket',
-			ticket_comment: 'Ticket Comment',
-			crisis_vote: 'Crisis Vote',
-			crisis_status: 'Crisis Status',
-			direct_message: 'Direct Message',
-			heartbeat: 'Heartbeat'
+			emergency_ticket: $t('mesh.type_emergency_ticket'),
+			ticket_comment: $t('mesh.type_ticket_comment'),
+			crisis_vote: $t('mesh.type_crisis_vote'),
+			crisis_status: $t('mesh.type_crisis_status'),
+			direct_message: $t('mesh.type_direct_message'),
+			heartbeat: $t('mesh.type_heartbeat')
 		};
 		return labels[type] || type;
 	}
 
-	function messageTypeIcon(type: string): string {
-		const icons: Record<string, string> = {
-			emergency_ticket: '🚨',
-			ticket_comment: '💬',
-			crisis_vote: '🗳️',
-			crisis_status: '🔄',
-			direct_message: '✉️',
-			heartbeat: '💓'
+	function messageTypeIcon(type: string): IconName {
+		const icons: Record<string, IconName> = {
+			emergency_ticket: 'alert',
+			ticket_comment: 'message',
+			crisis_vote: 'vote',
+			crisis_status: 'refresh',
+			direct_message: 'mail',
+			heartbeat: 'activity'
 		};
-		return icons[type] || '📡';
+		return icons[type] || 'radio';
 	}
 
 	function formatTime(ts: number): string {
@@ -155,7 +227,7 @@
 		<div class="mesh-title-row">
 			<h1>{$t('mesh.title')}</h1>
 			{#if status !== 'disconnected'}
-				<span class="status-chip" style="background: {statusColor(status)}">
+				<span class="badge status-chip" style="color: {statusColor(status)}">
 					<span class="status-dot"></span>
 					{$t(`mesh.${status}`)}
 				</span>
@@ -164,42 +236,57 @@
 		<p class="mesh-subtitle">{$t('mesh.subtitle')}</p>
 	</header>
 
-	{#if !supported}
-		<div class="mesh-card mesh-unsupported">
-			<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+	{#if !$meshEnabled}
+		<div class="card mesh-card mesh-disabled">
+			<p>{$t('mesh.disabled_notice')}</p>
+			<a href="/settings" class="btn btn-primary">{$t('mesh.enable_in_settings')}</a>
+		</div>
+	{:else if !supported}
+		<div class="card mesh-card mesh-unsupported">
+			<Icon name="alert" size={24} />
 			<p>{$t('mesh.not_supported')}</p>
 		</div>
 	{:else}
 		<!-- Connection Card -->
-		<div class="mesh-card">
+		<div class="card mesh-card">
 			<h2 class="card-title">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+				<Icon name="radio" size={20} />
 				{$t('mesh.connection')}
 			</h2>
 
 			{#if status === 'disconnected'}
 				<button class="btn btn-primary" onclick={handleConnect}>
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+					<Icon name="radio" size={16} />
 					{$t('mesh.connect')}
 				</button>
 			{:else if status === 'scanning'}
 				<div class="status-message">
-					<span class="spinner"></span>
+					<span class="btn-spin" aria-hidden="true"></span>
 					{$t('mesh.scanning')}
 				</div>
 			{:else if status === 'connecting'}
 				<div class="status-message">
-					<span class="spinner"></span>
+					<span class="btn-spin" aria-hidden="true"></span>
 					{$t('mesh.connecting')}
 				</div>
 			{:else if status === 'reconnecting'}
 				<div class="status-message">
-					<span class="spinner"></span>
+					<span class="btn-spin" aria-hidden="true"></span>
 					{$t('mesh.reconnecting')}
 				</div>
 			{:else}
 				<!-- Connected -->
 				<div class="connection-info">
+					{#if communities.length > 1}
+						<label class="device-row">
+							<span class="device-label">{$t('mesh.community')}</span>
+							<select class="input" value={communityId} onchange={(e) => selectCommunity(Number(e.currentTarget.value))}>
+								{#each communities as c (c.id)}
+									<option value={c.id}>{c.name}</option>
+								{/each}
+							</select>
+						</label>
+					{/if}
 					<div class="device-row">
 						<span class="device-label">{$t('mesh.device')}</span>
 						<span class="device-name">{deviceName || $t('mesh.unknown_device')}</span>
@@ -223,35 +310,43 @@
 						<span class="relay-count">{$t('mesh.relayed', { values: { count: relayCount } })}</span>
 					{/if}
 				</div>
-				<button class="btn btn-outline btn-danger" onclick={handleDisconnect}>
+				<button class="btn btn-danger-outline" onclick={handleDisconnect}>
 					{$t('mesh.disconnect')}
 				</button>
 			{/if}
 
 			{#if error}
-				<p class="error-message">{error}</p>
+				<p class="alert alert-error" role="alert">{error}</p>
 			{/if}
 		</div>
 
 		<!-- Message Queue Card -->
-		<div class="mesh-card">
+		<div class="card mesh-card">
 			<h2 class="card-title">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+				<Icon name="message" size={20} />
 				{$t('mesh.message_queue')}
 				{#if messages.length > 0}
-					<span class="queue-badge">{messages.length}</span>
+					<span class="badge badge-solid">{messages.length}</span>
 				{/if}
 			</h2>
 
 			{#if messages.length === 0}
-				<p class="empty-state">{$t('mesh.no_messages')}</p>
+				<div class="empty-state compact">
+					<span class="empty-icon"><Icon name="inbox" size={22} /></span>
+					<p>{$t('mesh.no_messages')}</p>
+				</div>
 			{:else}
 				<div class="message-list">
 					{#each messages as msg (msg.id)}
 						<div class="message-item">
-							<span class="msg-icon">{messageTypeIcon(msg.type)}</span>
+							<span class="msg-icon"><Icon name={messageTypeIcon(msg.type)} size={18} /></span>
 							<div class="msg-content">
-								<span class="msg-type">{messageTypeLabel(msg.type)}</span>
+								<span class="msg-type">
+									{messageTypeLabel(msg.type)}
+									{#if msg.sig}
+										<span class="badge badge-success signed-badge" title={$t('mesh.signed_hint')}>{$t('mesh.signed')}</span>
+									{/if}
+								</span>
 								<span class="msg-sender">{$t('common.by')} {msg.sender_name}</span>
 								{#if msg.type === 'emergency_ticket' && msg.data.title}
 									<span class="msg-detail">{msg.data.title}</span>
@@ -265,9 +360,9 @@
 							</div>
 							<div class="msg-meta">
 								{#if ackStatus.get(msg.id) === 'acked'}
-									<span class="ack-badge acked" title="Delivered">✓</span>
+									<span class="ack-badge acked" title={$t('mesh.delivered')}><Icon name="check" size={14} /></span>
 								{:else if ackStatus.get(msg.id) === 'pending'}
-									<span class="ack-badge pending" title="Pending">○</span>
+									<span class="ack-badge pending" title={$t('bookings.status_pending')}><Icon name="clock" size={14} /></span>
 								{/if}
 								<span class="msg-time">{formatTime(msg.ts)}</span>
 							</div>
@@ -280,47 +375,93 @@
 					{#if $isOnline}
 						<button
 							class="btn btn-primary"
+							class:is-loading={syncStatus === 'syncing'}
 							onclick={handleSync}
 							disabled={syncStatus === 'syncing'}
 						>
 							{#if syncStatus === 'syncing'}
-								<span class="spinner spinner-sm"></span>
 								{$t('mesh.syncing')}
 							{:else}
-								<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+								<Icon name="refresh" size={16} />
 								{$t('mesh.sync_messages', { values: { count: messages.length } })}
 							{/if}
 						</button>
 					{:else}
 						<p class="sync-offline-hint">{$t('mesh.sync_when_online')}</p>
 					{/if}
+				</div>
+			{/if}
 
-					{#if syncResult}
-						<div class="sync-result" class:sync-success={syncResult.errors === 0} class:sync-partial={syncResult.errors > 0}>
-							{$t('mesh.sync_result', { values: { synced: syncResult.synced, duplicates: syncResult.duplicates, errors: syncResult.errors } })}
-						</div>
+			<!-- Shown after the queue empties too, so the outcome of a sync stays visible -->
+			{#if syncResult}
+				<div class="sync-result" class:sync-success={syncResult.errors === 0} class:sync-partial={syncResult.errors > 0}>
+					{$t('mesh.sync_result', { values: { synced: syncResult.synced, duplicates: syncResult.duplicates, errors: syncResult.errors } })}
+					{#if syncResult.verified}
+						· {$t('mesh.sync_verified', { values: { count: syncResult.verified } })}
 					{/if}
-
-					{#if lastSyncTime}
-						<p class="last-sync">{$t('mesh.last_sync')}: {lastSyncTime}</p>
+					{#if syncResult.rejected}
+						· {$t('mesh.sync_rejected', { values: { count: syncResult.rejected } })}
 					{/if}
 				</div>
+			{/if}
+
+			{#if lastSyncTime}
+				<p class="last-sync">{$t('mesh.last_sync')}: {lastSyncTime}</p>
 			{/if}
 		</div>
 
 		<!-- Offline Triage Link -->
-		<a href="/mesh/triage" class="mesh-card triage-link">
-			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+		<a href="/mesh/triage" class="card card-interactive mesh-card triage-link">
+			<Icon name="clipboard" size={20} />
 			<div>
 				<strong>{$t('mesh.offline_triage')}</strong>
 				<p>{$t('mesh.offline_triage_hint')}</p>
 			</div>
 		</a>
 
+		<!-- Device keys: which browsers can sign mesh messages for this account -->
+		<div class="card mesh-card">
+			<h2 class="card-title"><Icon name="key" size={20} />{$t('mesh.keys_title')}</h2>
+			<p class="keys-hint">{$t('mesh.keys_hint')}</p>
+			{#if !$isOnline}
+				<p class="sync-offline-hint">{$t('mesh.keys_offline')}</p>
+			{:else if keys.length === 0}
+				<div class="empty-state compact">
+					<span class="empty-icon"><Icon name="key" size={22} /></span>
+					<p>{$t('mesh.keys_none')}</p>
+				</div>
+			{:else}
+				<ul class="key-list">
+					{#each keys as k (k.key_id)}
+						<li class="key-item" class:revoked={k.revoked_at}>
+							<div class="key-info">
+								<strong>{k.device_name || $t('mesh.unknown_device')}</strong>
+								{#if k.key_id === thisKeyId}<span class="badge badge-success signed-badge">{$t('mesh.keys_this_device')}</span>{/if}
+								<span class="key-meta">
+									{k.key_id.slice(0, 12)}… ·
+									{k.revoked_at
+										? $t('mesh.keys_revoked')
+										: $t('mesh.keys_added', { values: { date: new Date(k.created_at).toLocaleDateString() } })}
+								</span>
+							</div>
+							{#if !k.revoked_at}
+								<button class="btn btn-danger-outline btn-sm" onclick={() => handleRevoke(k.key_id)}>
+									{$t('mesh.keys_revoke')}
+								</button>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if keysError}
+				<p class="alert alert-error" role="alert">{keysError}</p>
+			{/if}
+		</div>
+
 		<!-- How It Works Card -->
-		<div class="mesh-card mesh-info">
+		<div class="card mesh-card mesh-info">
 			<h2 class="card-title">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+				<Icon name="activity" size={20} />
 				{$t('mesh.how_it_works')}
 			</h2>
 			<ol class="info-list">
@@ -334,6 +475,63 @@
 </div>
 
 <style>
+	.mesh-disabled {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.75rem;
+	}
+
+	.signed-badge {
+		margin-inline-start: 0.35rem;
+	}
+
+	.key-info .signed-badge {
+		align-self: flex-start;
+		margin-inline-start: 0;
+	}
+
+	.keys-hint {
+		color: var(--color-text-muted);
+		font-size: 0.85rem;
+		margin: 0 0 0.75rem;
+	}
+
+	.key-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.key-item {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		padding: 0.5rem 0;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.key-item.revoked {
+		opacity: 0.6;
+	}
+
+	.key-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
+	.key-meta {
+		color: var(--color-text-muted);
+		font-size: 0.75rem;
+		overflow-wrap: anywhere;
+	}
+
 	.mesh-page {
 		max-width: 700px;
 		margin: 0 auto;
@@ -365,34 +563,18 @@
 	}
 
 	.status-chip {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.35rem;
 		font-size: 0.78rem;
-		font-weight: 600;
-		color: white;
-		padding: 0.2rem 0.65rem;
-		border-radius: 999px;
 	}
 
 	.status-dot {
 		width: 7px;
 		height: 7px;
 		border-radius: 50%;
-		background: white;
+		background: currentColor;
 		animation: pulse 1.5s ease-in-out infinite;
 	}
 
-	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.5; }
-	}
-
 	.mesh-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 1.25rem;
 		margin-bottom: 1rem;
 	}
 
@@ -413,68 +595,6 @@
 		margin: 0 0 1rem;
 	}
 
-	.queue-badge {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		min-width: 20px;
-		height: 20px;
-		padding: 0 6px;
-		border-radius: 999px;
-		background: var(--color-primary);
-		color: white;
-		font-size: 0.72rem;
-		font-weight: 700;
-	}
-
-	.btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.4rem;
-		padding: 0.5rem 1rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		border: 1px solid transparent;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-sm);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-outline {
-		background: transparent;
-		border: 1px solid var(--color-border);
-		color: var(--color-text);
-	}
-
-	.btn-outline:hover {
-		border-color: var(--color-text-muted);
-	}
-
-	.btn-danger {
-		color: var(--color-error);
-		border-color: var(--color-error);
-	}
-
-	.btn-danger:hover {
-		background: var(--color-error);
-		color: white;
-	}
-
 	.status-message {
 		display: flex;
 		align-items: center;
@@ -483,23 +603,14 @@
 		font-size: 0.9rem;
 	}
 
-	.spinner {
+	.btn-spin {
 		display: inline-block;
 		width: 18px;
 		height: 18px;
 		border: 2px solid var(--color-border);
 		border-top-color: var(--color-primary);
 		border-radius: 50%;
-		animation: spin 0.7s linear infinite;
-	}
-
-	.spinner-sm {
-		width: 14px;
-		height: 14px;
-	}
-
-	@keyframes spin {
-		to { transform: rotate(360deg); }
+		animation: btn-spin 0.7s linear infinite;
 	}
 
 	.connection-info {
@@ -569,17 +680,8 @@
 		border-radius: 999px;
 	}
 
-	.error-message {
-		color: var(--color-error);
-		font-size: 0.85rem;
-		margin-top: 0.75rem;
-	}
-
-	.empty-state {
-		color: var(--color-text-muted);
-		font-size: 0.9rem;
-		text-align: center;
-		padding: 1rem 0;
+	.empty-state.compact {
+		padding: 1.5rem 1rem;
 	}
 
 	.message-list {
@@ -601,7 +703,8 @@
 	}
 
 	.msg-icon {
-		font-size: 1.1rem;
+		display: inline-flex;
+		color: var(--color-primary-text);
 		flex-shrink: 0;
 		margin-top: 0.1rem;
 	}
@@ -648,8 +751,7 @@
 	}
 
 	.ack-badge {
-		font-size: 0.7rem;
-		font-weight: 700;
+		display: inline-flex;
 	}
 
 	.ack-badge.acked {
@@ -692,21 +794,17 @@
 	.last-sync {
 		font-size: 0.78rem;
 		color: var(--color-text-muted);
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.triage-link {
 		display: flex;
 		align-items: center;
 		gap: 0.75rem;
-		text-decoration: none;
-		color: var(--color-text);
-		transition: border-color var(--transition-fast);
 	}
 
 	.triage-link:hover {
 		border-color: var(--color-primary);
-		text-decoration: none;
 	}
 
 	.triage-link strong {
@@ -726,7 +824,7 @@
 
 	.info-list {
 		margin: 0;
-		padding-left: 1.25rem;
+		padding-inline-start: 1.25rem;
 		color: var(--color-text-muted);
 		font-size: 0.88rem;
 		line-height: 1.7;
@@ -743,7 +841,7 @@
 		}
 
 		.last-sync {
-			margin-left: 0;
+			margin-inline-start: 0;
 		}
 	}
 </style>

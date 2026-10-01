@@ -5,24 +5,14 @@
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import type { CommunityEvent } from '$lib/types';
+	import Icon from '$lib/components/Icon.svelte';
+	import { EVENT_CATEGORY_ICON } from '$lib/icons';
 
 	interface MyCommunity {
 		id: number;
 		name: string;
 		postal_code: string;
 	}
-
-	const CATEGORY_ICONS: Record<string, string> = {
-		meetup: '🤝',
-		workshop: '📖',
-		repair_cafe: '🔧',
-		swap: '🔄',
-		gardening: '🌱',
-		food: '🍽️',
-		sport: '⚽',
-		cultural: '🎵',
-		other: '⭐'
-	};
 
 	const CATEGORIES = ['', 'meetup', 'workshop', 'repair_cafe', 'swap', 'gardening', 'food', 'sport', 'cultural', 'other'];
 
@@ -163,7 +153,7 @@
 			showCreateForm = false;
 			await loadEvents();
 		} catch (err: unknown) {
-			createError = err instanceof Error ? err.message : 'Could not create event.';
+			createError = err instanceof Error ? err.message : $t('events.create_failed');
 		}
 	}
 
@@ -224,7 +214,7 @@
 			<p class="subtitle">{$t('events.subtitle')}</p>
 		</div>
 		{#if $isLoggedIn}
-			<button class="btn btn-primary" onclick={openCreateForm}>
+			<button class="btn btn-primary" onclick={openCreateForm} aria-expanded={showCreateForm}>
 				{showCreateForm ? $t('events.cancel_form') : $t('events.create_btn')}
 			</button>
 		{/if}
@@ -234,49 +224,49 @@
 		<div class="create-form card">
 			<h2>{$t('events.form_title')}</h2>
 			{#if createError}
-				<p class="error">{createError}</p>
+				<p class="alert alert-error" role="alert">{createError}</p>
 			{/if}
-			<div class="form-grid">
-				<label>
+			<div class="field-row form-grid">
+				<label class="field">
 					{$t('events.form.title_label')} *
 					<input type="text" bind:value={newTitle} maxlength="200" placeholder={$t('events.form.title_placeholder')} />
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.category_label')}
 					<select bind:value={newCategory}>
 						{#each CATEGORIES.slice(1) as cat}
-							<option value={cat}>{CATEGORY_ICONS[cat]} {$t('events.categories.' + cat)}</option>
+							<option value={cat}>{$t('events.categories.' + cat)}</option>
 						{/each}
 					</select>
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.start_date_label')} *
 					<input type="date" bind:value={newStartDate} />
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.start_time_label')} *
 					<input type="time" bind:value={newStartTime} step="900" />
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.end_date_label')}
 					<input type="date" bind:value={newEndDate} min={newStartDate} />
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.end_time_label')}
 					<input type="time" bind:value={newEndTime} step="900" />
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.location_label')}
 					<input type="text" bind:value={newLocation} maxlength="300" placeholder={$t('events.form.location_placeholder')} />
 				</label>
-				<label>
+				<label class="field">
 					{$t('events.form.max_attendees_label')}
 					<input type="number" bind:value={newMaxAttendees} min="1" max="10000" placeholder={$t('events.form.max_attendees_placeholder')} />
 				</label>
 				{#if myCommunities.length > 1}
 				<p class="community-info full-width">{$t('events.community_label')} <strong>{myCommunities[0].name}</strong></p>
 			{/if}
-				<label class="full-width">
+				<label class="field full-width">
 					{$t('events.form.description_label')}
 					<textarea bind:value={newDescription} maxlength="5000" rows="3" placeholder={$t('events.form.description_placeholder')}></textarea>
 				</label>
@@ -285,15 +275,15 @@
 		</div>
 	{/if}
 
-	<div class="filters">
+	<div class="filter-bar">
 		<input
-			class="search-input"
+			class="input input-grow"
 			type="search"
 			bind:value={searchQuery}
 			oninput={onSearchInput}
 			placeholder={$t('events.search_placeholder')}
 		/>
-		<select bind:value={filterCategory}>
+		<select class="input" bind:value={filterCategory}>
 			{#each CATEGORIES as cat}
 				<option value={cat}>
 					{cat === '' ? $t('events.all_categories') : $t('events.categories.' + cat)}
@@ -301,7 +291,7 @@
 			{/each}
 		</select>
 		{#if myCommunities.length > 1}
-		<select bind:value={filterCommunity}>
+		<select class="input" bind:value={filterCommunity}>
 			{#each myCommunities as c}
 				<option value={String(c.id)}>{c.name}</option>
 			{/each}
@@ -319,14 +309,31 @@
 	</div>
 
 	{#if rsvpError}
-		<div class="error-banner" role="alert">{rsvpError}</div>
+		<div class="alert alert-error" role="alert">{rsvpError}</div>
 	{/if}
 
 	{#if loading}
-		<p class="loading-text">{$t('common.loading')}</p>
+		<ul class="event-list" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3] as n (n)}
+				<li class="card event-card" aria-hidden="true">
+					<span class="skeleton skeleton-line" style="width: 55%; height: 1.1rem"></span>
+					<span class="skeleton skeleton-line is-short"></span>
+					<span class="skeleton skeleton-line"></span>
+				</li>
+			{/each}
+		</ul>
 	{:else if events.length === 0}
 		<div class="empty-state">
+			<span class="empty-icon"><Icon name="calendar" size={26} /></span>
 			<p>{$isLoggedIn ? $t('events.no_events') : $t('events.no_events_guest')}</p>
+			{#if $isLoggedIn}
+				<button class="btn btn-primary" onclick={() => { if (!showCreateForm) openCreateForm(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+					<Icon name="plus" size={16} />{$t('events.create_btn')}
+				</button>
+			{:else}
+				<a href="/login" class="btn btn-primary">{$t('nav.login')}</a>
+			{/if}
 		</div>
 	{:else}
 		<ul class="event-list">
@@ -335,20 +342,20 @@
 					<a class="event-link" href={`/events/${event.id}`}>
 						<div class="event-header">
 							<div class="category-icon-wrap">
-								<span>{CATEGORY_ICONS[event.category] ?? '📅'}</span>
+								<Icon name={EVENT_CATEGORY_ICON[event.category] ?? 'calendar'} size={22} />
 							</div>
 							<div class="event-meta">
 								<h3 class="event-title">
 									{event.title}
 									{#if isPast(event)}
-										<span class="past-badge">{$t('events.past_badge')}</span>
+										<span class="badge badge-caps past-badge">{$t('events.past_badge')}</span>
 									{/if}
 								</h3>
 								<p class="event-date">{formatDate(event.start_at)}
 									{#if event.end_at} — {formatDate(event.end_at)}{/if}
 								</p>
 								{#if event.location}
-									<p class="event-location">📍 {event.location}</p>
+									<p class="event-location"><Icon name="pin" size={14} /> {event.location}</p>
 								{/if}
 							</div>
 						</div>
@@ -358,7 +365,7 @@
 					</a>
 					<div class="event-footer">
 						<span class="attendee-count">
-							👥 {event.attendee_count}{event.max_attendees ? `/${event.max_attendees}` : ''} {$t('events.attendees')}
+							<Icon name="users" size={15} /> {event.attendee_count}{event.max_attendees ? `/${event.max_attendees}` : ''} {$t('events.attendees')}
 						</span>
 						<span class="organizer">{$t('events.organizer_by', { values: { name: event.organizer.display_name } })}</span>
 						{#if $isLoggedIn}
@@ -382,34 +389,12 @@
 		max-width: 900px;
 	}
 
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-	}
-
 	.page-header h1 {
 		margin: 0 0 0.25rem;
 	}
 
-	.subtitle {
-		margin: 0;
-		color: var(--color-text-muted);
-		font-size: 0.95rem;
-	}
-
-
 	.card {
-		background: var(--color-surface);
-		border-radius: var(--radius-lg);
-		padding: 1.25rem;
 		margin-bottom: 1rem;
-		border: 1px solid var(--color-border);
-		box-shadow: var(--shadow-sm);
-		transition: all var(--transition);
 	}
 
 	.create-form h2 {
@@ -423,59 +408,15 @@
 	}
 
 	.form-grid {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem;
 		margin-bottom: 1rem;
-	}
-
-	.form-grid label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		font-size: 0.875rem;
-		color: var(--color-text-muted);
 	}
 
 	.form-grid .full-width {
 		grid-column: 1 / -1;
 	}
 
-	.form-grid input,
-	.form-grid select,
-	.form-grid textarea {
-		padding: 0.45rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-bg);
-		color: var(--color-text);
-		font-size: 0.9rem;
-	}
-
-	.filters {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 0.6rem;
+	.filter-bar {
 		margin-bottom: 1.25rem;
-		align-items: center;
-	}
-
-	.search-input {
-		flex: 1;
-		min-width: 160px;
-		padding: 0.45rem 0.7rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text);
-	}
-
-	.filters select {
-		padding: 0.45rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text);
 	}
 
 	.toggle-label {
@@ -489,7 +430,7 @@
 	.result-count {
 		font-size: 0.8rem;
 		color: var(--color-text-muted);
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.event-list {
@@ -507,7 +448,6 @@
 	.event-card:hover {
 		box-shadow: var(--shadow-md);
 		border-color: var(--color-border-hover);
-		transform: translateY(-2px);
 	}
 
 	.event-card.event-past {
@@ -515,16 +455,7 @@
 	}
 
 	.past-badge {
-		display: inline-block;
-		margin-left: 0.5rem;
-		padding: 0.1rem 0.5rem;
-		border-radius: 999px;
-		background: var(--color-border);
-		color: var(--color-text-muted);
-		font-size: 0.7rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
+		margin-inline-start: 0.5rem;
 		vertical-align: middle;
 	}
 
@@ -537,7 +468,7 @@
 	}
 
 	.event-link:hover .event-title {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.event-header {
@@ -555,8 +486,7 @@
 		flex-shrink: 0;
 		border-radius: var(--radius);
 		background: var(--color-primary-light);
-		font-size: 1.25rem;
-		line-height: 1;
+		color: var(--color-primary-text);
 	}
 
 	.event-meta {
@@ -571,10 +501,13 @@
 	.event-date {
 		margin: 0;
 		font-size: 0.875rem;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.event-location {
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
 		margin: 0.15rem 0 0;
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
@@ -596,6 +529,9 @@
 	}
 
 	.attendee-count {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
 	}
@@ -603,78 +539,10 @@
 	.organizer {
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
-		margin-left: auto;
-	}
-
-	.btn {
-		padding: 0.5rem 1rem;
-		border: none;
-		border-radius: var(--radius);
-		cursor: pointer;
-		font-size: 0.9rem;
-		font-weight: 500;
-		transition: all var(--transition-fast);
-	}
-
-	.btn:disabled {
-		opacity: 0.45;
-		cursor: not-allowed;
-	}
-
-	.btn-sm {
-		padding: 0.3rem 0.7rem;
-		font-size: 0.8rem;
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: var(--color-on-primary, #fff);
-		box-shadow: var(--shadow-sm);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow);
-		transform: translateY(-1px);
-	}
-
-	.btn-secondary {
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		border: 1px solid var(--color-border);
-	}
-
-	.btn-secondary:hover:not(:disabled) {
-		border-color: var(--color-primary);
-	}
-
-	.empty-state {
-		text-align: center;
-		color: var(--color-text-muted);
-		padding: 3rem 1rem;
-	}
-
-	.error {
-		color: var(--color-error);
-		font-size: 0.875rem;
-		margin: 0 0 0.5rem;
-	}
-
-	.error-banner {
-		padding: 0.75rem 1rem;
-		border-radius: var(--radius);
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		border: 1px solid var(--color-error);
-		font-size: 0.9rem;
-		margin-bottom: 1rem;
+		margin-inline-start: auto;
 	}
 
 	@media (max-width: 640px) {
-		.form-grid {
-			grid-template-columns: 1fr;
-		}
-
 		.page-header {
 			flex-direction: column;
 		}

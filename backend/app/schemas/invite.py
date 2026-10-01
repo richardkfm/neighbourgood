@@ -1,14 +1,13 @@
 """Pydantic schemas for community invite codes."""
 
-import datetime
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from app.schemas.common import UTCDateTime
 
 
 class InviteCreate(BaseModel):
     community_id: int
-    max_uses: int | None = None
-    expires_in_hours: int | None = None  # None = never expires
+    max_uses: int | None = Field(None, ge=1, le=10000)
+    expires_in_hours: int | None = Field(None, ge=1, le=24 * 365)  # None = never expires
 
 
 class InviteOut(BaseModel):
@@ -19,8 +18,8 @@ class InviteOut(BaseModel):
     max_uses: int | None
     use_count: int
     is_active: bool
-    expires_at: datetime.datetime | None
-    created_at: datetime.datetime
+    expires_at: UTCDateTime | None
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

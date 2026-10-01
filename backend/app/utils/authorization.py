@@ -32,6 +32,47 @@ def require_membership(
     return member
 
 
+def is_community_member(db: Session, community_id: int, user_id: int) -> bool:
+    """Return True if the user has a membership row in the community."""
+    return (
+        db.query(CommunityMember.id)
+        .filter(
+            CommunityMember.community_id == community_id,
+            CommunityMember.user_id == user_id,
+        )
+        .first()
+        is not None
+    )
+
+
+def users_share_community(db: Session, user_a_id: int, user_b_id: int) -> bool:
+    """Return True if both users belong to at least one common community."""
+    a_communities = (
+        db.query(CommunityMember.community_id)
+        .filter(CommunityMember.user_id == user_a_id)
+        .subquery()
+    )
+    shared = (
+        db.query(CommunityMember.id)
+        .filter(
+            CommunityMember.user_id == user_b_id,
+            CommunityMember.community_id.in_(db.query(a_communities.c.community_id)),
+        )
+        .first()
+    )
+    return shared is not None
+
+
+def require_active_membership(
+    db: Session, community_id: int, user_id: int
+) -> CommunityMember:
+    """404 if the community does not exist or is inactive/merged, 403 if the user is not a member."""
+    community = require_community(db, community_id)
+    if not community.is_active or community.merged_into_id is not None:
+        raise HTTPException(status_code=404, detail="Community not found")
+    return require_membership(db, community_id, user_id)
+
+
 def require_admin(
     db: Session, community_id: int, user_id: int
 ) -> CommunityMember:

@@ -21,6 +21,9 @@ from app.models.resource import Resource
 from app.models.skill import Skill
 from app.models.user import User
 
+# Webhook calls need a configured bot and the webhook secret header
+pytestmark = pytest.mark.usefixtures("telegram_bot")
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

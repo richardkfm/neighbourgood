@@ -166,8 +166,8 @@ def test_send_message_with_booking_id(client, auth_headers):
         headers=bob,
         json={
             "resource_id": resource_id,
-            "start_date": "2026-04-01",
-            "end_date": "2026-04-05",
+            "start_date": "2099-04-01",
+            "end_date": "2099-04-05",
         },
     )
     booking_id = b.json()["id"]
@@ -267,7 +267,7 @@ def test_list_messages_filter_by_booking(client, auth_headers):
     b = client.post(
         "/bookings",
         headers=bob,
-        json={"resource_id": resource_id, "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": resource_id, "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     booking_id = b.json()["id"]
 
@@ -380,3 +380,21 @@ def test_mark_conversation_read(client):
     # Unread count should be 0
     res = client.get("/messages/unread", headers=bob)
     assert res.json()["count"] == 0
+
+
+def test_contacts_and_messages_do_not_expose_email(client):
+    """Members see each other's names, never their email addresses."""
+    alice = _register(client, "alice@test.com", "Alice")
+    bob = _register(client, "bob@test.com", "Bob")
+    bob_id = _get_user_id(client, bob)
+    _make_community_pair(client, alice, bob)
+
+    contacts = client.get("/messages/contacts", headers=alice).json()
+    assert contacts and all("email" not in c for c in contacts)
+
+    sent = client.post("/messages", json={"recipient_id": bob_id, "body": "Hi"}, headers=alice)
+    assert sent.status_code == 201, sent.text
+    assert "email" not in sent.json()["sender"] and "email" not in sent.json()["recipient"]
+
+    conversations = client.get("/messages/conversations", headers=bob).json()
+    assert conversations and "email" not in conversations[0]["partner"]

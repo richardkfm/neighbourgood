@@ -1,5 +1,6 @@
 """Tests for the BLE mesh sync endpoint."""
 
+import time
 import uuid
 
 
@@ -10,7 +11,7 @@ def _mesh_msg(msg_type="emergency_ticket", community_id=1, data=None):
         "type": msg_type,
         "community_id": community_id,
         "sender_name": "Test User",
-        "ts": 1709337600000,
+        "ts": int(time.time() * 1000),
         "id": str(uuid.uuid4()),
         "data": data or {},
     }
@@ -97,7 +98,10 @@ def test_sync_deduplication(client, auth_headers, community_id):
 # ── Crisis vote sync ─────────────────────────────────────────────
 
 
-def test_sync_crisis_vote(client, auth_headers, community_id):
+def test_sync_crisis_vote(client, auth_headers, community_id, register_user):
+    # A second member keeps the single vote (50%) below the 60% threshold
+    other = register_user(2)
+    client.post(f"/communities/{community_id}/join", headers=other)
     msg = _mesh_msg(
         msg_type="crisis_vote",
         community_id=community_id,
@@ -311,8 +315,8 @@ def test_sync_direct_message_invalid_recipient(client, auth_headers, community_i
 # ── Crisis status sync ─────────────────────────────────────────
 
 
-def test_sync_crisis_status_as_admin(client, auth_headers, community_id):
-    """Admin (community creator) can change crisis mode via mesh."""
+def test_sync_crisis_status_is_refused(client, auth_headers, community_id):
+    """Crisis mode cannot be changed via mesh, not even by the community admin."""
     msg = _mesh_msg(
         msg_type="crisis_status",
         community_id=community_id,
@@ -322,31 +326,15 @@ def test_sync_crisis_status_as_admin(client, auth_headers, community_id):
         "/mesh/sync", json={"messages": [msg]}, headers=auth_headers
     )
     assert res.status_code == 200
-    assert res.json()["synced"] == 1
+    assert res.json()["synced"] == 0
+    assert res.json()["rejected"] == 1
+    # Refused messages are not reported as failed, so clients drop them
+    assert res.json()["failed_ids"] == []
 
-    # Verify mode changed
     community_res = client.get(
         f"/communities/{community_id}", headers=auth_headers
     )
-    assert community_res.json()["mode"] == "red"
-
-
-def test_sync_crisis_status_as_member(client, auth_headers, community_id, register_user):
-    """Regular member cannot change crisis mode via mesh."""
-    user2_headers = register_user(3)
-    client.post(f"/communities/{community_id}/join", headers=user2_headers)
-
-    msg = _mesh_msg(
-        msg_type="crisis_status",
-        community_id=community_id,
-        data={"new_mode": "red"},
-    )
-    res = client.post(
-        "/mesh/sync", json={"messages": [msg]}, headers=user2_headers
-    )
-    assert res.status_code == 200
-    assert res.json()["errors"] == 1
-    assert res.json()["synced"] == 0
+    assert community_res.json()["mode"] == "blue"
 
 
 # ── Resource offer/request sync ──────────────────────────────────
@@ -522,36 +510,20 @@ def test_get_checkins_requires_membership(client, auth_headers, register_user):
     assert res.status_code == 403
 
 
-# ── Mesh key exchange ────────────────────────────────────────
+# ── Mesh key exchange (see test_mesh_signing.py) ─────────────
 
 
-def test_set_and_get_mesh_key(client, auth_headers):
-    """Set and retrieve mesh encryption public key."""
-    key_data = "eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6InRlc3QiLCJ5IjoidGVzdCJ9"
-    res = client.put(
-        "/mesh/keys/me",
-        json={"public_key": key_data},
-        headers=auth_headers,
-    )
+def test_old_unvalidated_key_endpoint_is_gone(client, auth_headers):
+    """PUT /mesh/keys/me accepted any string; keys are now validated via POST /mesh/keys."""
+    res = client.put("/mesh/keys/me", json={"public_key": "anything"}, headers=auth_headers)
+    assert res.status_code == 405
+
+
+def test_get_mesh_keys_of_user_without_keys(client, auth_headers):
+    user_id = client.get("/users/me", headers=auth_headers).json()["id"]
+    res = client.get(f"/mesh/keys/{user_id}", headers=auth_headers)
     assert res.status_code == 200
-
-    # Get own key via user ID
-    me_res = client.get("/users/me", headers=auth_headers)
-    user_id = me_res.json()["id"]
-
-    get_res = client.get(f"/mesh/keys/{user_id}", headers=auth_headers)
-    assert get_res.status_code == 200
-    assert get_res.json()["public_key"] == key_data
-
-
-def test_get_mesh_key_not_set(client, auth_headers, register_user):
-    """Getting key for user without one returns 404."""
-    user2_headers = register_user(5)
-    me_res = client.get("/users/me", headers=user2_headers)
-    user2_id = me_res.json()["id"]
-
-    res = client.get(f"/mesh/keys/{user2_id}", headers=auth_headers)
-    assert res.status_code == 404
+    assert res.json() == []
 
 
 # ── Mesh metrics ─────────────────────────────────────────────
@@ -583,3 +555,26 @@ def test_submit_mesh_metrics_requires_auth(client):
     """Metrics endpoint requires authentication."""
     res = client.post("/mesh/metrics", json={})
     assert res.status_code == 403
+
+
+def test_submit_mesh_metrics_rejects_negative_values(client, auth_headers):
+    for field in ("messages_sent", "peak_peer_count", "errors", "session_duration_ms"):
+        res = client.post("/mesh/metrics", json={field: -1}, headers=auth_headers)
+        assert res.status_code == 422, field
+
+
+def test_sync_resource_uses_rest_categories(client, auth_headers, community_id, db):
+    """Mesh resources get the same categories as REST ones, so 'tool' is kept and 'kitchen' is not stored."""
+    from app.models.resource import Resource
+
+    for category in ("tool", "tools", "kitchen"):
+        msg = _mesh_msg(
+            msg_type="resource_offer",
+            community_id=community_id,
+            data={"title": f"Item {category}", "category": category},
+        )
+        res = client.post("/mesh/sync", json={"messages": [msg]}, headers=auth_headers)
+        assert res.json()["synced"] == 1, res.text
+
+    stored = {r.title: r.category for r in db.query(Resource).all()}
+    assert stored == {"Item tool": "tool", "Item tools": "tool", "Item kitchen": "other"}

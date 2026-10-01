@@ -1,10 +1,12 @@
 """Pydantic schemas for Red Sky (crisis) mode features."""
 
-import datetime
-
 from pydantic import BaseModel, Field
 
-from app.schemas.user import UserProfile
+from app.schemas.common import InputDateTime, UTCDateTime
+from app.schemas.user import UserPublic
+
+# Client-generated idempotency key (a UUID in practice)
+CLIENT_ID_PATTERN = "^[A-Za-z0-9_-]{8,64}$"
 
 
 # ── Crisis mode toggle ────────────────────────────────────────────
@@ -16,7 +18,12 @@ class CrisisModeToggle(BaseModel):
 
 class CrisisModeStatus(BaseModel):
     community_id: int
+    # Stored per-community mode, changed by toggles and votes
     mode: str
+    # Mode the community behaves as ("red" whenever the instance is in Red Sky)
+    effective_mode: str = "blue"
+    # True when NG_PLATFORM_MODE=red forces Red Sky on every community
+    instance_red: bool = False
     votes_to_activate: int = 0
     votes_to_deactivate: int = 0
     total_members: int = 0
@@ -33,9 +40,9 @@ class CrisisVoteCreate(BaseModel):
 class CrisisVoteOut(BaseModel):
     id: int
     community_id: int
-    user: UserProfile
+    user: UserPublic
     vote_type: str
-    created_at: datetime.datetime
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
@@ -48,7 +55,10 @@ class EmergencyTicketCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
     description: str = Field("", max_length=5000)
     urgency: str = Field("medium", pattern="^(low|medium|high|critical)$")
-    due_at: datetime.datetime | None = None
+    due_at: InputDateTime | None = None
+    # Same ID as the mesh broadcast of this ticket; a repeated create with the
+    # same client_id returns the existing ticket instead of a duplicate
+    client_id: str | None = Field(None, pattern=CLIENT_ID_PATTERN)
 
 
 class EmergencyTicketUpdate(BaseModel):
@@ -57,23 +67,24 @@ class EmergencyTicketUpdate(BaseModel):
     status: str | None = Field(None, pattern="^(open|in_progress|resolved)$")
     urgency: str | None = Field(None, pattern="^(low|medium|high|critical)$")
     assigned_to_id: int | None = None
-    due_at: datetime.datetime | None = None
+    due_at: InputDateTime | None = None
 
 
 class EmergencyTicketOut(BaseModel):
     id: int
     community_id: int
-    author: UserProfile
+    author: UserPublic
     ticket_type: str
     title: str
     description: str
     status: str
     urgency: str
-    due_at: datetime.datetime | None = None
+    due_at: UTCDateTime | None = None
     triage_score: int = 0
-    assigned_to: UserProfile | None = None
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    assigned_to: UserPublic | None = None
+    client_id: str | None = None
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
@@ -93,10 +104,10 @@ class TicketCommentCreate(BaseModel):
 class TicketCommentOut(BaseModel):
     id: int
     ticket_id: int
-    author: UserProfile
+    author: UserPublic
     body: str
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
@@ -106,8 +117,8 @@ class TicketCommentOut(BaseModel):
 
 class LeaderOut(BaseModel):
     id: int
-    user: UserProfile
+    user: UserPublic
     role: str
-    joined_at: datetime.datetime
+    joined_at: UTCDateTime
 
     model_config = {"from_attributes": True}

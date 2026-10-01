@@ -1,10 +1,9 @@
 """Pydantic schemas for transaction reviews/ratings and skill endorsements."""
 
-import datetime
-
 from pydantic import BaseModel, Field
 
-from app.schemas.user import UserProfile
+from app.schemas.user import UserPublic
+from app.schemas.common import UTCDateTime
 
 
 class ReviewCreate(BaseModel):
@@ -24,13 +23,14 @@ class ReviewOut(BaseModel):
     booking_id: int | None = None
     skill_id: int | None = None
     review_type: str = "booking"
+    reviewee_role: str | None = None  # "lender" / "borrower" for booking reviews, None for skill reviews
     reviewer_id: int
     reviewee_id: int
     rating: int
     comment: str | None
-    reviewer: UserProfile
-    reviewee: UserProfile
-    created_at: datetime.datetime
+    reviewer: UserPublic
+    reviewee: UserPublic
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 

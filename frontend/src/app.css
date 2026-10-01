@@ -7,21 +7,39 @@
 	--color-surface-raised: #fef9f5;
 	--color-text: #2d1b0e;
 	--color-text-muted: #7a5c47;
-	--color-text-subtle: #b89078;
+	--color-text-subtle: #8f6a52; /* 4.6:1 on --color-bg (was 2.7:1) */
+	/* Primary is split in two so both uses pass WCAG AA in every theme:
+	   --color-primary       = FILL (buttons, badges, active chips) behind --color-on-primary
+	   --color-primary-text  = links and text on the page surfaces */
 	--color-primary: #4f46e5;
 	--color-primary-hover: #4338ca;
+	--color-primary-text: #4f46e5; /* 6.3:1 on white, 6.0:1 on --color-bg */
+	--color-on-primary: #ffffff; /* 6.3:1 on --color-primary */
 	--color-primary-light: #eef2ff;
-	--color-accent: #c95d1b;
+	--color-accent: #b5521a; /* 4.9:1 on white; 4.5:1 white-on-accent */
 	--color-accent-light: #fef0e4;
 	--color-border: #e8d5c2;
 	--color-border-hover: #d4b89a;
-	--color-error: #dc2626;
+	--color-error: #c81e1e;
 	--color-error-bg: #fef2f2;
-	--color-warning: #d97706;
+	--color-warning: #b45309;
 	--color-warning-bg: #fffbeb;
-	--color-success: #16a34a;
+	--color-success: #15803d;
 	--color-success-bg: #f0fdf4;
 	--color-status-dot: #16a34a;
+
+	/* Focus ring + layout tokens shared by every theme */
+	--color-on-error: #ffffff;
+	--color-on-success: #ffffff; /* 5.0:1 on --color-success */
+	--color-on-accent: #ffffff; /* 5.0:1 on --color-accent */
+	--color-on-warning: #ffffff; /* 5.0:1 on --color-warning */
+	--focus-ring: var(--color-primary);
+	--tap-target: 44px;
+	--bottom-nav-height: 64px;
+	--urgency-low: var(--color-text-muted);
+	--urgency-medium: var(--color-primary-text);
+	--urgency-high: var(--color-warning);
+	--urgency-critical: var(--color-error);
 
 	/* Fraunces is only fetched in Blue Sky mode (see +layout.svelte head);
 	   Georgia is the always-available fallback, so Red Sky renders instantly. */
@@ -55,11 +73,13 @@
 	--color-surface-raised: #22223b;
 	--color-text: #e8e8ed;
 	--color-text-muted: #9ca3af;
-	--color-text-subtle: #6b7280;
+	--color-text-subtle: #8b93a1;
 	/* Violet primary accent (restored) for dark surfaces — keeps the same brand
 	   hue as the light-mode violet. */
 	--color-primary: #818cf8;
-	--color-primary-hover: #6366f1;
+	--color-primary-hover: #a5b4fc; /* lighter on hover: dark text keeps 9.5:1 */
+	--color-primary-text: #818cf8; /* 5.7:1 on surface, 6.4:1 on bg */
+	--color-on-primary: #0f0f1a; /* 6.4:1 on --color-primary (white would be 3.0:1) */
 	--color-primary-light: #1e1b4b;
 	--color-accent: #e07b33;
 	--color-accent-light: #3a2415;
@@ -72,6 +92,10 @@
 	--color-success: #34d399;
 	--color-success-bg: #064e3b;
 	--color-status-dot: #34d399;
+	--color-on-error: #1a0a0a;
+	--color-on-success: #052e16; /* 7.7:1 on the dark-theme success green */
+	--color-on-accent: #1f1206; /* 6.1:1 on the dark-theme accent */
+	--color-on-warning: #1f1206;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 	--shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -81,21 +105,49 @@
 	color-scheme: dark;
 }
 
-/* Red Sky Mode overrides */
+/* Red Sky Mode overrides.
+   Red Sky is a complete, always-dark palette. It defines every semantic
+   token (error/warning/success/accent backgrounds too) so that it looks the
+   same whether the visitor's saved theme is light or dark; previously the
+   light theme's pale error/warning tints leaked into the dark crisis UI.
+   A solid top rule on the nav (see +layout.svelte) and the danger-red
+   primary make the mode recognisable on every screen without colour alone
+   (the "Emergency" nav item and a text pill carry the same message). */
 :root[data-mode='red'] {
 	--color-bg: #1a1a1a;
 	--color-surface: #2d2d2d;
 	--color-surface-raised: #3d3d3d;
 	--color-text: #f5f5f5;
-	--color-text-muted: #a3a3a3;
-	--color-primary: #ef4444;
-	--color-primary-hover: #dc2626;
+	--color-text-muted: #b3b3b3;
+	--color-text-subtle: #8f8f8f;
+	--color-primary: #dc2626; /* fill: 4.8:1 with white text */
+	--color-primary-hover: #b91c1c; /* 6.5:1 with white text */
+	--color-primary-text: #fb8b8b; /* text: 6.0:1 on surface, 4.7:1 on raised */
+	--color-on-primary: #ffffff;
 	--color-primary-light: #450a0a;
 	--color-accent: #f59e0b;
+	--color-accent-light: #3a2a08;
 	--color-border: #404040;
+	--color-border-hover: #595959;
+	--color-error: #fca5a5;
+	--color-error-bg: #450a0a;
+	--color-warning: #fbbf24;
+	--color-warning-bg: #3a2a08;
+	--color-success: #4ade80;
+	--color-success-bg: #0f2e1a;
 	--color-status-dot: #ef4444;
+	--color-on-error: #1a0a0a;
+	--color-on-success: #052e16;
+	--color-on-accent: #1f1206;
+	--color-on-warning: #1f1206;
+	--focus-ring: #fbbf24;
+	--urgency-low: #b3b3b3;
+	--urgency-medium: #fbbf24;
+	--urgency-high: #fb923c;
+	--urgency-critical: #fca5a5;
 	--radius: 0.25rem;
 	--shadow: none;
+	color-scheme: dark;
 }
 
 /* ── Low-bandwidth Mode ─────────────────────────────────────────── */
@@ -148,6 +200,7 @@
 }
 
 /* Flatten card borders and remove rounded corners for faster paint */
+:root[data-bandwidth='low'] .card,
 :root[data-bandwidth='low'] .feature-card,
 :root[data-bandwidth='low'] .resource-card,
 :root[data-bandwidth='low'] .section-card {
@@ -222,6 +275,43 @@ h3, h4, h5, h6 {
 	}
 }
 
+/* Resources / Skills tab switcher */
+.browse-tabs {
+	display: flex;
+	gap: 0.25rem;
+	border-bottom: 1px solid var(--color-border);
+	margin-bottom: 2rem;
+}
+
+.browse-tab {
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--tap-target);
+	padding: 0.65rem 1.25rem;
+	font-size: 0.95rem;
+	font-weight: 500;
+	color: var(--color-text-muted);
+	text-decoration: none;
+	background: none;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -1px;
+	font-family: inherit;
+	cursor: pointer;
+	transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.browse-tab:hover {
+	color: var(--color-text);
+	text-decoration: none;
+}
+
+.browse-tab.active {
+	color: var(--color-primary-text);
+	border-bottom-color: var(--color-primary);
+	font-weight: 600;
+}
+
 /* Filter bars (resources, skills pages) */
 .filter-bar {
 	display: flex;
@@ -231,8 +321,17 @@ h3, h4, h5, h6 {
 	flex-wrap: wrap;
 }
 
+.filter-bar .input {
+	width: auto;
+}
+
+.filter-bar .input-grow {
+	flex: 1 1 12rem;
+	min-width: 0;
+}
+
 a {
-	color: var(--color-primary);
+	color: var(--color-primary-text);
 	text-decoration: none;
 	transition: color var(--transition-fast);
 }
@@ -279,6 +378,127 @@ input:focus, textarea:focus, select:focus {
 	box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
 }
 
+/* ── Accessibility foundations ─────────────────────────────────────
+   One consistent, high-contrast keyboard focus ring for everything that
+   is not a text field (text fields keep their own border + glow above).
+   :focus-visible means mouse users never see it. */
+
+:where(a, button, summary, [role='button'], [role='menuitem'], [role='tab'], input[type='checkbox'], input[type='radio']):focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+	border-radius: var(--radius-sm);
+}
+
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+	outline: 2px solid transparent; /* visible in forced-colors / high-contrast mode */
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.skip-link {
+	position: absolute;
+	top: 0.5rem;
+	left: 0.5rem;
+	z-index: 1000;
+	padding: 0.6rem 1rem;
+	border-radius: var(--radius-sm);
+	background: var(--color-primary);
+	color: var(--color-on-primary);
+	font-weight: 600;
+	transform: translateY(-200%);
+}
+
+.skip-link:focus {
+	transform: translateY(0);
+	text-decoration: none;
+}
+
+/* Honour the OS "reduce motion" setting everywhere. */
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* Touch ergonomics: comfortable form controls, and 16px text so iOS Safari
+   does not zoom the viewport when a field is focused. */
+@media (pointer: coarse) {
+	select,
+	input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']) {
+		min-height: var(--tap-target);
+	}
+}
+
+@media (max-width: 768px) {
+	input:not([type='checkbox']):not([type='radio']), select, textarea {
+		font-size: 16px;
+	}
+}
+
+/* Skeleton loading placeholders (shimmer is disabled by reduced-motion /
+   low-bandwidth rules above and below). */
+.skeleton {
+	display: block;
+	border-radius: var(--radius-sm);
+	background: linear-gradient(90deg, var(--color-surface-raised) 25%, var(--color-border) 50%, var(--color-surface-raised) 75%);
+	background-color: var(--color-surface-raised);
+	background-size: 200% 100%;
+	animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+	from { background-position: 200% 0; }
+	to { background-position: -200% 0; }
+}
+
+.skeleton-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.skeleton-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+	gap: 1rem;
+}
+
+.skeleton-line {
+	height: 0.9rem;
+	width: 100%;
+}
+
+.skeleton-line.is-short {
+	width: 45%;
+}
+
+.skeleton-card {
+	height: 6.5rem;
+	border-radius: var(--radius-lg);
+}
+
+/* Directional icons (arrows, chevrons) mirror in RTL languages */
+[dir='rtl'] .flip-rtl {
+	transform: scaleX(-1);
+}
+
+input[type='checkbox'], input[type='radio'] {
+	accent-color: var(--color-primary);
+}
+
 /* ── Utility classes ───────────────────────────────────────────── */
 
 /* Alerts */
@@ -309,7 +529,7 @@ input:focus, textarea:focus, select:focus {
 
 .alert-info {
 	background: var(--color-primary-light);
-	color: var(--color-primary);
+	color: var(--color-primary-text);
 	border: 1px solid var(--color-primary);
 }
 
@@ -326,21 +546,396 @@ input:focus, textarea:focus, select:focus {
 	padding: 0.12rem 0.45rem;
 	border-radius: 999px;
 	background: var(--color-primary-light);
-	color: var(--color-primary);
+	color: var(--color-primary-text);
 }
 
-.badge {
-	display: inline-block;
-	font-size: 0.7rem;
+/* ── Shared primitives: .btn .card .field .badge ─────────────────── */
+
+/* Buttons. `.btn` alone is the neutral (secondary) look; add one variant and
+   optionally `.btn-sm`. Loading: add `.is-loading` (or aria-busy="true") and
+   the button shows a spinner and ignores clicks. Works on <button> and <a>. */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	min-height: 2.5rem;
+	padding: 0.55rem 1.1rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius);
+	background: var(--color-surface);
+	color: var(--color-text);
+	font: inherit;
+	font-size: 0.9rem;
 	font-weight: 600;
-	padding: 0.1rem 0.45rem;
-	border-radius: 999px;
-	text-transform: uppercase;
-	letter-spacing: 0.03em;
+	line-height: 1.2;
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-/* Empty state */
+.btn:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-surface-raised);
+	border-color: var(--color-border-hover);
+	text-decoration: none;
+}
+
+.btn:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.btn-secondary {
+	background: var(--color-surface);
+	color: var(--color-text);
+	border-color: var(--color-border);
+}
+
+.btn-primary {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+	color: var(--color-on-primary);
+}
+
+.btn-primary:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-primary-hover);
+	border-color: var(--color-primary-hover);
+}
+
+.btn-danger {
+	background: var(--color-error);
+	border-color: var(--color-error);
+	color: var(--color-on-error);
+}
+
+.btn-danger:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-error);
+	border-color: var(--color-error);
+	filter: brightness(0.92);
+}
+
+/* Positive action: resolve, confirm */
+.btn-success {
+	background: var(--color-success);
+	border-color: var(--color-success);
+	color: var(--color-on-success);
+}
+
+.btn-success:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-success);
+	border-color: var(--color-success);
+	filter: brightness(0.92);
+}
+
+/* Destructive but not the primary action: red outline, fills on hover */
+.btn-danger-outline {
+	background: transparent;
+	border-color: var(--color-error);
+	color: var(--color-error);
+}
+
+.btn-danger-outline:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-error-bg);
+	border-color: var(--color-error);
+}
+
+.btn-ghost {
+	background: transparent;
+	border-color: transparent;
+	color: var(--color-primary-text);
+}
+
+.btn-ghost:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-primary-light);
+	border-color: transparent;
+}
+
+.btn-sm {
+	min-height: 2rem;
+	padding: 0.3rem 0.75rem;
+	font-size: 0.8rem;
+	border-radius: var(--radius-sm);
+}
+
+.btn-lg {
+	min-height: 2.9rem;
+	padding: 0.7rem 1.5rem;
+	font-size: 0.95rem;
+}
+
+.btn-block {
+	display: flex;
+	width: 100%;
+}
+
+.btn.is-loading,
+.btn[aria-busy='true'] {
+	pointer-events: none;
+	cursor: progress;
+}
+
+.btn.is-loading::before,
+.btn[aria-busy='true']::before {
+	content: '';
+	flex: none;
+	width: 1em;
+	height: 1em;
+	border: 2px solid currentColor;
+	border-inline-end-color: transparent;
+	border-radius: 50%;
+	animation: btn-spin 0.7s linear infinite;
+}
+
+@keyframes btn-spin {
+	to { transform: rotate(360deg); }
+}
+
+@media (pointer: coarse) {
+	.btn,
+	.btn-sm {
+		min-height: var(--tap-target);
+	}
+}
+
+/* Cards: a bordered surface. Add .card-interactive when the whole card is a link. */
+.card {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	padding: 1.25rem;
+	box-shadow: var(--shadow-sm);
+	min-width: 0;
+}
+
+.card-flush {
+	padding: 0;
+	overflow: hidden;
+}
+
+.card-interactive {
+	color: inherit;
+	text-decoration: none;
+	transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.card-interactive:hover {
+	border-color: var(--color-border-hover);
+	box-shadow: var(--shadow-md);
+	text-decoration: none;
+}
+
+.card-interactive:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+}
+
+/* Form field: <div class="field"><label for>..</label><input id>..<p class="field-hint">..</p></div>
+   Set aria-invalid="true" (or .has-error) and add <p class="field-error" role="alert">. */
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 0;
+}
+
+.field > label,
+label.field,
+.field-label {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.field input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+.field select,
+.field textarea,
+.input {
+	width: 100%;
+	min-height: 2.5rem;
+	padding: 0.55rem 0.8rem;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius);
+	background: var(--color-surface);
+	color: var(--color-text);
+	font-size: 0.95rem;
+	font-weight: 400;
+	line-height: 1.4;
+}
+
+.field textarea {
+	min-height: 5rem;
+	resize: vertical;
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled,
+.input:disabled {
+	background: var(--color-surface-raised);
+	color: var(--color-text-muted);
+	cursor: not-allowed;
+}
+
+.field input::placeholder,
+.field textarea::placeholder,
+.input::placeholder {
+	color: var(--color-text-subtle);
+}
+
+.field-hint {
+	font-size: 0.8rem;
+	color: var(--color-text-muted);
+}
+
+.field-error {
+	font-size: 0.8rem;
+	font-weight: 500;
+	color: var(--color-error);
+}
+
+.field.has-error input,
+.field.has-error select,
+.field.has-error textarea,
+.field [aria-invalid='true'],
+.input[aria-invalid='true'] {
+	border-color: var(--color-error);
+}
+
+.field-row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+	gap: 0.75rem 1rem;
+}
+
+.form-stack {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+@media (max-width: 768px) {
+	.field input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+	.field select,
+	.field textarea,
+	.input {
+		font-size: 16px;
+	}
+}
+
+@media (pointer: coarse) {
+	.field input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+	.field select,
+	.input {
+		min-height: var(--tap-target);
+	}
+}
+
+/* Centered single-card layout for login / register / password reset */
+.auth-card {
+	max-width: 420px;
+	margin: 3rem auto;
+	padding: 2.25rem 2rem;
+}
+
+.auth-card h1 {
+	font-size: 1.9rem;
+	margin-bottom: 0.25rem;
+}
+
+.auth-card .subtitle {
+	margin: 0 0 1.75rem;
+}
+
+.auth-card .btn[type='submit'] {
+	margin-top: 0.5rem;
+}
+
+.auth-switch {
+	text-align: center;
+	margin-top: 1.5rem;
+	font-size: 0.9rem;
+	color: var(--color-text-muted);
+}
+
+.auth-switch a {
+	display: inline-flex;
+	align-items: center;
+	min-height: var(--tap-target);
+	padding-inline: 0.5rem;
+}
+
+@media (max-width: 480px) {
+	.auth-card {
+		margin: 1rem auto;
+		padding: 1.5rem 1.25rem;
+	}
+}
+
+/* Badge: small tinted label. Variant sets the colour; background tints from it. */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 0.72rem;
+	font-weight: 600;
+	line-height: 1.3;
+	padding: 0.15rem 0.55rem;
+	border-radius: 999px;
+	letter-spacing: 0.02em;
+	white-space: nowrap;
+	color: var(--color-text-muted);
+	background: color-mix(in srgb, currentColor 12%, transparent);
+	border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.badge-primary { color: var(--color-primary-text); }
+.badge-success { color: var(--color-success); }
+.badge-warning { color: var(--color-warning); }
+.badge-error { color: var(--color-error); }
+.badge-accent { color: var(--color-accent); }
+.badge-caps { text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.68rem; }
+
+.badge-solid {
+	background: var(--color-primary);
+	border-color: var(--color-primary);
+	color: var(--color-on-primary);
+}
+
+/* Status pill: tinted from currentColor so any status colour works in every theme */
+.status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.15rem 0.6rem;
+	border-radius: 999px;
+	font-size: 0.75rem;
+	font-weight: 700;
+	text-transform: capitalize;
+	background: color-mix(in srgb, currentColor 12%, transparent);
+	border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+	white-space: nowrap;
+}
+
+.status-pill::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+/* Empty state: optional icon, message, and one primary action */
 .empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 	text-align: center;
 	padding: 3rem 1rem;
 	color: var(--color-text-muted);
@@ -348,6 +943,22 @@ input:focus, textarea:focus, select:focus {
 
 .empty-state p + p {
 	margin-top: 0.5rem;
+}
+
+.empty-state .empty-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	margin-bottom: 1rem;
+	border-radius: 50%;
+	background: var(--color-primary-light);
+	color: var(--color-primary-text);
+}
+
+.empty-state .btn {
+	margin-top: 1.25rem;
 }
 
 /* Loading */
@@ -368,22 +979,8 @@ input:focus, textarea:focus, select:focus {
 	line-height: 1.8;
 }
 
-/* Navigation: flip horizontal order */
-[dir='rtl'] .nav-inner {
-	flex-direction: row-reverse;
-}
-
-[dir='rtl'] .nav-links {
-	flex-direction: row-reverse;
-}
-
-[dir='rtl'] .nav-brand {
-	flex-direction: row-reverse;
-}
-
-[dir='rtl'] .nav-user-group {
-	flex-direction: row-reverse;
-}
+/* Flex rows (nav, page headers, filter bars) mirror automatically under
+   dir="rtl"; do not add row-reverse here or they flip back to LTR order. */
 
 /* Form inputs: align text right for RTL */
 [dir='rtl'] input,
@@ -393,17 +990,8 @@ input:focus, textarea:focus, select:focus {
 	direction: rtl;
 }
 
-/* Page header: reverse order */
-[dir='rtl'] .page-header {
-	flex-direction: row-reverse;
-}
-
-/* Filter bars */
-[dir='rtl'] .filter-bar {
-	flex-direction: row-reverse;
-}
-
 /* Cards: reverse internal flex where needed */
+[dir='rtl'] .card,
 [dir='rtl'] .feature-card,
 [dir='rtl'] .resource-card {
 	text-align: right;

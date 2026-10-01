@@ -2,13 +2,8 @@
   let { text = 'Loading...' }: { text?: string } = $props();
 </script>
 
-<p class="loading-text">{text}</p>
-
-<style>
-  .loading-text {
-    color: var(--color-text-muted);
-    text-align: center;
-    padding: 2rem;
-    font-size: 0.95rem;
-  }
-</style>
+<div class="skeleton-stack" role="status" aria-busy="true">
+  <span class="sr-only">{text}</span>
+  <span class="skeleton skeleton-line is-short" aria-hidden="true"></span>
+  <span class="skeleton skeleton-card" aria-hidden="true"></span>
+</div>

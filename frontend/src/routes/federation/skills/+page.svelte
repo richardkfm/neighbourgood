@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 	import { api } from '$lib/api';
 	import { isLoggedIn } from '$lib/stores/auth';
 	import type { FederatedSkill, KnownInstance } from '$lib/types';
@@ -66,17 +67,17 @@
 			<h1>{$t('federation.federated_skills')}</h1>
 			<p class="subtitle">{$t('federation.skills_subtitle')}</p>
 		</div>
-		<a href="/communities#federation" class="back-link">&larr; {$t('federation.back_to_directory')}</a>
+		<a href="/communities#federation" class="btn btn-ghost btn-sm"><Icon name="arrow-left" size={14} class="flip-rtl" /> {$t('federation.back_to_directory')}</a>
 	</header>
 
-	<div class="filters">
-		<select bind:value={filterType} onchange={applyFilters}>
+	<div class="filter-bar">
+		<select class="input" bind:value={filterType} onchange={applyFilters}>
 			<option value="">{$t('skills.all_types')}</option>
 			<option value="offer">{$t('skills.type_offer')}</option>
 			<option value="request">{$t('skills.type_request')}</option>
 		</select>
 
-		<select bind:value={filterCategory} onchange={applyFilters}>
+		<select class="input" bind:value={filterCategory} onchange={applyFilters}>
 			<option value="">{$t('skills.all_categories')}</option>
 			<option value="tutoring">{$t('skills.categories.tutoring')}</option>
 			<option value="repairs">{$t('skills.categories.repairs')}</option>
@@ -90,7 +91,7 @@
 			<option value="other">{$t('skills.categories.other')}</option>
 		</select>
 
-		<select bind:value={filterInstance} onchange={applyFilters}>
+		<select class="input" bind:value={filterInstance} onchange={applyFilters}>
 			<option value="">{$t('federation.all_instances')}</option>
 			{#each instances as inst}
 				<option value={String(inst.id)}>{inst.name}</option>
@@ -99,18 +100,24 @@
 	</div>
 
 	{#if loading}
-		<p class="loading">{$t('common.loading')}</p>
+		<div class="skill-grid" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3, 4] as n (n)}
+				<div class="skeleton skeleton-card" style="height: 8.5rem" aria-hidden="true"></div>
+			{/each}
+		</div>
 	{:else if skills.length === 0}
 		<div class="empty-state">
+			<span class="empty-icon"><Icon name="globe" size={26} /></span>
 			<p>{$t('federation.no_federated_skills')}</p>
 		</div>
 	{:else}
 		<div class="skill-grid">
 			{#each skills as skill}
-				<div class="skill-card">
+				<div class="card skill-card">
 					<div class="card-header">
 						<h3>{skill.title}</h3>
-						<span class="type-badge" class:offer={skill.skill_type === 'offer'} class:request={skill.skill_type === 'request'}>
+						<span class="badge" class:badge-success={skill.skill_type === 'offer'} class:badge-warning={skill.skill_type === 'request'}>
 							{skill.skill_type === 'offer' ? $t('skills.type_offer') : $t('skills.type_request')}
 						</span>
 					</div>
@@ -118,7 +125,7 @@
 						<p class="card-desc">{skill.description}</p>
 					{/if}
 					<div class="card-meta">
-						<span class="meta-item">{skill.category}</span>
+						<span class="meta-item">{$t('skills.categories.' + skill.category, { default: skill.category })}</span>
 						{#if skill.community_name}
 							<span class="meta-item">{skill.community_name}</span>
 						{/if}
@@ -139,15 +146,6 @@
 		margin: 0 auto;
 	}
 
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: flex-start;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-		gap: 1rem;
-	}
-
 	.page-header h1 {
 		font-family: var(--font-heading);
 		font-weight: 400;
@@ -162,45 +160,10 @@
 		margin: 0.25rem 0 0;
 	}
 
-	.back-link {
-		color: var(--color-primary);
-		text-decoration: none;
-		font-size: 0.88rem;
-		font-weight: 500;
-	}
-
-	.back-link:hover {
-		text-decoration: underline;
-	}
-
-	.filters {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1.5rem;
-		flex-wrap: wrap;
-	}
-
-	.filters select {
-		padding: 0.45rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text);
-		font-size: 0.88rem;
-	}
-
 	.skill-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
 		gap: 1rem;
-	}
-
-	.skill-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		padding: 1rem;
-		transition: box-shadow var(--transition-fast);
 	}
 
 	.skill-card:hover {
@@ -221,29 +184,13 @@
 		color: var(--color-text);
 	}
 
-	.type-badge {
-		font-size: 0.72rem;
-		font-weight: 600;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-	}
-
-	.type-badge.offer {
-		background: var(--color-success-bg, rgba(16, 185, 129, 0.1));
-		color: var(--color-success, #10b981);
-	}
-
-	.type-badge.request {
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-		color: var(--color-warning, #f59e0b);
-	}
-
 	.card-desc {
 		font-size: 0.88rem;
 		color: var(--color-text-muted);
 		margin: 0 0 0.5rem;
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
@@ -276,19 +223,7 @@
 
 	.source {
 		font-weight: 600;
-		color: var(--color-primary);
-	}
-
-	.loading {
-		text-align: center;
-		color: var(--color-text-muted);
-		padding: 2rem;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 3rem 1rem;
-		color: var(--color-text-muted);
+		color: var(--color-primary-text);
 	}
 
 	@media (max-width: 768px) {

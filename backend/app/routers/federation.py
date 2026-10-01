@@ -1,28 +1,35 @@
 """Federation endpoints – instance directory, Red Sky alerts, data export/import."""
 
 import datetime
-import ipaddress
 import json
 import logging
-from urllib.parse import urlparse
+import secrets
+from typing import Annotated
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, HttpUrl
-from sqlalchemy.orm import Session
+from pydantic import AfterValidator, BaseModel, Field, HttpUrl, model_validator
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.booking import Booking
 from app.models.community import Community, CommunityMember
-from app.models.federation import KnownInstance, RedSkyAlert
+from app.models.federation import KnownInstance, RedSkyAlert, SentAlert
 from app.models.message import Message
 from app.models.resource import Resource
 from app.models.review import Review
 from app.models.skill import Skill
 from app.models.user import User
+from app.schemas.common import UTCDateTime
+from app.schemas.resource import VALID_CATEGORIES, VALID_CONDITIONS
+from app.schemas.skill import VALID_SKILL_CATEGORIES, VALID_SKILL_TYPES
+from app.utils.net import is_safe_url as _is_safe_url
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +65,24 @@ class InstanceAdd(BaseModel):
     url: HttpUrl
 
 
+ALERT_DEFAULT_DURATION_HOURS = 48
+ALERT_MAX_DURATION_HOURS = 336  # two weeks
+
+
+def _utcnow() -> datetime.datetime:
+    return datetime.datetime.utcnow()
+
+
+def _naive_utc(value: datetime.datetime) -> datetime.datetime:
+    if value.tzinfo is not None:
+        value = value.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    return value
+
+
+# Accepts aware or naive (UTC) input, stores naive UTC, serialises with "Z"
+AlertDateTime = Annotated[UTCDateTime, AfterValidator(_naive_utc)]
+
+
 class AlertOut(BaseModel):
     id: int
     source_instance_url: str
@@ -65,25 +90,54 @@ class AlertOut(BaseModel):
     title: str
     description: str
     severity: str
+    # False once dismissed by an admin or past expires_at
     is_active: bool
-    created_at: datetime.datetime
+    expires_at: UTCDateTime | None = None
+    created_at: UTCDateTime
 
     model_config = {"from_attributes": True}
 
+    @model_validator(mode="after")
+    def _expire(self):
+        if self.expires_at is not None and self.expires_at <= _utcnow():
+            self.is_active = False
+        return self
+
 
 class AlertCreate(BaseModel):
-    title: str
-    description: str = ""
-    severity: str = "warning"
+    title: str = Field(..., min_length=1, max_length=300)
+    description: str = Field("", max_length=5000)
+    severity: str = Field("warning", pattern="^(info|warning|critical)$")
+    # How long receivers show the alert as active
+    duration_hours: int = Field(ALERT_DEFAULT_DURATION_HOURS, ge=1, le=ALERT_MAX_DURATION_HOURS)
+
+
+_ALERT_UID_PATTERN = "^[A-Za-z0-9_-]{16,64}$"
 
 
 class AlertReceive(BaseModel):
-    """Schema for incoming alerts from remote instances."""
-    source_instance_url: str
-    source_instance_name: str
-    title: str
-    description: str = ""
-    severity: str = "warning"
+    """Notification that a remote instance published an alert.
+
+    Only the source URL and alert UID are used: the alert itself is fetched back
+    from the (known) source instance, so a forged notification cannot inject
+    content. Title/description/severity are still sent for older receivers.
+    """
+    source_instance_url: str = Field(..., max_length=500)
+    alert_uid: str = Field(..., pattern=_ALERT_UID_PATTERN)
+    source_instance_name: str = Field("", max_length=200)
+    title: str = Field("", max_length=300)
+    description: str = Field("", max_length=5000)
+    severity: str = Field("warning", max_length=20)
+
+
+class PublishedAlert(BaseModel):
+    """An alert as published by its source instance, fetched back for verification."""
+    alert_uid: str = Field(..., pattern=_ALERT_UID_PATTERN)
+    title: str = Field(..., min_length=1, max_length=300)
+    description: str = Field("", max_length=5000)
+    severity: str = Field(..., pattern="^(info|warning|critical)$")
+    # Optional so alerts from senders predating expiry still verify
+    expires_at: AlertDateTime | None = None
 
 
 class DataExport(BaseModel):
@@ -91,17 +145,29 @@ class DataExport(BaseModel):
     instance: str
     user: dict
     resources: list[dict]
+    # Bookings I made as a borrower (unchanged shape for existing consumers).
     bookings: list[dict]
+    # Bookings other members made on resources I own; kept apart from my own borrowings.
+    lending_bookings: list[dict] = []
     skills: list[dict]
     messages: list[dict]
     reviews: list[dict]
     communities: list[dict]
 
 
+MAX_IMPORT_ITEMS = 200
+
+
 class MigrationImport(BaseModel):
-    display_name: str
+    display_name: str = Field(..., max_length=100)
     resources: list[dict] = []
     skills: list[dict] = []
+
+    @model_validator(mode="after")
+    def _cap_items(self):
+        if len(self.resources) + len(self.skills) > MAX_IMPORT_ITEMS:
+            raise ValueError(f"At most {MAX_IMPORT_ITEMS} items (resources + skills) can be imported per request")
+        return self
 
 
 # ── Instance Directory ──────────────────────────────────────────────
@@ -125,7 +191,12 @@ def add_instance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Add a new instance to the directory by URL. Fetches its /instance/info to populate metadata."""
+    """Add a new instance to the directory by URL (admin only). Fetches its /instance/info to populate metadata.
+
+    Known instances are trusted as alert sources, so only admins may add them.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     url = str(body.url).rstrip("/")
 
     existing = db.query(KnownInstance).filter(KnownInstance.url == url).first()
@@ -185,7 +256,9 @@ def refresh_directory(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Re-crawl all known instances to update their metadata and reachability."""
+    """Re-crawl all known instances to update their metadata and reachability (admin only)."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     instances = db.query(KnownInstance).all()
     for inst in instances:
         info = _fetch_instance_info(inst.url)
@@ -211,24 +284,6 @@ def refresh_directory(
     return instances
 
 
-def _is_safe_url(url: str) -> bool:
-    """Reject URLs that resolve to private/internal IP ranges to prevent SSRF."""
-    try:
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-        if not hostname:
-            return False
-        import socket
-        resolved = socket.getaddrinfo(hostname, None)
-        for _, _, _, _, addr in resolved:
-            ip = ipaddress.ip_address(addr[0])
-            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
-                return False
-        return True
-    except Exception:
-        return False
-
-
 def _fetch_instance_info(base_url: str) -> dict | None:
     """Fetch /instance/info from a remote NeighbourGood instance."""
     if not _is_safe_url(base_url):
@@ -248,14 +303,30 @@ def _fetch_instance_info(base_url: str) -> dict | None:
 
 @router.get("/alerts", response_model=list[AlertOut])
 def list_alerts(
-    active_only: bool = Query(True, description="Only show active alerts"),
+    active_only: bool = Query(True, description="Only show active (not dismissed, not expired) alerts"),
     db: Session = Depends(get_db),
 ):
     """List Red Sky alerts received from other instances."""
     query = db.query(RedSkyAlert).order_by(RedSkyAlert.created_at.desc())
     if active_only:
-        query = query.filter(RedSkyAlert.is_active.is_(True))
+        query = query.filter(
+            RedSkyAlert.is_active.is_(True),
+            or_(RedSkyAlert.expires_at.is_(None), RedSkyAlert.expires_at > _utcnow()),
+        )
     return query.all()
+
+
+@router.get("/alerts/{alert_id}", response_model=AlertOut)
+def get_alert(
+    alert_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """A single received alert (any logged-in user), including dismissed or expired ones."""
+    alert = db.query(RedSkyAlert).filter(RedSkyAlert.id == alert_id).first()
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    return alert
 
 
 @router.post("/alerts/send", response_model=dict)
@@ -268,12 +339,31 @@ def broadcast_alert(
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
+    if not settings.instance_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Set NG_INSTANCE_URL so other instances can verify alerts from this instance",
+        )
+
+    sent_alert = SentAlert(
+        alert_uid=secrets.token_urlsafe(24),
+        title=body.title,
+        description=body.description,
+        severity=body.severity,
+        sent_by_id=current_user.id,
+        expires_at=_utcnow() + datetime.timedelta(hours=body.duration_hours),
+    )
+    db.add(sent_alert)
+    db.commit()
+
     payload = {
-        "source_instance_url": settings.instance_url,
+        "source_instance_url": settings.instance_url.rstrip("/"),
         "source_instance_name": settings.instance_name,
+        "alert_uid": sent_alert.alert_uid,
         "title": body.title,
         "description": body.description,
         "severity": body.severity,
+        "expires_at": sent_alert.expires_at.isoformat() + "Z",
     }
 
     instances = db.query(KnownInstance).filter(KnownInstance.is_reachable.is_(True)).all()
@@ -292,9 +382,43 @@ def broadcast_alert(
     return {"sent": sent, "failed": failed, "total": len(instances)}
 
 
+@router.get("/alerts/outgoing/{alert_uid}", response_model=PublishedAlert)
+def get_published_alert(alert_uid: str, db: Session = Depends(get_db)):
+    """Return an alert this instance broadcast, so receivers can verify it came from here."""
+    alert = db.query(SentAlert).filter(SentAlert.alert_uid == alert_uid).first()
+    if not alert:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert not found")
+    return alert
+
+
+def _fetch_published_alert(base_url: str, alert_uid: str) -> PublishedAlert | None:
+    """Fetch an alert back from its source instance. Returns None if it cannot be verified."""
+    if not _is_safe_url(base_url):
+        logger.warning("Blocked SSRF attempt to internal URL: %s", base_url)
+        return None
+    try:
+        resp = httpx.get(
+            f"{base_url}/federation/alerts/outgoing/{quote(alert_uid, safe='')}",
+            timeout=10,
+            follow_redirects=False,
+        )
+        if resp.status_code != 200:
+            return None
+        published = PublishedAlert.model_validate(resp.json())
+    except Exception as exc:
+        logger.warning("Could not verify alert %s from %s: %s", alert_uid, base_url, exc)
+        return None
+    return published if published.alert_uid == alert_uid else None
+
+
 @router.post("/alerts/receive", response_model=AlertOut, status_code=status.HTTP_201_CREATED)
 def receive_alert(body: AlertReceive, db: Session = Depends(get_db)):
-    """Receive a Red Sky alert from a remote instance. Only accepts alerts from known instances."""
+    """Receive a Red Sky alert from a known remote instance.
+
+    The request body is only a notification: the alert is fetched back from the
+    source instance's URL in our directory and stored from that response, so
+    anyone who can reach this endpoint still cannot forge an alert.
+    """
     source_url = body.source_instance_url.rstrip("/")
     known = db.query(KnownInstance).filter(KnownInstance.url == source_url).first()
     if not known:
@@ -302,20 +426,47 @@ def receive_alert(body: AlertReceive, db: Session = Depends(get_db)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Alerts only accepted from known instances",
         )
-    if body.severity not in ("info", "warning", "critical"):
+
+    existing = (
+        db.query(RedSkyAlert)
+        .filter(RedSkyAlert.source_instance_url == known.url, RedSkyAlert.source_alert_uid == body.alert_uid)
+        .first()
+    )
+    if existing:
+        return existing
+
+    published = _fetch_published_alert(known.url, body.alert_uid)
+    if published is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="severity must be one of: info, warning, critical",
+            detail="Alert could not be verified with its source instance",
         )
+
+    # The sender picks the duration; never keep an alert active longer than
+    # the maximum a sender may choose, and give legacy alerts the default
+    now = _utcnow()
+    latest = now + datetime.timedelta(hours=ALERT_MAX_DURATION_HOURS)
+    expires_at = published.expires_at or now + datetime.timedelta(hours=ALERT_DEFAULT_DURATION_HOURS)
     alert = RedSkyAlert(
-        source_instance_url=source_url,
-        source_instance_name=body.source_instance_name[:200],
-        title=body.title[:300],
-        description=body.description[:5000] if body.description else "",
-        severity=body.severity,
+        source_instance_url=known.url,
+        source_alert_uid=published.alert_uid,
+        source_instance_name=known.name[:200],
+        title=published.title,
+        description=published.description,
+        severity=published.severity,
+        expires_at=min(expires_at, latest),
     )
     db.add(alert)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # A concurrent delivery of the same alert won the race
+        db.rollback()
+        return (
+            db.query(RedSkyAlert)
+            .filter(RedSkyAlert.source_instance_url == known.url, RedSkyAlert.source_alert_uid == body.alert_uid)
+            .first()
+        )
     db.refresh(alert)
     return alert
 
@@ -351,7 +502,19 @@ def export_my_data(
     uid = current_user.id
 
     resources = db.query(Resource).filter(Resource.owner_id == uid).all()
-    bookings = db.query(Booking).filter(Booking.borrower_id == uid).all()
+    bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.resource))
+        .filter(Booking.borrower_id == uid)
+        .all()
+    )
+    lending_bookings = (
+        db.query(Booking)
+        .options(joinedload(Booking.resource), joinedload(Booking.borrower))
+        .join(Resource, Resource.id == Booking.resource_id)
+        .filter(Resource.owner_id == uid)
+        .all()
+    )
     skills = db.query(Skill).filter(Skill.owner_id == uid).all()
     sent_messages = db.query(Message).filter(Message.sender_id == uid).all()
     received_messages = db.query(Message).filter(Message.recipient_id == uid).all()
@@ -397,7 +560,9 @@ def export_my_data(
         ],
         bookings=[
             {
+                "role": "borrower",
                 "resource_id": b.resource_id,
+                "resource_title": b.resource.title if b.resource else None,
                 "start_date": str(b.start_date),
                 "end_date": str(b.end_date),
                 "message": b.message,
@@ -405,6 +570,21 @@ def export_my_data(
                 "created_at": _dt(b.created_at),
             }
             for b in bookings
+        ],
+        # Other members are identified by display name only, never by email.
+        lending_bookings=[
+            {
+                "role": "lender",
+                "resource_id": b.resource_id,
+                "resource_title": b.resource.title if b.resource else None,
+                "borrower_display_name": b.borrower.display_name if b.borrower else None,
+                "start_date": str(b.start_date),
+                "end_date": str(b.end_date),
+                "message": b.message,
+                "status": b.status,
+                "created_at": _dt(b.created_at),
+            }
+            for b in lending_bookings
         ],
         skills=[
             {
@@ -459,30 +639,42 @@ def import_user_data(
     """Import resources and skills from a data export into the current user's account.
 
     This allows a user who exported their data from another instance to
-    re-create their listings on this instance.
+    re-create their listings on this instance. Imported listings are flagged
+    ``imported`` and earn no reputation points.
     """
     created_resources = 0
     created_skills = 0
 
+    def _text(value, default: str | None, limit: int) -> str | None:
+        if not isinstance(value, str) or not value.strip():
+            return default
+        return value.strip()[:limit]
+
     for r in body.resources:
+        category = r.get("category")
+        condition = r.get("condition")
         resource = Resource(
-            title=r.get("title", "Imported Resource"),
-            description=r.get("description"),
-            category=r.get("category", "other"),
-            condition=r.get("condition"),
-            is_available=r.get("is_available", True),
+            title=_text(r.get("title"), "Imported Resource", 200),
+            description=_text(r.get("description"), None, 5000),
+            category=category if category in VALID_CATEGORIES else "other",
+            condition=condition if condition in VALID_CONDITIONS else None,
+            is_available=bool(r.get("is_available", True)),
             owner_id=current_user.id,
+            imported=True,
         )
         db.add(resource)
         created_resources += 1
 
     for s in body.skills:
+        category = s.get("category")
+        skill_type = s.get("skill_type")
         skill = Skill(
-            title=s.get("title", "Imported Skill"),
-            description=s.get("description"),
-            category=s.get("category", "other"),
-            skill_type=s.get("skill_type", "offer"),
+            title=_text(s.get("title"), "Imported Skill", 200),
+            description=_text(s.get("description"), None, 5000),
+            category=category if category in VALID_SKILL_CATEGORIES else "other",
+            skill_type=skill_type if skill_type in VALID_SKILL_TYPES else "offer",
             owner_id=current_user.id,
+            imported=True,
         )
         db.add(skill)
         created_skills += 1

@@ -4,6 +4,8 @@ Sends messages via the Telegram Bot API. All functions are no-ops when
 NG_TELEGRAM_BOT_TOKEN is not configured, so the app works without a bot.
 """
 
+import hashlib
+import hmac
 import logging
 
 import httpx
@@ -21,6 +23,22 @@ def _api_url(method: str) -> str:
 
 def is_configured() -> bool:
     return bool(settings.telegram_bot_token)
+
+
+def webhook_secret() -> str:
+    """Secret Telegram must echo in X-Telegram-Bot-Api-Secret-Token on webhook calls.
+
+    NG_TELEGRAM_WEBHOOK_SECRET when set; otherwise derived from NG_SECRET_KEY and
+    the bot token, so the webhook is never left unauthenticated. The derived
+    value is hex, which fits Telegram's allowed secret_token characters.
+    """
+    if settings.telegram_webhook_secret:
+        return settings.telegram_webhook_secret
+    return hmac.new(
+        settings.secret_key.encode(),
+        f"telegram-webhook:{settings.telegram_bot_token}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def send_message(chat_id: str, text: str) -> None:

@@ -135,14 +135,45 @@ async function navigationNetworkFirst(request: Request): Promise<Response> {
 }
 
 // ── Background Sync: flush offline queue when connectivity returns ────────────
+//
+// Only one side replays: when a tab is open the job is handed to it (it owns
+// the localStorage queue). Otherwise the worker replays from the Cache mirror
+// and records every request it handled in DONE_CACHE_KEY, so the next tab
+// drops those entries instead of sending them a second time, and shows the
+// ones the server refused.
 
 const QUEUE_CACHE = 'ng-offline-queue';
 const QUEUE_CACHE_KEY = '/_internal/offline-queue';
+const DONE_CACHE_KEY = '/_internal/offline-queue-done';
 const MAX_RETRIES = 5;
+
+// Written by the auth store; lets mesh sync authenticate without a queued request
+const AUTH_CACHE = 'ng-auth';
+const AUTH_CACHE_KEY = '/_internal/auth-token';
 
 // Mesh sync constants
 const MESH_DB_NAME = 'ng-mesh';
 const MESH_STORE_NAME = 'messages';
+const TRIAGE_DB_NAME = 'ng-mesh-triage';
+const TRIAGE_STORE_NAME = 'tickets';
+
+interface QueuedRequest {
+	id: string;
+	method: string;
+	path: string;
+	body: unknown;
+	authToken: string | null;
+	label: string;
+	retryCount?: number;
+}
+
+interface ReplayOutcome {
+	id: string;
+	ok: boolean;
+	status: number;
+	label: string;
+	detail?: string;
+}
 
 self.addEventListener('message', (event) => {
 	if (event.data?.type === 'mesh-queue-updated') {
@@ -160,20 +191,31 @@ self.addEventListener('sync', (event: ExtendableEvent) => {
 	}
 });
 
+/** Ask open tabs to do the work instead; returns false when no tab is open. */
+async function delegateToClient(type: string): Promise<boolean> {
+	const clients = await self.clients.matchAll({ type: 'window' });
+	for (const client of clients) client.postMessage({ type });
+	return clients.length > 0;
+}
+
+async function detailOf(res: Response): Promise<string> {
+	try {
+		const body = await res.json();
+		if (typeof body?.detail === 'string') return body.detail;
+	} catch {
+		// not JSON
+	}
+	return res.statusText || `HTTP ${res.status}`;
+}
+
 async function flushOfflineQueue(): Promise<void> {
+	if (await delegateToClient('ng-flush-request')) return;
+
 	const cache = await caches.open(QUEUE_CACHE);
 	const response = await cache.match(QUEUE_CACHE_KEY);
 	if (!response) return;
 
-	let queue: Array<{
-		id: string;
-		method: string;
-		path: string;
-		body: unknown;
-		authToken: string | null;
-		label: string;
-		retryCount?: number;
-	}>;
+	let queue: QueuedRequest[];
 	try {
 		queue = await response.json();
 	} catch {
@@ -181,7 +223,8 @@ async function flushOfflineQueue(): Promise<void> {
 	}
 	if (!queue || queue.length === 0) return;
 
-	const remaining: typeof queue = [];
+	const remaining: QueuedRequest[] = [];
+	const outcomes: ReplayOutcome[] = [];
 
 	for (const req of queue) {
 		try {
@@ -199,22 +242,41 @@ async function flushOfflineQueue(): Promise<void> {
 			});
 
 			if (res.ok) {
-				// Success — drop from queue
+				outcomes.push({ id: req.id, ok: true, status: res.status, label: req.label });
 			} else if (res.status >= 400 && res.status < 500) {
-				// Client error — drop (retrying won't help)
+				// Client error — retrying won't help; the next tab tells the user
+				outcomes.push({ id: req.id, ok: false, status: res.status, label: req.label, detail: await detailOf(res) });
 			} else {
 				const retries = (req.retryCount ?? 0) + 1;
 				if (retries < MAX_RETRIES) {
 					remaining.push({ ...req, retryCount: retries });
+				} else {
+					outcomes.push({ id: req.id, ok: false, status: res.status, label: req.label });
 				}
 			}
 		} catch {
 			const retries = (req.retryCount ?? 0) + 1;
 			if (retries < MAX_RETRIES) {
 				remaining.push({ ...req, retryCount: retries });
+			} else {
+				outcomes.push({ id: req.id, ok: false, status: 0, label: req.label });
 			}
 		}
 	}
+
+	// Record what was handled so a tab never replays it again
+	let previous: ReplayOutcome[] = [];
+	try {
+		previous = (await (await cache.match(DONE_CACHE_KEY))?.json()) ?? [];
+	} catch {
+		previous = [];
+	}
+	await cache.put(
+		DONE_CACHE_KEY,
+		new Response(JSON.stringify([...previous, ...outcomes]), {
+			headers: { 'Content-Type': 'application/json' }
+		})
+	);
 
 	// Write back remaining items (or delete cache entry if empty)
 	if (remaining.length > 0) {
@@ -228,7 +290,7 @@ async function flushOfflineQueue(): Promise<void> {
 		await cache.delete(QUEUE_CACHE_KEY);
 	}
 
-	// Notify all clients to refresh their queue store
+	// A tab may have opened meanwhile; it reconciles with DONE_CACHE_KEY
 	const clients = await self.clients.matchAll();
 	for (const client of clients) {
 		client.postMessage({ type: 'ng-queue-flushed', remaining: remaining.length });
@@ -237,53 +299,70 @@ async function flushOfflineQueue(): Promise<void> {
 
 // ── Mesh Background Sync ──────────────────────────────────────────────────────
 
-async function flushMeshQueue(): Promise<void> {
-	// Read mesh messages from IndexedDB
-	let messages: unknown[];
+async function readAuthToken(): Promise<string | null> {
 	try {
-		messages = await readMeshMessagesFromIDB();
+		const res = await (await caches.open(AUTH_CACHE)).match(AUTH_CACHE_KEY);
+		const body = res ? await res.json() : null;
+		return typeof body?.token === 'string' ? body.token : null;
+	} catch {
+		return null;
+	}
+}
+
+async function flushMeshQueue(): Promise<void> {
+	if (await delegateToClient('ng-mesh-sync-request')) return;
+
+	// Read mesh messages from IndexedDB
+	let messages: Array<{ id: string; type: string }>;
+	try {
+		messages = (await readMeshMessagesFromIDB()) as Array<{ id: string; type: string }>;
 	} catch {
 		return;
 	}
 	if (!messages || messages.length === 0) return;
 
-	// Get auth token from the offline queue cache (piggybacking on existing pattern)
-	// or from any queued request that has one
-	let authToken: string | null = null;
-	try {
-		const queueCache = await caches.open(QUEUE_CACHE);
-		const queueResp = await queueCache.match(QUEUE_CACHE_KEY);
-		if (queueResp) {
-			const queue = await queueResp.json();
-			authToken = queue?.[0]?.authToken ?? null;
-		}
-	} catch {
-		// No token available — can't sync without auth
-	}
-
+	// Logged out: nothing may be synced (logout also wipes the queue)
+	const authToken = await readAuthToken();
 	if (!authToken) return;
 
+	const confirmed: string[] = [];
+	const confirmedTickets: string[] = [];
 	try {
-		const res = await fetch('/api/mesh/sync', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${authToken}`
-			},
-			body: JSON.stringify({ messages })
-		});
-
-		if (res.ok) {
-			// Clear IndexedDB on success
-			await clearMeshMessagesFromIDB();
-			// Notify clients
-			const clients = await self.clients.matchAll();
-			for (const client of clients) {
-				client.postMessage({ type: 'ng-mesh-synced' });
+		// The API accepts at most 100 messages per request. Messages the server
+		// reported as failed stay queued; everything else in a batch that got
+		// a response (synced, duplicate or refused by policy) is done.
+		for (let i = 0; i < messages.length; i += 100) {
+			const batch = messages.slice(i, i + 100);
+			const res = await fetch('/api/mesh/sync', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${authToken}`
+				},
+				body: JSON.stringify({ messages: batch })
+			});
+			if (!res.ok) break;
+			const result = await res.json().catch(() => null);
+			if (!result) break;
+			const failed = new Set<string>(
+				Array.isArray(result.failed_ids) ? result.failed_ids : result.errors > 0 ? batch.map((m) => m.id) : []
+			);
+			for (const m of batch) {
+				if (failed.has(m.id)) continue;
+				confirmed.push(m.id);
+				if (m.type === 'emergency_ticket') confirmedTickets.push(m.id);
 			}
 		}
 	} catch {
 		// Network still unavailable — Background Sync will retry
+	}
+
+	if (confirmed.length === 0) return;
+	await deleteFromIDB(MESH_DB_NAME, MESH_STORE_NAME, confirmed).catch(() => {});
+	await deleteFromIDB(TRIAGE_DB_NAME, TRIAGE_STORE_NAME, confirmedTickets).catch(() => {});
+	const clients = await self.clients.matchAll();
+	for (const client of clients) {
+		client.postMessage({ type: 'ng-mesh-synced', ids: confirmed });
 	}
 }
 
@@ -319,27 +398,35 @@ function readMeshMessagesFromIDB(): Promise<unknown[]> {
 	});
 }
 
-function clearMeshMessagesFromIDB(): Promise<void> {
+/** Delete rows by key from an existing store (no-op if the database or store is missing). */
+function deleteFromIDB(dbName: string, storeName: string, ids: string[]): Promise<void> {
+	if (ids.length === 0) return Promise.resolve();
 	return new Promise((resolve, reject) => {
-		const request = indexedDB.open(MESH_DB_NAME, 1);
+		const request = indexedDB.open(dbName);
+		request.onupgradeneeded = () => {
+			// The database did not exist: nothing to delete. Abort so we don't
+			// create it with a schema its owner module doesn't expect.
+			request.transaction?.abort();
+		};
 		request.onsuccess = () => {
 			const db = request.result;
-			try {
-				const tx = db.transaction(MESH_STORE_NAME, 'readwrite');
-				tx.objectStore(MESH_STORE_NAME).clear();
-				tx.oncomplete = () => {
-					db.close();
-					resolve();
-				};
-				tx.onerror = () => {
-					db.close();
-					reject(tx.error);
-				};
-			} catch {
+			if (!db.objectStoreNames.contains(storeName)) {
 				db.close();
 				resolve();
+				return;
 			}
+			const tx = db.transaction(storeName, 'readwrite');
+			const store = tx.objectStore(storeName);
+			for (const id of ids) store.delete(id);
+			tx.oncomplete = () => {
+				db.close();
+				resolve();
+			};
+			tx.onerror = () => {
+				db.close();
+				reject(tx.error);
+			};
 		};
-		request.onerror = () => reject(request.error);
+		request.onerror = () => resolve();
 	});
 }

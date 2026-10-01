@@ -41,3 +41,10 @@ class Review(Base):
     skill: Mapped["Skill | None"] = relationship()  # noqa: F821
     reviewer: Mapped["User"] = relationship(foreign_keys=[reviewer_id])  # noqa: F821
     reviewee: Mapped["User"] = relationship(foreign_keys=[reviewee_id])  # noqa: F821
+
+    @property
+    def reviewee_role(self) -> str | None:
+        """For booking reviews: "lender" if the reviewee lent the item, else "borrower"."""
+        if self.review_type != "booking" or self.booking is None:
+            return None
+        return "borrower" if self.booking.borrower_id == self.reviewee_id else "lender"

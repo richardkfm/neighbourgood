@@ -37,6 +37,7 @@ def _create_skill(client, headers, community_id, title="Python Tutoring"):
 
 
 def _create_completed_booking(client, lender_headers, borrower_headers, community_id):
+    _join_community(client, borrower_headers, community_id)
     r = client.post(
         "/resources",
         headers=lender_headers,
@@ -46,11 +47,11 @@ def _create_completed_booking(client, lender_headers, borrower_headers, communit
     b = client.post(
         "/bookings",
         headers=borrower_headers,
-        json={"resource_id": resource_id, "start_date": "2026-04-01", "end_date": "2026-04-05"},
+        json={"resource_id": resource_id, "start_date": "2099-04-01", "end_date": "2099-04-05"},
     )
     booking_id = b.json()["id"]
     client.patch(f"/bookings/{booking_id}", headers=lender_headers, json={"status": "approved"})
-    client.patch(f"/bookings/{booking_id}", headers=borrower_headers, json={"status": "completed"})
+    client.patch(f"/bookings/{booking_id}", headers=lender_headers, json={"status": "completed"})
     return booking_id
 
 
@@ -184,6 +185,18 @@ def test_get_user_reviews_filtered_by_skill(client, auth_headers):
     reviews = res.json()
     assert len(reviews) == 1
     assert reviews[0]["review_type"] == "skill"
+
+
+def test_skill_review_has_no_reviewee_role(client, auth_headers):
+    """Skill reviews carry no lender/borrower role."""
+    other = _register(client, "rolehelper@test.com", "Role Helper")
+    cid = _create_community(client, auth_headers)
+    _join_community(client, other, cid)
+    skill_id = _create_skill(client, other, cid)
+    res = client.post("/reviews/skill", headers=auth_headers, json={"skill_id": skill_id, "rating": 5})
+    assert res.status_code == 201
+    assert res.json()["review_type"] == "skill"
+    assert res.json()["reviewee_role"] is None
 
 
 def test_get_user_reviews_given(client, auth_headers):
