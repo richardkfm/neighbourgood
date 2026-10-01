@@ -561,3 +561,20 @@ def test_submit_mesh_metrics_rejects_negative_values(client, auth_headers):
     for field in ("messages_sent", "peak_peer_count", "errors", "session_duration_ms"):
         res = client.post("/mesh/metrics", json={field: -1}, headers=auth_headers)
         assert res.status_code == 422, field
+
+
+def test_sync_resource_uses_rest_categories(client, auth_headers, community_id, db):
+    """Mesh resources get the same categories as REST ones, so 'tool' is kept and 'kitchen' is not stored."""
+    from app.models.resource import Resource
+
+    for category in ("tool", "tools", "kitchen"):
+        msg = _mesh_msg(
+            msg_type="resource_offer",
+            community_id=community_id,
+            data={"title": f"Item {category}", "category": category},
+        )
+        res = client.post("/mesh/sync", json={"messages": [msg]}, headers=auth_headers)
+        assert res.json()["synced"] == 1, res.text
+
+    stored = {r.title: r.category for r in db.query(Resource).all()}
+    assert stored == {"Item tool": "tool", "Item tools": "tool", "Item kitchen": "other"}

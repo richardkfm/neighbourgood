@@ -20,14 +20,14 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.3.0** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.4.0** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
 
 Each instance exposes `/instance/info` so instances can discover and federate with each other.
 
-Current test count: **623 tests** across 36 test files (all backend, pytest + in-memory SQLite).
+Current test count: **707 tests** across 38 test files (plus 15 frontend `node:test` tests via `npm test`) (all backend, pytest + in-memory SQLite).
 
 ---
 
@@ -43,7 +43,7 @@ Current test count: **623 tests** across 36 test files (all backend, pytest + in
 | Auth | Custom HS256 JWT (stdlib) + bcrypt via passlib | No third-party JWT library on purpose |
 | Frontend | SvelteKit 2 + Svelte 5 + TypeScript | Node adapter in Docker; static adapter option |
 | Build tool | Vite 6 | Dev proxy rewrites `/api` → backend |
-| i18n | svelte-i18n | 7 languages (en, ar, fr, es, sw, id, uk) + RTL |
+| i18n | svelte-i18n | 12 languages + RTL (ar, fa); `npm run check:i18n` enforces key parity |
 | Deployment | Docker Compose | 3 services: `db` (pg), `backend`, `frontend` |
 
 ---
@@ -196,7 +196,7 @@ All prefixed `NG_`. The app reads from `.env` via pydantic-settings.
 | `NG_SECRET_KEY` | **Yes (prod)** | (default rejected) | JWT signing key, ≥ 32 chars; generate with `openssl rand -hex 32` |
 | `NG_DATABASE_URL` | No | `sqlite:///./neighbourgood.db` | Set to postgres URL in production |
 | `NG_DEBUG` | No | `false` | `true` for local dev — relaxes key check, HSTS, CSP |
-| `NG_PLATFORM_MODE` | No | `blue` | `blue` or `red` (global default; per-community mode overrides this) |
+| `NG_PLATFORM_MODE` | No | `blue` | `blue` or `red`; `red` makes every community behave as Red Sky (`effective_mode()` in `app/services/mode.py`), each keeps its stored mode for when the instance is blue again |
 | `NG_CORS_ORIGINS` | No | `["http://localhost:3800","http://localhost:5173"]` | JSON array |
 | `NG_SMTP_HOST/PORT/TLS/USER/PASSWORD/FROM` | No | unset | Logs emails to console when unconfigured |
 | `NG_FRONTEND_URL` | No | `http://localhost:3800` | Used in notification email links |
@@ -207,6 +207,7 @@ All prefixed `NG_`. The app reads from `.env` via pydantic-settings.
 | `NG_ADMIN_EMAILS` | No | `[]` | JSON array; matching accounts are promoted to platform admin on their next request |
 | `NG_MESH_MAX_MESSAGE_AGE_HOURS` | No | `72` | Mesh messages older than this are refused on sync |
 | `NG_WEBHOOK_ALLOW_PRIVATE` | No | `false` | Allow outbound webhooks to private/LAN addresses (SSRF guard off) |
+| `NG_MAX_REQUEST_BODY_BYTES` | No | `1048576` | JSON request body limit (413 above); multipart uploads use the image limit |
 
 ---
 
@@ -487,6 +488,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.4.0 | 2026-10-01 | Remaining QA findings: signed mesh messages + fragmentation, global red (`NG_PLATFORM_MODE=red` applies to every community), alert expiry/detail page, session invalidation, per-(email, IP) lockout, webhook SSRF guard, members-only booking/RSVP, password reset, account deletion, data export UI, edit forms, shared UI primitives + SVG icons, full translations of 11 locales (707 tests) |
 | 2.3.0 | 2026-09-30 | QA pass (Blue Sky + Red Sky/mesh, ~45 fixes), UI/UX overhaul (mobile tab bar, Red Sky identity, WCAG AA), security: verified federation alerts, NG_ADMIN_EMAILS, always-on Telegram webhook secret, mesh replay protection, no email leaks (521 tests) |
 | 2.2.2 | 2026-07-15 | Fix: block joining a second community while already an active member (409), deterministic `/communities/my/memberships` ordering, fix resources/skills/events pages racing unfiltered vs. community-filtered fetches, one-time multi-membership cleanup migration, 4 new tests (444 total) |
 | 2.2.1 | 2026-07-08 | Fix: empty main column on bare resource/skill detail pages, end-date picker overflow on the borrow card |

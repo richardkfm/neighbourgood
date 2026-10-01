@@ -20,6 +20,7 @@ from app.models.mesh import MeshDeviceKey, MeshSyncedMessage
 from app.models.mesh_checkin import MeshCheckin
 from app.models.resource import Resource
 from app.models.user import User
+from app.schemas.resource import VALID_CATEGORIES
 from app.schemas.mesh import (
     MeshCheckinOut,
     MeshKeyOut,
@@ -507,12 +508,10 @@ def _sync_resource(
             detail="Resource title required",
         )
 
-    valid_categories = {
-        "tools", "vehicle", "electronics", "furniture", "food",
-        "clothing", "sports", "kitchen", "garden", "books",
-        "toys", "other",
-    }
-    if category not in valid_categories:
+    # Same categories as REST-created resources; older clients sent "tools"
+    if category == "tools":
+        category = "tool"
+    if category not in VALID_CATEGORIES:
         category = "other"
 
     resource = Resource(

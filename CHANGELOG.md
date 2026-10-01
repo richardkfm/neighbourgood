@@ -4,6 +4,65 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.4.0] - 2026-10-01
+
+Closes the remaining findings from the 2.3.0 QA and design review.
+
+### Security
+
+- **Signed mesh messages** — each browser creates an ECDSA P-256 key pair (private key non-extractable) and registers the public key with a proof of possession (`POST /mesh/keys`, list/revoke via `GET /mesh/keys/me`, `DELETE /mesh/keys/me/{key_id}`). `/mesh/sync` verifies signatures over a canonical serialisation (spec in `services/mesh_signing.py`, identical TS implementation with a shared test vector), credits relayed content to its real author, deduplicates per author, and only accepts relayed votes and check-ins when signed by their author. Unsigned messages keep the "original sender unverified" path
+- **Sessions end on password change** — `users.token_version` is embedded in the JWT and bumped on password change, email change and password reset; the current session receives a fresh token
+- **Lockout per (email, IP)** — a stranger can no longer lock a known email out of its owner's network; a password reset clears the lockout from every IP
+- **Webhook SSRF guard** — webhook URLs must be http(s) and resolve to public addresses, checked on create and again at every delivery; `NG_WEBHOOK_ALLOW_PRIVATE=true` allows LAN targets
+- **NUL bytes** in JSON bodies, query strings and paths are rejected with `422` (PostgreSQL would have raised a 500)
+- **Request body size limit** (`NG_MAX_REQUEST_BODY_BYTES`, default 1 MB; image uploads keep their 5 MB limit) returns `413`
+- Account deletion revokes the user's mesh signing keys
+
+### Added
+
+- **Password reset** — `POST /auth/password-reset/request` (always `202`, no account enumeration, rate-limited) and `/confirm`; single-use hashed tokens valid for 1 hour; "Forgot your password?" flow in the frontend. Without SMTP the link is written to the backend log
+- **Delete account** — `DELETE /users/me` with password re-authentication; the account is anonymised, listings removed (or kept as tombstones when other people's booking history depends on them), open bookings cancelled with notifications, admin role handed to the longest-standing member, and the crisis-vote threshold re-checked
+- **Data export in settings** — download button for `/federation/export/my-data`, which now also contains lender-side bookings (borrower names only, no emails)
+- **Edit resources and skills** in the UI, including photo replacement
+- **Promote members to community admin** (`POST /communities/{id}/members/{user_id}/promote`, "Make admin" button)
+- **Alert lifecycle** — senders choose how long an alert stays active (`duration_hours`, default 48), expired alerts disappear, every member can open an alert detail page, dismissal is per alert
+- **Global red** — `NG_PLATFORM_MODE=red` makes every community behave as Red Sky (pings, unmet needs, mesh panel, Telegram requests); each community keeps its stored mode for when the instance returns to blue
+- **Red Sky navigation** shows only crisis-relevant items; other pages stay reachable by URL
+- **Mesh fragmentation** for packets larger than one BLE write, heartbeats on `/mesh`, key management on the Mesh page
+- `npm test` (frontend `node:test` suite) and `npm run check:i18n` (key parity and unknown-key check)
+
+### Changed
+
+- **Membership rules** — only members can book a community's items or RSVP to its events (personal items: users who share a community with the owner); creating a community while already in one returns `409`; the last admin cannot leave while other members remain; merging requires admin rights in both communities (or platform admin)
+- **Bookings** — only the lender can mark a booking complete; start dates in the past are rejected; items with `quantity_available > 1` stay bookable until all units are taken for the overlapping dates
+- **Reputation** — imported items (`/federation/migrate/import`, now capped at 200 per request) earn no points
+- **Crisis votes** — no-op votes return `409`, the threshold is re-checked when a member leaves or deletes their account, and stale votes are cleared on every mode change
+- **Emergency tickets** carry a client-generated `client_id`, so a ticket sent over the mesh and via the offline queue is stored once
+- **Logout clears offline crisis data** on the device (mesh queue, offline triage store, request queue); a request that fails on offline replay now shows a message instead of disappearing
+- **Emergency page** uses the server's triage order, so overdue tickets surface
+- Crisis datetimes are serialised as UTC; tz-aware `due_at` values are converted before storage
+- Booking reviews show Lending or Borrowing correctly (every review was labelled "Lending"); `ReviewOut.reviewee_role`
+- Mesh resources use the same categories as REST-created ones (`tool` used to be stored as `other`)
+
+### Design
+
+- Split `--color-primary` into fill and `--color-primary-text` tokens and added `--color-on-*` tokens: every checked text/fill pair meets WCAG AA in light, dark and Red Sky (dark-mode buttons now use dark text on violet)
+- Shared `.btn`, `.card`, `.field`, `.badge`, `.empty-state` and skeleton primitives; about 30 pages and components migrated, per-page duplicates removed
+- Inline SVG icon set (`Icon.svelte`, Lucide paths) replaces functional emoji
+- Skeleton loading and empty states with a primary action across the app
+- Accessible new-message dialog (focus trap, Escape, focus return), labelled settings controls, booking date pickers start today, `/triage/{id}` works without `?community=`, dashboard and bookings no longer misclassify your own requests while the profile loads
+- svelte-check warnings down from 65 to 2
+
+### Translations
+
+- About 330 hardcoded English strings moved to i18n keys (216 new keys)
+- All 11 non-English locales completed by AI translation (about 4,800 strings) and existing translations corrected (Arabic/Ukrainian plurals, stray characters in Farsi, German switched to "du"). **Needs native review** — see `frontend/src/lib/i18n/TRANSLATIONS.md`
+- `<html lang/dir>` follows the active locale on every load (RTL after a logged-out reload)
+
+### Tests
+
+- 707 backend tests (186 new since 2.3.0), plus 15 frontend tests
+
 ## [2.3.0] - 2026-09-30
 
 Results of a full QA pass (Blue Sky and Red Sky/mesh), a UI/UX review, and follow-up security hardening.
