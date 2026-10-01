@@ -6,6 +6,7 @@
 	import { t } from 'svelte-i18n';
 	import { api } from '$lib/api';
 	import MeshBackground from '$lib/components/MeshBackground.svelte';
+	import Icon from '$lib/components/Icon.svelte';
 
 	interface PlatformStatus {
 		status: string;
@@ -56,25 +57,25 @@
 				{$t('home.hero_subtitle')}
 			</p>
 			<div class="hero-actions">
-				<a href="/explore" class="btn-hero">{$t('home.get_started')}</a>
-				<a href="/login" class="btn-hero-secondary">{$t('nav.login')}</a>
+				<a href="/explore" class="btn btn-primary btn-lg">{$t('home.get_started')}</a>
+				<a href="/login" class="btn btn-secondary btn-lg">{$t('nav.login')}</a>
 			</div>
 		</div>
 
 		{#if $bandwidth !== 'low'}
 			<div class="hero-panel" aria-hidden="true">
 				<div class="mock-card mock-card-1 slide-up" style="animation-delay: 0.15s">
-					<span class="mock-icon">🔧</span>
+					<span class="mock-icon"><Icon name="tool" size={20} /></span>
 					<span class="mock-text">{$t('home.hero_activity_1')}</span>
 					<span class="mock-dot mock-dot-green"></span>
 				</div>
 				<div class="mock-card mock-card-2 slide-up" style="animation-delay: 0.35s">
-					<span class="mock-icon">🚲</span>
+					<span class="mock-icon"><Icon name="bike" size={20} /></span>
 					<span class="mock-text">{$t('home.hero_activity_2')}</span>
 					<span class="mock-dot mock-dot-green"></span>
 				</div>
 				<div class="mock-card mock-card-3 slide-up" style="animation-delay: 0.55s">
-					<span class="mock-icon">🎹</span>
+					<span class="mock-icon"><Icon name="music" size={20} /></span>
 					<span class="mock-text">{$t('home.hero_activity_3')}</span>
 					<span class="mock-dot mock-dot-violet"></span>
 				</div>
@@ -90,7 +91,7 @@
 		<h2 class="features-heading">{$t('home.features_title')}</h2>
 		<div class="feature-grid">
 			{#each FEATURES as feature, i}
-				<div class="feature-card slide-up" style="animation-delay: {0.05 * (i + 1)}s">
+				<div class="card feature-card slide-up" style="animation-delay: {0.05 * (i + 1)}s">
 					<div class="feature-card-top">
 						<span class="feature-index">0{i + 1}</span>
 						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="feature-mark"><path d={feature.icon}/></svg>
@@ -176,7 +177,7 @@
 
 	.hero-accent {
 		font-style: italic;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.hero-subtitle {
@@ -191,47 +192,6 @@
 		display: flex;
 		gap: 0.75rem;
 		flex-wrap: wrap;
-	}
-
-	.btn-hero {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.7rem 1.5rem;
-		background: var(--color-primary);
-		color: white;
-		border-radius: var(--radius);
-		font-size: 0.95rem;
-		font-weight: 600;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-hero:hover {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow-lg);
-		transform: translateY(-2px);
-		text-decoration: none;
-	}
-
-	.btn-hero-secondary {
-		display: inline-flex;
-		align-items: center;
-		padding: 0.7rem 1.5rem;
-		background: var(--color-surface);
-		color: var(--color-text);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.95rem;
-		font-weight: 500;
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-hero-secondary:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-		text-decoration: none;
 	}
 
 	/* ── Hero panel: text-free listing-card composition ───────────── */
@@ -278,7 +238,7 @@
 		height: 40px;
 		border-radius: var(--radius);
 		background: var(--color-primary-light);
-		font-size: 1.15rem;
+		color: var(--color-primary-text);
 		flex-shrink: 0;
 	}
 
@@ -307,7 +267,7 @@
 		align-items: center;
 		gap: 0.6rem;
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 		border-radius: 999px;
 		padding: 0.55rem 1rem;
 		box-shadow: var(--shadow-md);
@@ -339,9 +299,6 @@
 	}
 
 	.feature-card {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
 		padding: 1.4rem 1.5rem 1.5rem;
 		transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
 	}
@@ -369,7 +326,7 @@
 	}
 
 	.feature-mark {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		align-self: center;
 	}
 
@@ -432,7 +389,7 @@
 
 	.status-text { font-weight: 500; }
 	.status-hint { font-size: 0.8rem; opacity: 0.8; margin-top: 0.15rem; }
-	.mode-blue { color: var(--color-primary); }
+	.mode-blue { color: var(--color-primary-text); }
 	.mode-red { color: var(--color-error); }
 
 	/* ── Responsive ────────────────────────────────────────────────── */

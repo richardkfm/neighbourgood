@@ -21,6 +21,7 @@
 	import { meshEnabled } from '$lib/stores/mesh-settings';
 	import type { CommunityOut, NGMeshMessage } from '$lib/types';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 
 	interface Ticket {
 		id: number;
@@ -175,7 +176,7 @@
 	function statusColor(status: string): string {
 		switch (status) {
 			case 'open':        return 'var(--color-warning)';
-			case 'in_progress': return 'var(--color-primary)';
+			case 'in_progress': return 'var(--color-primary-text)';
 			case 'resolved':    return 'var(--color-success)';
 			default:            return 'var(--color-text-muted)';
 		}
@@ -327,18 +328,24 @@
 	</div>
 
 	{#if loadingCommunities}
-		<p class="loading-text">{$t('crisis.loading_communities')}</p>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$t('crisis.loading_communities')}</span>
+			<div class="skeleton skeleton-card" style="height: 5rem"></div>
+			<div class="skeleton skeleton-card" style="height: 6rem"></div>
+			<div class="skeleton skeleton-card" style="height: 6rem"></div>
+		</div>
 	{:else if communities.length === 0}
 		<div class="empty-state">
+			<span class="empty-icon"><Icon name="users" size={26} /></span>
 			<p>{$t('crisis.no_member')}</p>
-			<a href="/communities" class="btn-primary">{$t('crisis.find_community_link')}</a>
+			<a href="/communities" class="btn btn-primary">{$t('crisis.find_community_link')}</a>
 		</div>
 	{:else}
-		<div class="controls">
+		<div class="card controls">
 			{#if communities.length > 1}
-			<div class="control-group">
+			<div class="field control-group">
 				<label for="community-select">{$t('crisis.filter_community')}</label>
-				<select id="community-select" bind:value={selectedCommunityId} onchange={onCommunityChange}>
+				<select id="community-select" class="input" bind:value={selectedCommunityId} onchange={onCommunityChange}>
 					{#each communities as c}
 						<option value={c.id}>{c.name}{effectiveMode(c) === 'red' ? ' 🔴' : ''}</option>
 					{/each}
@@ -346,9 +353,9 @@
 			</div>
 			{/if}
 
-			<div class="control-group">
+			<div class="field control-group">
 				<label for="urgency-filter">{$t('crisis.filter_urgency')}</label>
-				<select id="urgency-filter" bind:value={filterUrgency}>
+				<select id="urgency-filter" class="input" bind:value={filterUrgency}>
 					<option value="">{$t('crisis.filter_all')}</option>
 					{#each URGENCY_ORDER as u}
 						<option value={u}>{$t(`crisis.priority.${u}`)}</option>
@@ -356,9 +363,9 @@
 				</select>
 			</div>
 
-			<div class="control-group">
+			<div class="field control-group">
 				<label for="status-filter">{$t('crisis.filter_status')}</label>
-				<select id="status-filter" bind:value={filterStatus}>
+				<select id="status-filter" class="input" bind:value={filterStatus}>
 					<option value="">{$t('crisis.filter_open_excl')}</option>
 					<option value="open">{$t('crisis.filter_open')}</option>
 					<option value="in_progress">{$t('crisis.filter_in_progress')}</option>
@@ -366,13 +373,13 @@
 				</select>
 			</div>
 
-			<button class="btn-new-ticket" onclick={() => showNewTicketForm = !showNewTicketForm}>
+			<button class="btn btn-primary btn-new-ticket" onclick={() => showNewTicketForm = !showNewTicketForm} aria-expanded={showNewTicketForm}>
 				{showNewTicketForm ? $t('common.cancel') : $t('crisis.new_ticket')}
 			</button>
 		</div>
 
 		{#if $meshEnabled && isBluetoothSupported() && selectedCommunityMode === 'red'}
-			<div class="mesh-panel">
+			<div class="card mesh-panel">
 				<div class="mesh-header">
 					<div class="mesh-status-row">
 						<span class="mesh-dot" class:mesh-connected={$meshStatus === 'connected'} class:mesh-scanning={$meshStatus === 'scanning' || $meshStatus === 'connecting'} class:mesh-reconnecting={$meshStatus === 'reconnecting'}></span>
@@ -393,20 +400,20 @@
 					</div>
 					<div class="mesh-actions">
 						{#if $meshStatus === 'disconnected'}
-							<button class="btn-mesh" onclick={handleMeshConnect} disabled={meshConnecting}>
+							<button class="btn btn-primary btn-sm" class:is-loading={meshConnecting} onclick={handleMeshConnect} disabled={meshConnecting}>
 								{meshConnecting ? $t('mesh.connecting') : $t('mesh.connect')}
 							</button>
 						{:else if $meshStatus === 'reconnecting'}
-							<button class="btn-mesh" disabled>{$t('mesh.reconnecting')}</button>
+							<button class="btn btn-secondary btn-sm" disabled>{$t('mesh.reconnecting')}</button>
 						{:else if $meshStatus === 'connected'}
-							<button class="btn-mesh btn-mesh-disconnect" onclick={handleMeshDisconnect}>{$t('mesh.disconnect')}</button>
+							<button class="btn btn-danger-outline btn-sm" onclick={handleMeshDisconnect}>{$t('mesh.disconnect')}</button>
 						{/if}
 						{#if $isOnline && $meshMessages.length > 0}
-							<button class="btn-mesh btn-mesh-sync" onclick={syncMeshMessages} disabled={syncing}>
+							<button class="btn btn-secondary btn-sm" class:is-loading={syncing} onclick={syncMeshMessages} disabled={syncing}>
 								{syncing ? $t('mesh.syncing') : $t('mesh.sync_messages', { values: { count: $meshMessages.length } })}
 							</button>
 						{/if}
-						<a href="/mesh" class="btn-mesh mesh-dash-link">{$t('settings.mesh_open_dashboard')}</a>
+						<a href="/mesh" class="btn btn-secondary btn-sm">{$t('settings.mesh_open_dashboard')}</a>
 					</div>
 				</div>
 				{#if meshError}
@@ -417,15 +424,15 @@
 
 		{#if $meshEnabled && communityMeshTickets.length > 0}
 			<div class="mesh-tickets-section">
-				<h2>{$t('mesh.mesh_tickets')} <span class="via-mesh-badge">{$t('mesh.via_mesh')}</span></h2>
+				<h2>{$t('mesh.mesh_tickets')} <span class="badge badge-warning badge-caps">{$t('mesh.via_mesh')}</span></h2>
 				<div class="ticket-list">
 					{#each communityMeshTickets as msg (msg.id)}
-						<div class="ticket-card mesh-ticket-card">
+						<div class="card ticket-card mesh-ticket-card">
 							<div class="ticket-header">
-								<span class="urgency-badge" style="--u: {urgencyColor(String(msg.data.urgency ?? 'medium'))}">
+								<span class="badge urgency-badge" style="--u: {urgencyColor(String(msg.data.urgency ?? 'medium'))}">
 									{$t(`crisis.priority.${String(msg.data.urgency ?? 'medium')}`).toUpperCase()}
 								</span>
-								<span class="via-mesh-badge">{$t('mesh.badge')}</span>
+								<span class="badge badge-warning badge-caps">{$t('mesh.badge')}</span>
 								<span class="ticket-type">{ticketTypeLabel(String(msg.data.ticket_type ?? 'request'))}</span>
 							</div>
 							<h3 class="ticket-title">{msg.data.title ?? $t('crisis.untitled')}</h3>
@@ -443,10 +450,10 @@
 		{/if}
 
 		{#if showNewTicketForm}
-			<div class="new-ticket-form">
+			<div class="card new-ticket-form">
 				<h2>{$t('crisis.form_title')}</h2>
-				<div class="form-row">
-					<label>
+				<div class="field-row">
+					<label class="field">
 						<span>{$t('crisis.form_type')}</span>
 						<select bind:value={newTicketType}>
 							<option value="request">{$t('crisis.ticket_types.request')}</option>
@@ -456,7 +463,7 @@
 							{/if}
 						</select>
 					</label>
-					<label>
+					<label class="field">
 						<span>{$t('crisis.form_urgency')}</span>
 						<select bind:value={newTicketUrgency}>
 							<option value="low">{$t('crisis.priority.low')}</option>
@@ -466,20 +473,20 @@
 						</select>
 					</label>
 				</div>
-				<label>
+				<label class="field">
 					<span>{$t('crisis.form_title_field')}</span>
 					<input type="text" bind:value={newTicketTitle} placeholder={$t('crisis.title_placeholder')} maxlength="300" />
 				</label>
-				<label>
+				<label class="field">
 					<span>{$t('crisis.form_description')}</span>
 					<textarea bind:value={newTicketDesc} rows="3" placeholder={$t('crisis.description_placeholder')} maxlength="5000"></textarea>
 				</label>
 				{#if $meshEnabled && !$isOnline && $meshStatus === 'connected'}
-				<button class="btn-primary btn-mesh-send" onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
+				<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
 					{creatingTicket ? $t('mesh.syncing') : $t('mesh.broadcast_ticket')}
 				</button>
 			{:else}
-				<button class="btn-primary" onclick={createTicket} disabled={creatingTicket || !newTicketTitle.trim()}>
+				<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicket} disabled={creatingTicket || !newTicketTitle.trim()}>
 					{creatingTicket ? $t('crisis.creating_ticket') : $t('crisis.create_ticket')}
 				</button>
 			{/if}
@@ -489,25 +496,34 @@
 		{#if error}
 			<div class="alert alert-error">{error}</div>
 		{:else if loading}
-			<p class="loading-text">{$t('crisis.loading_tickets')}</p>
+			<div class="skeleton-stack" role="status" aria-busy="true">
+				<span class="sr-only">{$t('crisis.loading_tickets')}</span>
+				{#each [1, 2, 3] as n (n)}
+					<div class="skeleton skeleton-card" style="height: 7rem" aria-hidden="true"></div>
+				{/each}
+			</div>
 		{:else if filtered.length === 0}
 			<div class="empty-state">
+				<span class="empty-icon"><Icon name="inbox" size={26} /></span>
 				<p>{tickets.length === 0 ? $t('crisis.no_tickets_yet') : $t('crisis.no_tickets')}</p>
+				{#if tickets.length === 0}
+					<button class="btn btn-primary" onclick={() => (showNewTicketForm = true)}>{$t('crisis.new_ticket')}</button>
+				{/if}
 			</div>
 		{:else}
 			<p class="count-label">{filtered.length !== 1 ? $t('common.results', { values: { count: filtered.length } }) : $t('common.result', { values: { count: filtered.length } })}</p>
 			<div class="ticket-list">
 				{#each filtered as ticket (ticket.id)}
-					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="ticket-card" class:overdue={isOverdue(ticket.due_at)} style="--u: {urgencyColor(ticket.urgency)}">
+					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="card card-interactive ticket-card" class:overdue={isOverdue(ticket.due_at)} style="--u: {urgencyColor(ticket.urgency)}">
 						<div class="ticket-header">
-							<span class="urgency-badge" style="--u: {urgencyColor(ticket.urgency)}">
+							<span class="badge urgency-badge" style="--u: {urgencyColor(ticket.urgency)}">
 								{$t(`crisis.priority.${ticket.urgency}`).toUpperCase()}
 							</span>
 							{#if ticket.status !== 'resolved' && isOverdue(ticket.due_at)}
-								<span class="overdue-badge">{$t('crisis.overdue')}</span>
+								<span class="badge badge-error badge-caps">{$t('crisis.overdue')}</span>
 							{/if}
 							{#if isAdminOrLeader && ticket.triage_score !== undefined}
-								<span class="score-badge" title={$t('crisis.detail.triage_score')}>{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
+								<span class="badge" title={$t('crisis.detail.triage_score')}>{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
 							{/if}
 							<span class="status-chip" style="color: {statusColor(ticket.status)}">
 								{ticketStatusLabel(ticket.status)}
@@ -525,7 +541,7 @@
 							<div class="ticket-meta">
 								<span>{$t('crisis.by_author', { values: { author: ticket.author.display_name } })}</span>
 								{#if ticket.assigned_to}
-									<span class="assigned">→ {ticket.assigned_to.display_name}</span>
+									<span class="assigned"><Icon name="arrow-right" size={13} class="flip-rtl" /> {ticket.assigned_to.display_name}</span>
 								{:else}
 									<span class="unassigned">{$t('crisis.unassigned')}</span>
 								{/if}
@@ -534,9 +550,9 @@
 							{#if ticket.status !== 'resolved' && (isAdminOrLeader || ticket.author.id === $user?.id)}
 								<div class="ticket-actions">
 									{#if ticket.status === 'open'}
-										<button class="btn-tiny" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'in_progress'); }}>{$t('crisis.start_ticket')}</button>
+										<button class="btn btn-secondary btn-sm" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'in_progress'); }}>{$t('crisis.start_ticket')}</button>
 									{/if}
-									<button class="btn-tiny btn-tiny-success" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'resolved'); }}>{$t('crisis.resolve_ticket')}</button>
+									<button class="btn btn-secondary btn-sm" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'resolved'); }}>{$t('crisis.resolve_ticket')}</button>
 								</div>
 							{/if}
 						</div>
@@ -583,9 +599,6 @@
 		gap: 1rem;
 		margin-bottom: 1.5rem;
 		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
 	}
 
 	.control-group {
@@ -594,14 +607,6 @@
 		gap: 0.3rem;
 		flex: 1;
 		min-width: 140px;
-	}
-
-	.control-group label {
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--color-text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 	}
 
 	@media (max-width: 600px) {
@@ -615,108 +620,24 @@
 			min-width: 0;
 		}
 
-		.btn-new-ticket {
-			min-height: var(--tap-target);
-		}
-	}
-
-	.control-group select {
-		padding: 0.45rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.88rem;
-		background: var(--color-bg);
-		color: var(--color-text);
 	}
 
 	.btn-new-ticket {
-		padding: 0.5rem 1.1rem;
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius-sm);
-		font-size: 0.88rem;
-		font-weight: 600;
-		cursor: pointer;
-		white-space: nowrap;
-		transition: all var(--transition-fast);
 		align-self: flex-end;
-	}
-
-	.btn-new-ticket:hover {
-		background: var(--color-primary-hover);
 	}
 
 	/* ── New ticket form ─────────────────────────────── */
 
 	.new-ticket-form {
 		padding: 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
 		margin-bottom: 1.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
 	}
 
-	.form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 1rem;
-	}
-
-	.new-ticket-form label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-	}
-
-	.new-ticket-form label span {
-		font-size: 0.82rem;
-		font-weight: 600;
-		color: var(--color-text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-	}
-
-	.new-ticket-form input,
-	.new-ticket-form select,
-	.new-ticket-form textarea {
-		padding: 0.5rem 0.75rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		font-size: 0.9rem;
-		background: var(--color-bg);
-		color: var(--color-text);
-	}
-
-	.new-ticket-form input:focus,
-	.new-ticket-form textarea:focus {
-		outline: none;
-		border-color: var(--color-primary);
-	}
-
-	.btn-primary {
-		padding: 0.6rem 1.2rem;
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius-sm);
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: background var(--transition-fast);
+	.new-ticket-form .btn-primary {
 		align-self: flex-start;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-	}
-
-	.btn-primary:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
 	}
 
 	/* ── Ticket list ─────────────────────────────────── */
@@ -736,22 +657,12 @@
 	.ticket-card {
 		display: block;
 		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		border-left: 4px solid var(--u, transparent);
-		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-		text-decoration: none;
-		color: inherit;
+		border-inline-start: 4px solid var(--u, transparent);
 		cursor: pointer;
 	}
 
-	.ticket-card:hover {
-		box-shadow: var(--shadow-sm);
-	}
-
 	.ticket-card.overdue {
-		border-left-color: var(--color-error);
+		border-inline-start-color: var(--color-error);
 	}
 
 	.ticket-header {
@@ -763,33 +674,11 @@
 	}
 
 	.urgency-badge {
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-		font-size: 0.72rem;
-		font-weight: 700;
-		border: 1px solid color-mix(in srgb, var(--u) 45%, transparent);
-		background: color-mix(in srgb, var(--u) 14%, transparent);
 		color: var(--u);
-		letter-spacing: 0.04em;
-	}
-
-	.overdue-badge {
-		font-size: 0.7rem;
+		background: color-mix(in srgb, var(--u) 14%, transparent);
+		border-color: color-mix(in srgb, var(--u) 45%, transparent);
 		font-weight: 700;
-		text-transform: uppercase;
-		padding: 0.1rem 0.45rem;
-		border-radius: var(--radius-sm);
-		background: var(--color-error-bg);
-		color: var(--color-error);
-	}
-
-	.score-badge {
-		font-size: 0.75rem;
-		color: var(--color-text-muted);
-		background: var(--color-bg);
-		border: 1px solid var(--color-border);
-		padding: 0.15rem 0.5rem;
-		border-radius: var(--radius-sm);
+		letter-spacing: 0.04em;
 	}
 
 	.status-chip {
@@ -802,7 +691,7 @@
 		font-size: 0.78rem;
 		color: var(--color-text-muted);
 		text-transform: capitalize;
-		margin-left: auto;
+		margin-inline-start: auto;
 	}
 
 	.ticket-title {
@@ -817,6 +706,7 @@
 		color: var(--color-text-muted);
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
+		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 		margin: 0 0 0.5rem 0;
@@ -839,7 +729,7 @@
 		flex-wrap: wrap;
 	}
 
-	.assigned { color: var(--color-primary); }
+	.assigned { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--color-primary-text); }
 	.unassigned { font-style: italic; }
 	.ticket-id { opacity: 0.5; }
 
@@ -848,68 +738,14 @@
 		gap: 0.4rem;
 	}
 
-	.btn-tiny {
-		padding: 0.25rem 0.6rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-tiny:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-
-	.btn-tiny-success:hover {
-		border-color: var(--color-success);
-		color: var(--color-success);
-	}
-
 	/* ── States ──────────────────────────────────────── */
-
-	.loading-text {
-		text-align: center;
-		color: var(--color-text-muted);
-		padding: 3rem;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 3rem;
-		color: var(--color-text-muted);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.alert {
-		padding: 0.75rem 1rem;
-		border-radius: var(--radius-sm);
-		margin-bottom: 1rem;
-		font-size: 0.9rem;
-	}
-
-	.alert-error {
-		background-color: rgba(239, 68, 68, 0.1);
-		border: 1px solid rgba(239, 68, 68, 0.3);
-		color: var(--color-error);
-	}
 
 	/* ── Mesh panel ─────────────────────────────────── */
 
 	.mesh-panel {
 		padding: 0.85rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
 		margin-bottom: 1rem;
-		border-left: 3px solid var(--color-warning);
+		border-inline-start: 3px solid var(--color-warning);
 	}
 
 	.mesh-header {
@@ -948,11 +784,6 @@
 		animation: pulse 0.8s infinite;
 	}
 
-	@keyframes pulse {
-		0%, 100% { opacity: 1; }
-		50% { opacity: 0.3; }
-	}
-
 	.mesh-label {
 		font-size: 0.85rem;
 		font-weight: 600;
@@ -974,75 +805,10 @@
 		flex-wrap: wrap;
 	}
 
-	.btn-mesh {
-		padding: 0.35rem 0.8rem;
-		font-size: 0.82rem;
-		font-weight: 600;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-primary);
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-mesh:hover:not(:disabled) {
-		border-color: var(--color-primary);
-		background: var(--color-primary);
-		color: white;
-	}
-
-	.mesh-dash-link {
-		display: inline-flex;
-		align-items: center;
-		text-decoration: none;
-	}
-
-	.mesh-dash-link:hover {
-		text-decoration: none;
-	}
-
-	.btn-mesh:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-mesh-disconnect {
-		color: var(--color-text-muted);
-	}
-
-	.btn-mesh-disconnect:hover {
-		border-color: var(--color-error);
-		background: var(--color-error);
-		color: var(--color-on-error);
-	}
-
-	.btn-mesh-sync {
-		color: var(--color-success);
-		border-color: var(--color-success);
-	}
-
-	.btn-mesh-sync:hover:not(:disabled) {
-		background: var(--color-success);
-		color: white;
-	}
-
 	.mesh-error {
 		font-size: 0.82rem;
 		color: var(--color-error);
 		margin: 0.5rem 0 0 0;
-	}
-
-	.via-mesh-badge {
-		display: inline-block;
-		font-size: 0.68rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.15rem 0.45rem;
-		border-radius: 999px;
-		background: var(--color-warning);
-		color: white;
 	}
 
 	.mesh-tickets-section {
@@ -1056,29 +822,16 @@
 	}
 
 	.mesh-ticket-card {
-		border-left: 3px solid var(--color-warning);
-	}
-
-	.btn-mesh-send {
-		background: var(--color-warning);
-	}
-
-	.btn-mesh-send:hover:not(:disabled) {
-		background: var(--color-warning);
-		filter: brightness(0.9);
+		border-inline-start: 3px solid var(--color-warning);
 	}
 
 	@media (max-width: 640px) {
-		.form-row {
-			grid-template-columns: 1fr;
-		}
-
 		.controls {
 			flex-direction: column;
 		}
 
 		.ticket-type {
-			margin-left: 0;
+			margin-inline-start: 0;
 		}
 	}
 </style>

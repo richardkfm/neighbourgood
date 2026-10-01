@@ -4,6 +4,7 @@
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
 	import { t } from 'svelte-i18n';
+	import Icon from '$lib/components/Icon.svelte';
 	import { loadOfflineTickets, type OfflineTicket } from '$lib/mesh-triage-db';
 	import { meshEnabled, MESH_COMMUNITY_KEY } from '$lib/stores/mesh-settings';
 
@@ -48,7 +49,7 @@
 		switch (urgency) {
 			case 'critical': return 'var(--color-error)';
 			case 'high': return 'var(--color-warning)';
-			case 'medium': return 'var(--color-primary)';
+			case 'medium': return 'var(--color-primary-text)';
 			default: return 'var(--color-text-muted)';
 		}
 	}
@@ -64,37 +65,43 @@
 
 <div class="triage-page">
 	<header class="triage-header">
-		<a href="/mesh" class="back-link">&larr; {$t('mesh.title')}</a>
+		<a href="/mesh" class="back-link"><Icon name="arrow-left" size={16} class="flip-rtl" /> {$t('mesh.title')}</a>
 		<h1>{$t('mesh.offline_triage')}</h1>
 		<p class="triage-subtitle">{$t('mesh.offline_triage_subtitle')}</p>
 		{#if !$isOnline}
-			<span class="offline-badge">{$t('mesh.viewing_offline')}</span>
+			<span class="badge badge-warning offline-badge">{$t('mesh.viewing_offline')}</span>
 		{/if}
 	</header>
 
 	{#if !$meshEnabled}
 		<div class="empty-state">
+			<span class="empty-icon"><Icon name="radio" size={26} /></span>
 			<p>{$t('mesh.disabled_notice')}</p>
-			<a href="/settings">{$t('mesh.enable_in_settings')}</a>
+			<a href="/settings" class="btn btn-primary">{$t('mesh.enable_in_settings')}</a>
 		</div>
 	{:else if loading}
-		<p class="loading">{$t('common.loading')}</p>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			{#each [1, 2, 3] as n (n)}
+				<div class="skeleton skeleton-card" style="height: 5.5rem" aria-hidden="true"></div>
+			{/each}
+		</div>
 	{:else if tickets.length === 0}
 		<div class="empty-state">
-			<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+			<span class="empty-icon"><Icon name="inbox" size={26} /></span>
 			<p>{$t('mesh.no_offline_tickets')}</p>
 		</div>
 	{:else}
 		<div class="ticket-list">
 			{#each tickets as ticket (ticket.id)}
-				<button class="ticket-card" onclick={() => toggleTicket(ticket.id)}>
+				<button class="card card-interactive ticket-card" onclick={() => toggleTicket(ticket.id)}>
 					<div class="ticket-header">
-						<span class="ticket-urgency" style="background: {urgencyColor(ticket.urgency)}">{$t('crisis.priority.' + ticket.urgency, { default: ticket.urgency })}</span>
+						<span class="badge badge-caps ticket-urgency" style="--u: {urgencyColor(ticket.urgency)}">{$t('crisis.priority.' + ticket.urgency, { default: ticket.urgency })}</span>
 						<span class="ticket-type">{$t('crisis.ticket_types.' + (ticket.ticket_type === 'emergency_ping' ? 'ping' : ticket.ticket_type), { default: ticket.ticket_type })}</span>
 						{#if ticket.server_id}
-							<span class="synced-badge">{$t('mesh.synced_to_server')}</span>
+							<span class="badge badge-success synced-badge">{$t('mesh.synced_to_server')}</span>
 						{:else}
-							<span class="mesh-badge">{$t('mesh.via_mesh')}</span>
+							<span class="badge badge-primary mesh-badge">{$t('mesh.via_mesh')}</span>
 						{/if}
 					</div>
 					<h3 class="ticket-title">{ticket.title}</h3>
@@ -138,13 +145,10 @@
 	}
 
 	.back-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		font-size: 0.85rem;
-		color: var(--color-primary);
-		text-decoration: none;
-	}
-
-	.back-link:hover {
-		text-decoration: underline;
 	}
 
 	.triage-header h1 {
@@ -162,29 +166,7 @@
 	}
 
 	.offline-badge {
-		display: inline-block;
 		margin-top: 0.5rem;
-		font-size: 0.78rem;
-		font-weight: 600;
-		color: var(--color-warning);
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-	}
-
-	.loading {
-		color: var(--color-text-muted);
-		text-align: center;
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 2rem;
-		color: var(--color-text-muted);
-	}
-
-	.empty-state svg {
-		margin-bottom: 0.75rem;
 	}
 
 	.ticket-list {
@@ -196,13 +178,11 @@
 	.ticket-card {
 		display: block;
 		width: 100%;
-		text-align: left;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
+		text-align: start;
 		padding: 1rem;
 		cursor: pointer;
-		transition: border-color var(--transition-fast);
+		font: inherit;
+		color: inherit;
 	}
 
 	.ticket-card:hover {
@@ -217,12 +197,9 @@
 	}
 
 	.ticket-urgency {
-		font-size: 0.7rem;
-		font-weight: 700;
-		color: white;
-		padding: 0.1rem 0.5rem;
-		border-radius: 999px;
-		text-transform: uppercase;
+		color: var(--u);
+		background: color-mix(in srgb, var(--u) 14%, transparent);
+		border-color: color-mix(in srgb, var(--u) 45%, transparent);
 	}
 
 	.ticket-type {
@@ -231,24 +208,9 @@
 		font-weight: 500;
 	}
 
-	.mesh-badge {
-		margin-left: auto;
-		font-size: 0.7rem;
-		font-weight: 600;
-		color: var(--color-primary);
-		background: var(--color-primary-light);
-		padding: 0.1rem 0.5rem;
-		border-radius: 999px;
-	}
-
+	.mesh-badge,
 	.synced-badge {
-		margin-left: auto;
-		font-size: 0.7rem;
-		font-weight: 600;
-		color: var(--color-success);
-		background: var(--color-success-bg, rgba(16, 185, 129, 0.1));
-		padding: 0.1rem 0.5rem;
-		border-radius: 999px;
+		margin-inline-start: auto;
 	}
 
 	.ticket-title {
@@ -312,7 +274,7 @@
 	.comment-time {
 		font-size: 0.75rem;
 		color: var(--color-text-muted);
-		margin-left: 0.5rem;
+		margin-inline-start: 0.5rem;
 	}
 
 	.comment-body {

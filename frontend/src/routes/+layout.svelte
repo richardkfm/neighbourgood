@@ -449,7 +449,7 @@
 				</div>
 			{:else}
 				<a href="/login" class="nav-link" onclick={closeMobileMenu}>{$t('nav.login')}</a>
-				<a href="/register" class="nav-btn-primary" onclick={closeMobileMenu}>{$t('nav.signup')}</a>
+				<a href="/register" class="btn btn-primary btn-sm" onclick={closeMobileMenu}>{$t('nav.signup')}</a>
 			{/if}
 		</div>
 	</div>
@@ -623,7 +623,7 @@
 		height: 34px;
 		border-radius: var(--radius-sm);
 		background: var(--color-accent);
-		color: white;
+		color: var(--color-on-accent);
 		flex-shrink: 0;
 	}
 
@@ -708,7 +708,7 @@
 	}
 
 	.nav-link.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 		font-weight: 600;
 	}
@@ -743,7 +743,7 @@
 	}
 
 	.nav-icon-btn:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 		text-decoration: none;
 	}
@@ -765,7 +765,7 @@
 
 	.theme-toggle:hover {
 		border-color: var(--color-primary);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		background: var(--color-primary-light);
 	}
 
@@ -810,7 +810,7 @@
 	}
 
 	.nav-user-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		text-decoration: none;
 	}
 
@@ -831,26 +831,6 @@
 		color: var(--color-error);
 	}
 
-	.nav-btn-primary {
-		display: inline-flex;
-		align-items: center;
-		background: var(--color-primary);
-		color: white !important;
-		padding: 0.4rem 0.9rem;
-		border-radius: var(--radius-sm);
-		font-size: 0.85rem;
-		font-weight: 600;
-		transition: all var(--transition-fast);
-		text-decoration: none;
-	}
-
-	.nav-btn-primary:hover {
-		background: var(--color-primary-hover);
-		text-decoration: none;
-		box-shadow: var(--shadow-md);
-		transform: translateY(-1px);
-	}
-
 	/* ── Red Sky identity in the nav ─────────────────────────── */
 
 	.main-nav.crisis {
@@ -866,7 +846,7 @@
 		padding: 0.15rem 0.6rem;
 		border-radius: 999px;
 		background: var(--color-primary-hover);
-		color: #fff;
+		color: var(--color-on-primary);
 		font-size: 0.68rem;
 		font-weight: 800;
 		letter-spacing: 0.06em;
@@ -987,9 +967,8 @@
 			justify-content: space-between;
 		}
 
-		.nav-btn-primary {
+		.main-nav .btn-primary {
 			margin: 0.25rem 1.5rem;
-			justify-content: center;
 		}
 
 		.mobile-overlay {
@@ -1127,7 +1106,7 @@
 		}
 
 		.bn-item.active {
-			color: var(--color-primary);
+			color: var(--color-primary-text);
 		}
 
 		.bn-item.active svg {
@@ -1198,7 +1177,7 @@
 	.update-banner-btn {
 		margin-inline-start: auto;
 		background: var(--color-accent);
-		color: white;
+		color: var(--color-on-accent);
 		border: none;
 		border-radius: var(--radius-sm);
 		padding: 0.25rem 0.75rem;
@@ -1241,7 +1220,7 @@
 		align-items: center;
 		gap: 0.35rem;
 		background: var(--color-primary-light);
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border: 1px solid var(--color-primary);
 		border-radius: var(--radius-sm);
 		padding: 0.3rem 0.7rem;
@@ -1254,7 +1233,7 @@
 
 	.nav-install-btn:hover {
 		background: var(--color-primary);
-		color: white;
+		color: var(--color-on-primary);
 	}
 
 	/* ── Language selector ──────────────────────────────────────────── */
@@ -1310,7 +1289,7 @@
 	}
 
 	.lang-option.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 	}
 
@@ -1474,8 +1453,8 @@
 
 	.offline-queue-chip {
 		margin-inline-start: auto;
-		background: var(--color-warning, #f59e0b);
-		color: white;
+		background: var(--color-warning);
+		color: var(--color-on-warning);
 		font-size: 0.75rem;
 		font-weight: 700;
 		padding: 0.15rem 0.6rem;

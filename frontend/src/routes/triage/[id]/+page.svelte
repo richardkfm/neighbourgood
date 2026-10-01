@@ -7,6 +7,7 @@
   import { api } from '$lib/api';
   import { isLoggedIn, user } from '$lib/stores/auth';
   import type { EmergencyTicket as Ticket } from '$lib/types';
+  import Icon from '$lib/components/Icon.svelte';
 
   interface Comment {
     id: number;
@@ -35,7 +36,10 @@
   let assigneeId = $state<number | null>(null);
 
   const ticketId = $derived($page.params.id);
-  const communityId = $derived($page.url.searchParams.get('community') ?? '');
+  // ?community= is optional (dashboard links omit it): without it the ticket's
+  // community is found by asking each of the user's communities for the ticket.
+  const communityParam = $derived($page.url.searchParams.get('community') ?? '');
+  let communityId = $state('');
 
   const currentUserMember = $derived(
     members.find((m) => m.user.id === $user?.id) ?? null
@@ -72,7 +76,7 @@
       case 'open':
         return 'var(--color-warning)';
       case 'in_progress':
-        return 'var(--color-primary)';
+        return 'var(--color-primary-text)';
       case 'resolved':
         return 'var(--color-success)';
       default:
@@ -86,21 +90,43 @@
   }
 
   async function loadAll() {
-    if (!communityId) {
-      error = get(t)('crisis.detail.missing_community');
-      loading = false;
-      return;
-    }
     try {
-      const [t, c, m] = await Promise.all([
-        api<Ticket>(`/communities/${communityId}/tickets/${ticketId}`, { auth: true }),
+      let candidates: string[] = communityParam ? [communityParam] : [];
+      if (candidates.length === 0) {
+        const mine = await api<{ id: number; effective_mode?: string; mode?: string }[]>(
+          '/communities/my/memberships',
+          { auth: true }
+        );
+        // Crisis tickets mostly live in Red Sky communities: try those first
+        candidates = [...mine]
+          .sort((a, b) => Number((b.effective_mode ?? b.mode) === 'red') - Number((a.effective_mode ?? a.mode) === 'red'))
+          .map((c) => String(c.id));
+      }
+
+      let found: Ticket | null = null;
+      for (const cid of candidates) {
+        try {
+          found = await api<Ticket>(`/communities/${cid}/tickets/${ticketId}`, { auth: true });
+          communityId = String(found.community_id ?? cid);
+          break;
+        } catch (err) {
+          // With an explicit ?community= a failure is the real answer
+          if (communityParam) throw err;
+        }
+      }
+      if (!found) {
+        error = get(t)('crisis.detail.load_failed');
+        return;
+      }
+
+      const [c, m] = await Promise.all([
         api<Comment[]>(`/communities/${communityId}/tickets/${ticketId}/comments`, { auth: true }),
         api<MemberInfo[]>(`/communities/${communityId}/members`, { auth: true })
       ]);
-      ticket = t;
+      ticket = found;
       comments = c;
       members = m;
-      assigneeId = t.assigned_to?.id ?? null;
+      assigneeId = found.assigned_to?.id ?? null;
     } catch (e: unknown) {
       error = e instanceof Error ? e.message : get(t)('crisis.detail.load_failed');
     } finally {
@@ -168,26 +194,32 @@
 
 <main class="page-container">
   <nav class="breadcrumb">
-    <a href="/triage">← {$t('crisis.detail.back')}</a>
+    <a href="/triage"><Icon name="arrow-left" size={16} class="flip-rtl" /> {$t('crisis.detail.back')}</a>
   </nav>
 
   {#if loading}
-    <p class="loading-msg">{$t('crisis.detail.loading')}</p>
+    <div class="skeleton-stack" role="status" aria-busy="true">
+      <span class="sr-only">{$t('crisis.detail.loading')}</span>
+      <span class="skeleton skeleton-line is-short"></span>
+      <span class="skeleton" style="height: 2.2rem; width: 70%"></span>
+      <div class="skeleton skeleton-card" style="margin-top: 1rem"></div>
+      <div class="skeleton skeleton-card"></div>
+    </div>
   {:else if error && !ticket}
-    <p class="error-msg">{error}</p>
+    <p class="alert alert-error" role="alert">{error}</p>
   {:else if ticket}
     <!-- Ticket header -->
     <header class="ticket-header">
       <div class="header-meta">
         <span
-          class="badge urgency-badge"
-          style="--u: {urgencyColor(ticket.urgency)}; color: var(--u); background: color-mix(in srgb, var(--u) 14%, transparent); border: 1px solid color-mix(in srgb, var(--u) 45%, transparent);"
+          class="badge badge-caps urgency-badge"
+          style="--u: {urgencyColor(ticket.urgency)}"
         >
           {$t(`crisis.priority.${ticket.urgency}`)}
         </span>
         <span
-          class="badge status-badge"
-          style="background-color: {statusColor(ticket.status)};"
+          class="badge badge-caps"
+          style="color: {statusColor(ticket.status)}"
         >
           {$t(`crisis.status_${ticket.status}`)}
         </span>
@@ -200,7 +232,7 @@
     </header>
 
     {#if error}
-      <p class="error-msg inline-error">{error}</p>
+      <p class="alert alert-error" role="alert">{error}</p>
     {/if}
 
     <!-- Description -->
@@ -232,7 +264,7 @@
         <div class="assignment-actions">
           {#if !ticket.assigned_to || (isPrivileged && ticket.assigned_to.id !== $user?.id)}
             <button
-              class="btn btn-secondary"
+              class="btn btn-secondary btn-sm"
               onclick={selfAssign}
               disabled={updatingTicket}
             >
@@ -242,7 +274,7 @@
 
           {#if isPrivileged}
             <div class="assign-form">
-              <select bind:value={assigneeId} class="member-select">
+              <select bind:value={assigneeId} class="input member-select" aria-label={$t('crisis.detail.assign')}>
                 <option value={null}>{$t('crisis.detail.select_member')}</option>
                 {#each members as m (m.user.id)}
                   <option value={m.user.id}>{m.user.display_name}</option>
@@ -333,10 +365,10 @@
       <div class="card comment-form-card">
         <h3 class="form-label">{$t('crisis.detail.add_comment')}</h3>
         {#if commentError}
-          <p class="error-msg">{commentError}</p>
+          <p class="alert alert-error" role="alert">{commentError}</p>
         {/if}
         <textarea
-          class="comment-textarea"
+          class="input comment-textarea"
           bind:value={commentText}
           placeholder={$t('crisis.detail.comment_placeholder')}
           rows={4}
@@ -345,6 +377,7 @@
         <div class="form-footer">
           <button
             class="btn btn-primary"
+            class:is-loading={postingComment}
             onclick={postComment}
             disabled={postingComment || !commentText.trim()}
           >
@@ -367,6 +400,9 @@
   }
 
   .breadcrumb a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     color: var(--color-text-muted);
     text-decoration: none;
     font-size: 0.9rem;
@@ -374,24 +410,7 @@
   }
 
   .breadcrumb a:hover {
-    color: var(--color-primary);
-  }
-
-  /* State messages */
-  .loading-msg {
-    color: var(--color-text-muted);
-    text-align: center;
-    padding: 3rem 0;
-  }
-
-  .error-msg {
-    color: var(--color-error);
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-  }
-
-  .inline-error {
-    margin-bottom: 1rem;
+    color: var(--color-primary-text);
   }
 
   /* Header */
@@ -407,15 +426,10 @@
     margin-bottom: 0.75rem;
   }
 
-  .badge {
-    display: inline-block;
-    padding: 0.2rem 0.65rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  .urgency-badge {
+    color: var(--u);
+    background: color-mix(in srgb, var(--u) 14%, transparent);
+    border-color: color-mix(in srgb, var(--u) 45%, transparent);
   }
 
   .type-label {
@@ -438,13 +452,10 @@
     margin: 0;
   }
 
-  /* Cards */
+  /* Cards stack with a little more air than the default */
   .card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: 1.25rem 1.5rem;
     margin-bottom: 1.25rem;
+    padding: 1.25rem 1.5rem;
   }
 
   .section-heading {
@@ -507,68 +518,11 @@
     gap: 0.5rem;
   }
 
-  .member-select {
-    padding: 0.4rem 0.6rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-size: 0.875rem;
-    cursor: pointer;
-  }
-
   /* Status actions */
   .status-actions {
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
-  }
-
-  /* Buttons */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.45rem 1rem;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color var(--transition-fast), opacity var(--transition-fast);
-    text-decoration: none;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: var(--color-primary);
-    color: white;
-  }
-
-  .btn-primary:not(:disabled):hover {
-    background: var(--color-primary-hover);
-  }
-
-  .btn-secondary {
-    background: var(--color-surface);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-  }
-
-  .btn-secondary:not(:disabled):hover {
-    background: var(--color-primary-light);
-  }
-
-  .btn-success {
-    background: var(--color-success);
-    color: white;
-  }
-
-  .btn-success:not(:disabled):hover {
-    filter: brightness(0.92);
   }
 
   /* Discussion */
@@ -662,23 +616,7 @@
   }
 
   .comment-textarea {
-    width: 100%;
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-size: 0.9rem;
-    line-height: 1.5;
     resize: vertical;
-    box-sizing: border-box;
-    transition: border-color var(--transition-fast);
-    font-family: inherit;
-  }
-
-  .comment-textarea:focus {
-    outline: none;
-    border-color: var(--color-primary);
   }
 
   .form-footer {

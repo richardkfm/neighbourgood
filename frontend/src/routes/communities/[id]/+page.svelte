@@ -11,11 +11,8 @@
 	import MembersList from '$lib/components/community/MembersList.svelte';
 	import InviteLinks from '$lib/components/community/InviteLinks.svelte';
 	import { t } from 'svelte-i18n';
-
-	const CATEGORY_ICONS: Record<string, string> = {
-		tool: '🔧', vehicle: '🚗', electronics: '⚡', furniture: '🪑',
-		food: '🍎', clothing: '👕', skill: '💡', other: '📦'
-	};
+	import Icon from '$lib/components/Icon.svelte';
+	import { RESOURCE_CATEGORY_ICON } from '$lib/icons';
 
 	let community = $state<CommunityOut | null>(null);
 	let members = $state<MemberOut[]>([]);
@@ -327,15 +324,20 @@
 
 <div class="detail-page">
 	{#if loading}
-		<p class="loading-text">{$t('common.loading')}</p>
+		<div class="skeleton-stack" role="status" aria-busy="true">
+			<span class="sr-only">{$t('common.loading')}</span>
+			<span class="skeleton skeleton-line is-short"></span>
+			<span class="skeleton" style="height: 2.2rem; width: 55%"></span>
+			<div class="skeleton skeleton-card" style="margin-top: 1rem"></div>
+		</div>
 	{:else if error && !community}
 		<div class="alert alert-error">{error}</div>
 	{:else if community}
 		<div class="community-header slide-up">
 			<div class="header-top">
-				<a href="/communities" class="back-link">&#8592; {$t('nav.communities')}</a>
+				<a href="/communities" class="back-link"><Icon name="arrow-left" size={16} class="flip-rtl" /> {$t('nav.communities')}</a>
 				{#if !community.is_active}
-					<span class="badge-merged">{$t('communities.merged_badge')}</span>
+					<span class="badge badge-caps">{$t('communities.merged_badge')}</span>
 				{/if}
 			</div>
 
@@ -369,11 +371,11 @@
 			{#if $isLoggedIn && community.is_active}
 				<div class="actions">
 					{#if isMember}
-						<button class="btn-secondary" onclick={leave} disabled={joiningOrLeaving}>
+						<button class="btn btn-secondary" class:is-loading={joiningOrLeaving} onclick={leave} disabled={joiningOrLeaving}>
 							{joiningOrLeaving ? $t('communities.leaving') : $t('communities.leave_community')}
 						</button>
 					{:else}
-						<button class="btn-primary" onclick={join} disabled={joiningOrLeaving}>
+						<button class="btn btn-primary" class:is-loading={joiningOrLeaving} onclick={join} disabled={joiningOrLeaving}>
 							{joiningOrLeaving ? $t('communities.joining') : $t('communities.join_community')}
 						</button>
 					{/if}
@@ -431,15 +433,15 @@
 			<section class="tickets-section slide-up" style="animation-delay: 0.045s">
 				<div class="section-header">
 					<h2>{$t('communities.tickets_heading', { values: { count: ticketTotal } })}</h2>
-					<button class="btn-small" onclick={() => (showTicketForm = !showTicketForm)}>
+					<button class="btn btn-secondary btn-sm" onclick={() => (showTicketForm = !showTicketForm)} aria-expanded={showTicketForm}>
 						{showTicketForm ? $t('common.cancel') : $t('communities.new_ticket')}
 					</button>
 				</div>
 
 				{#if showTicketForm}
-					<div class="ticket-form fade-in">
-						<div class="ticket-form-row">
-							<label>
+					<div class="card ticket-form fade-in">
+						<div class="field-row">
+							<label class="field">
 								<span>{$t('crisis.form_type')}</span>
 								<select bind:value={ticketType}>
 									<option value="request">{$t('crisis.ticket_types.request')}</option>
@@ -449,7 +451,7 @@
 									{/if}
 								</select>
 							</label>
-							<label>
+							<label class="field">
 								<span>{$t('crisis.form_urgency')}</span>
 								<select bind:value={ticketUrgency}>
 									<option value="low">{$t('crisis.priority.low')}</option>
@@ -459,28 +461,31 @@
 								</select>
 							</label>
 						</div>
-						<label>
+						<label class="field">
 							<span>{$t('crisis.form_title_field')}</span>
 							<input type="text" bind:value={ticketTitle} placeholder={$t('crisis.title_placeholder')} maxlength="300" />
 						</label>
-						<label>
+						<label class="field">
 							<span>{$t('crisis.form_description_optional')}</span>
 							<textarea bind:value={ticketDesc} rows="3" placeholder={$t('crisis.description_placeholder')} maxlength="5000"></textarea>
 						</label>
-						<button class="btn-primary" onclick={createTicket} disabled={creatingTicket || !ticketTitle.trim()}>
+						<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicket} disabled={creatingTicket || !ticketTitle.trim()}>
 							{creatingTicket ? $t('crisis.creating_ticket') : $t('crisis.create_ticket')}
 						</button>
 					</div>
 				{/if}
 
 				{#if tickets.length === 0}
-					<p class="section-hint">{$t('communities.no_tickets_yet')}</p>
+					<div class="empty-state compact">
+						<span class="empty-icon"><Icon name="inbox" size={22} /></span>
+						<p>{$t('communities.no_tickets_yet')}</p>
+					</div>
 				{:else}
 					<div class="tickets-list">
 						{#each tickets as ticket (ticket.id)}
-							<div class="ticket-card" class:ticket-resolved={ticket.status === 'resolved'}>
+							<div class="card ticket-card" class:ticket-resolved={ticket.status === 'resolved'}>
 								<div class="ticket-top">
-									<span class="ticket-type-badge" style="background: {ticket.ticket_type === 'emergency_ping' ? 'var(--color-error)' : ticket.ticket_type === 'offer' ? 'var(--color-success)' : 'var(--color-primary)'}">
+									<span class="badge badge-caps {ticket.ticket_type === 'emergency_ping' ? 'badge-error' : ticket.ticket_type === 'offer' ? 'badge-success' : 'badge-primary'}">
 										{ticketTypeLabel(ticket.ticket_type)}
 									</span>
 									<span class="ticket-urgency" style="color: {URGENCY_COLORS[ticket.urgency] ?? 'var(--color-text-muted)'}">
@@ -497,9 +502,9 @@
 									{#if (isAdmin || isLeader || ticket.author.id === $user?.id) && ticket.status !== 'resolved'}
 										<div class="ticket-actions">
 											{#if ticket.status === 'open'}
-												<button class="btn-tiny" onclick={() => updateTicketStatus(ticket.id, 'in_progress')}>{$t('crisis.start_ticket')}</button>
+												<button class="btn btn-secondary btn-sm" onclick={() => updateTicketStatus(ticket.id, 'in_progress')}>{$t('crisis.start_ticket')}</button>
 											{/if}
-											<button class="btn-tiny btn-tiny-success" onclick={() => updateTicketStatus(ticket.id, 'resolved')}>{$t('crisis.resolve_ticket')}</button>
+											<button class="btn btn-secondary btn-sm" onclick={() => updateTicketStatus(ticket.id, 'resolved')}>{$t('crisis.resolve_ticket')}</button>
 										</div>
 									{/if}
 								</div>
@@ -527,22 +532,28 @@
 			<div class="section-header">
 				<h2>{$t('communities.shared_resources', { values: { count: resourceTotal } })}</h2>
 				{#if isMember}
-					<a href="/resources" class="btn-small">{$t('communities.browse_all')}</a>
+					<a href="/resources" class="btn btn-secondary btn-sm">{$t('communities.browse_all')}</a>
 				{/if}
 			</div>
 			{#if resources.length === 0}
-				<p class="section-hint">{$t('communities.no_resources_yet')}</p>
+				<div class="empty-state compact">
+					<span class="empty-icon"><Icon name="package" size={22} /></span>
+					<p>{$t('communities.no_resources_yet')}</p>
+					{#if isMember}
+						<a href="/resources" class="btn btn-primary btn-sm">{$t('communities.browse_all')}</a>
+					{/if}
+				</div>
 			{:else}
 				<div class="resource-grid">
 					{#each resources as r (r.id)}
-						<a href="/resources/{r.id}" class="resource-card">
+						<a href="/resources/{r.id}" class="card card-flush card-interactive resource-card">
 							{#if r.image_url && $bandwidth !== 'low'}
 								<div class="res-image">
 									<img src="/api{r.image_url}" alt={r.title} />
 								</div>
 							{:else}
 								<div class="res-image res-placeholder">
-									<span>{CATEGORY_ICONS[r.category] ?? '📦'}</span>
+									<Icon name={RESOURCE_CATEGORY_ICON[r.category] ?? 'package'} size={30} strokeWidth={1.5} />
 								</div>
 							{/if}
 							<div class="res-body">
@@ -586,7 +597,7 @@
 				<p class="section-hint">{$t('communities.merge_hint')}</p>
 				<div class="suggestions-list">
 					{#each suggestions as s (s.target.id)}
-						<div class="suggestion-card">
+						<div class="card suggestion-card">
 							<div class="suggestion-info">
 								<h3>{s.target.name}</h3>
 								<div class="suggestion-meta">
@@ -597,7 +608,8 @@
 								<p class="suggestion-reason">{s.reason}</p>
 							</div>
 							<button
-								class="btn-merge"
+								class="btn btn-primary btn-sm btn-merge"
+								class:is-loading={merging === s.target.id}
 								onclick={() => merge(s.target.id)}
 								disabled={merging === s.target.id}
 							>
@@ -615,12 +627,6 @@
 <style>
 	.detail-page {
 		max-width: 900px;
-	}
-
-	.loading-text {
-		text-align: center;
-		color: var(--color-text-muted);
-		padding: 3rem;
 	}
 
 	/* ── Community tabs ─────────────────────────────────────── */
@@ -652,12 +658,15 @@
 	}
 
 	.community-tab.active {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		border-bottom-color: var(--color-primary);
 		font-weight: 600;
 	}
 
 	.back-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
 		text-decoration: none;
@@ -665,7 +674,7 @@
 	}
 
 	.back-link:hover {
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 	}
 
 	.header-top {
@@ -696,15 +705,6 @@
 		color: var(--color-border);
 	}
 
-	.tag {
-		font-size: 0.72rem;
-		font-weight: 500;
-		padding: 0.12rem 0.45rem;
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-	}
-
 	.description {
 		font-size: 0.95rem;
 		color: var(--color-text-muted);
@@ -712,66 +712,15 @@
 		margin-bottom: 1rem;
 	}
 
-	.badge-merged {
-		font-size: 0.72rem;
-		padding: 0.15rem 0.6rem;
-		border-radius: 999px;
-		background: var(--color-text-muted);
-		color: white;
-		font-weight: 600;
-	}
-
 	.actions {
 		margin-top: 1rem;
 		margin-bottom: 0.5rem;
 	}
 
-	.btn-primary {
-		padding: 0.55rem 1.25rem;
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-primary:disabled,
-	.btn-secondary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-secondary {
-		padding: 0.55rem 1.25rem;
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-secondary:hover:not(:disabled) {
-		border-color: var(--color-error);
-		color: var(--color-error);
-	}
-
-	.members-section,
 	.merge-section {
 		margin-top: 2rem;
 	}
 
-	.members-section h2,
 	.merge-section h2 {
 		font-size: 1.15rem;
 		font-weight: 500;
@@ -782,54 +731,6 @@
 		font-size: 0.85rem;
 		color: var(--color-text-muted);
 		margin-bottom: 0.75rem;
-	}
-
-	.members-list {
-		display: flex;
-		flex-direction: column;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		overflow: hidden;
-	}
-
-	.member-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-surface);
-	}
-
-	.member-row:last-child {
-		border-bottom: none;
-	}
-
-	.member-info {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.member-name {
-		font-weight: 500;
-		font-size: 0.92rem;
-	}
-
-	.role-badge {
-		font-size: 0.68rem;
-		font-weight: 600;
-		padding: 0.1rem 0.4rem;
-		border-radius: 999px;
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-
-	.member-date {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
 	}
 
 	.suggestions-list {
@@ -844,10 +745,6 @@
 		justify-content: space-between;
 		gap: 1rem;
 		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		transition: all var(--transition-fast);
 	}
 
 	.suggestion-card:hover {
@@ -881,58 +778,12 @@
 	}
 
 	.btn-merge {
-		padding: 0.45rem 1rem;
-		background: var(--color-accent);
-		color: white;
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.82rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		white-space: nowrap;
 		flex-shrink: 0;
 	}
 
-	.btn-merge:hover:not(:disabled) {
-		filter: brightness(1.1);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-merge:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.alert {
-		padding: 0.65rem 1rem;
-		border-radius: var(--radius);
-		font-size: 0.9rem;
-		margin-bottom: 1rem;
+	/* Page-level alerts sit a little below the header */
+	.community-header .alert {
 		margin-top: 0.75rem;
-	}
-
-	.alert-error {
-		background: var(--color-error-bg);
-		color: var(--color-error);
-		border: 1px solid var(--color-error);
-	}
-
-	.alert-success {
-		background: var(--color-success-bg, rgba(34, 197, 94, 0.1));
-		color: var(--color-success);
-		border: 1px solid var(--color-success);
-	}
-
-	.alert-info {
-		background: var(--color-primary-light);
-		color: var(--color-primary);
-		border: 1px solid var(--color-primary);
-	}
-
-	.alert-info a {
-		color: inherit;
-		font-weight: 600;
 	}
 
 	.resources-section {
@@ -951,22 +802,6 @@
 		margin-bottom: 0.75rem;
 	}
 
-	.btn-small {
-		font-size: 0.8rem;
-		padding: 0.3rem 0.7rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		color: var(--color-text-muted);
-		text-decoration: none;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-small:hover {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-
 	.resource-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -976,13 +811,7 @@
 	.resource-card {
 		display: flex;
 		flex-direction: column;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
-		text-decoration: none;
-		color: var(--color-text);
-		overflow: hidden;
-		transition: border-color var(--transition-fast);
 	}
 
 	.resource-card:hover {
@@ -1005,8 +834,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 1.8rem;
-		opacity: 0.5;
+		color: var(--color-primary-text);
+		opacity: 0.6;
 	}
 
 	.res-body {
@@ -1017,7 +846,7 @@
 		font-size: 0.65rem;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		font-weight: 600;
 	}
 
@@ -1035,267 +864,6 @@
 		color: var(--color-text-muted);
 	}
 
-	/* Invites */
-	.invites-section {
-		margin-top: 2rem;
-	}
-
-	.invites-section h2 {
-		font-size: 1.15rem;
-		font-weight: 500;
-	}
-
-	.invite-form {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		padding: 1rem 1.25rem;
-		margin-bottom: 0.75rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.invite-form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.75rem;
-	}
-
-	.invite-form label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.25rem;
-	}
-
-	.invite-form label span {
-		font-size: 0.82rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-	}
-
-	.invite-form input {
-		padding: 0.4rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.85rem;
-		background: var(--color-bg);
-		color: var(--color-text);
-	}
-
-	.invites-list {
-		display: flex;
-		flex-direction: column;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		overflow: hidden;
-	}
-
-	.invite-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		padding: 0.75rem 1rem;
-		border-bottom: 1px solid var(--color-border);
-		background: var(--color-surface);
-	}
-
-	.invite-row:last-child {
-		border-bottom: none;
-	}
-
-	.invite-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-	}
-
-	.invite-code {
-		font-size: 0.82rem;
-		font-weight: 500;
-		background: var(--color-bg);
-		padding: 0.1rem 0.35rem;
-		border-radius: var(--radius-sm);
-	}
-
-	.invite-meta {
-		font-size: 0.75rem;
-		color: var(--color-text-muted);
-	}
-
-	.invite-actions {
-		display: flex;
-		gap: 0.4rem;
-		flex-shrink: 0;
-	}
-
-	.btn-small-danger {
-		color: var(--color-error) !important;
-		border-color: var(--color-error) !important;
-	}
-
-	.btn-small-danger:hover {
-		background: var(--color-error) !important;
-		color: white !important;
-	}
-
-	/* ── Crisis mode ────────────────────────── */
-
-	.crisis-section {
-		margin-top: 1.5rem;
-		padding: 1rem 1.25rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-	}
-
-	.crisis-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-	}
-
-	.crisis-indicator {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.crisis-dot {
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		background: var(--color-primary);
-	}
-
-	.crisis-red .crisis-dot {
-		background: var(--color-error);
-		animation: pulse-crisis 1.5s infinite;
-	}
-
-	@keyframes pulse-crisis {
-		0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-		50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
-	}
-
-	.crisis-label {
-		font-size: 0.92rem;
-		font-weight: 600;
-	}
-
-	.crisis-red .crisis-label {
-		color: var(--color-error);
-	}
-
-	.btn-crisis-activate {
-		padding: 0.4rem 0.9rem;
-		background: var(--color-error);
-		color: var(--color-on-error);
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.82rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-crisis-activate:hover:not(:disabled) {
-		filter: brightness(1.1);
-		box-shadow: var(--shadow);
-	}
-
-	.btn-crisis-deactivate {
-		padding: 0.4rem 0.9rem;
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		border-radius: var(--radius);
-		font-size: 0.82rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-crisis-deactivate:hover:not(:disabled) {
-		filter: brightness(1.1);
-	}
-
-	.btn-crisis-activate:disabled,
-	.btn-crisis-deactivate:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.vote-section {
-		margin-top: 0.75rem;
-		padding-top: 0.75rem;
-		border-top: 1px solid var(--color-border);
-	}
-
-	.vote-bar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-	}
-
-	.vote-info {
-		display: flex;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-		font-size: 0.82rem;
-		color: var(--color-text-muted);
-	}
-
-	.vote-threshold {
-		font-style: italic;
-	}
-
-	.vote-actions {
-		display: flex;
-		gap: 0.4rem;
-	}
-
-	.btn-vote {
-		padding: 0.3rem 0.7rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.78rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: all var(--transition-fast);
-		background: var(--color-surface);
-	}
-
-	.btn-vote:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-vote-red {
-		color: var(--color-error);
-		border-color: var(--color-error);
-	}
-
-	.btn-vote-red:hover:not(:disabled) {
-		background: var(--color-error);
-		color: var(--color-on-error);
-	}
-
-	.btn-vote-blue {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
-	}
-
-	.btn-vote-blue:hover:not(:disabled) {
-		background: var(--color-primary);
-		color: white;
-	}
-
 	/* ── Emergency tickets ──────────────────── */
 
 	.tickets-section {
@@ -1308,43 +876,11 @@
 	}
 
 	.ticket-form {
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
 		padding: 1rem 1.25rem;
 		margin-bottom: 0.75rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.65rem;
-	}
-
-	.ticket-form-row {
-		display: grid;
-		grid-template-columns: 1fr 1fr;
-		gap: 0.65rem;
-	}
-
-	.ticket-form label {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
-	}
-
-	.ticket-form label span {
-		font-size: 0.82rem;
-		font-weight: 500;
-		color: var(--color-text-muted);
-	}
-
-	.ticket-form input,
-	.ticket-form textarea,
-	.ticket-form select {
-		padding: 0.4rem 0.6rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius);
-		font-size: 0.85rem;
-		background: var(--color-bg);
-		color: var(--color-text);
 	}
 
 	.tickets-list {
@@ -1355,14 +891,7 @@
 
 	.ticket-card {
 		padding: 0.85rem 1rem;
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
-		transition: all var(--transition-fast);
-	}
-
-	.ticket-card:hover {
-		border-color: var(--color-border-hover);
 	}
 
 	.ticket-resolved {
@@ -1376,16 +905,6 @@
 		margin-bottom: 0.3rem;
 	}
 
-	.ticket-type-badge {
-		font-size: 0.65rem;
-		font-weight: 600;
-		padding: 0.1rem 0.4rem;
-		border-radius: 999px;
-		color: white;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-	}
-
 	.ticket-urgency {
 		font-size: 0.72rem;
 		font-weight: 600;
@@ -1395,7 +914,7 @@
 	.ticket-status {
 		font-size: 0.72rem;
 		color: var(--color-text-muted);
-		margin-left: auto;
+		margin-inline-start: auto;
 		text-transform: capitalize;
 	}
 
@@ -1427,45 +946,6 @@
 	.ticket-actions {
 		display: flex;
 		gap: 0.3rem;
-	}
-
-	.btn-tiny {
-		font-size: 0.72rem;
-		padding: 0.2rem 0.5rem;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface);
-		color: var(--color-text-muted);
-		cursor: pointer;
-		transition: all var(--transition-fast);
-	}
-
-	.btn-tiny:hover:not(:disabled) {
-		border-color: var(--color-primary);
-		color: var(--color-primary);
-	}
-
-	.btn-tiny:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	.btn-tiny-success:hover:not(:disabled) {
-		border-color: var(--color-success);
-		color: var(--color-success);
-	}
-
-	/* ── Leader badge ───────────────────────── */
-
-	.role-badge-leader {
-		background: var(--color-accent-light);
-		color: var(--color-accent);
-	}
-
-	.member-right {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
 	}
 
 	/* ── Community timeline ──────────────────── */
@@ -1511,7 +991,7 @@
 
 	.timeline-actor {
 		font-weight: 600;
-		color: var(--color-primary);
+		color: var(--color-primary-text);
 		white-space: nowrap;
 	}
 
@@ -1524,6 +1004,10 @@
 		font-size: 0.775rem;
 		color: var(--color-text-muted);
 		white-space: nowrap;
-		margin-left: auto;
+		margin-inline-start: auto;
+	}
+
+	.empty-state.compact {
+		padding: 1.5rem 1rem;
 	}
 </style>
