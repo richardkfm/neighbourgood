@@ -202,7 +202,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.9rem;
-		padding: 1.5rem 0;
+		/* Room for the cards' offsets and tilt: .hero clips its overflow, so a
+		   card shifted or rotated past the panel edge would be cut off. */
+		padding: 1.5rem 1.5rem;
 	}
 
 	.hero-panel::before {

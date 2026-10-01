@@ -20,14 +20,14 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.4.0** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.4.1** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
 
 Each instance exposes `/instance/info` so instances can discover and federate with each other.
 
-Current test count: **707 tests** across 38 test files (plus 15 frontend `node:test` tests via `npm test`) (all backend, pytest + in-memory SQLite).
+Current test count: **711 tests** across 39 test files (plus 15 frontend `node:test` tests via `npm test`) (all backend, pytest + in-memory SQLite).
 
 ---
 
@@ -274,11 +274,11 @@ def get_item(id: int, db: Session = Depends(get_db), current_user: User = Depend
 
 ### Lifespan & Auto-migration (`app/main.py`)
 
-The lifespan context manager runs at startup:
+The lifespan context manager runs at startup, in every mode (production included):
 1. Creates all tables via `Base.metadata.create_all()`.
-2. Applies additive column migrations for iterative development (adds missing columns without Alembic).
+2. Adds any columns the database is missing (`_add_missing_columns()`), with the model's scalar default backfilled. Self-hosted Docker instances never run Alembic on update, so without this a new column makes every query on its table fail (the 2.4.0 login 500).
 
-Do not rely on this for production schema changes — always write a proper Alembic migration.
+Still write a proper Alembic migration for every schema change: the auto-add only covers new columns, not constraints, indexes or data changes. Give new columns a scalar `default=` (or make them nullable) so existing rows get a valid value.
 
 ---
 
@@ -488,6 +488,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.4.1 | 2026-10-01 | Fix login 500 after upgrading: missing columns are added on every start (also in production), robust per-dialect defaults; home page hero cards no longer clipped (711 tests) |
 | 2.4.0 | 2026-10-01 | Remaining QA findings: signed mesh messages + fragmentation, global red (`NG_PLATFORM_MODE=red` applies to every community), alert expiry/detail page, session invalidation, per-(email, IP) lockout, webhook SSRF guard, members-only booking/RSVP, password reset, account deletion, data export UI, edit forms, shared UI primitives + SVG icons, full translations of 11 locales (707 tests) |
 | 2.3.0 | 2026-09-30 | QA pass (Blue Sky + Red Sky/mesh, ~45 fixes), UI/UX overhaul (mobile tab bar, Red Sky identity, WCAG AA), security: verified federation alerts, NG_ADMIN_EMAILS, always-on Telegram webhook secret, mesh replay protection, no email leaks (521 tests) |
 | 2.2.2 | 2026-07-15 | Fix: block joining a second community while already an active member (409), deterministic `/communities/my/memberships` ordering, fix resources/skills/events pages racing unfiltered vs. community-filtered fetches, one-time multi-membership cleanup migration, 4 new tests (444 total) |
