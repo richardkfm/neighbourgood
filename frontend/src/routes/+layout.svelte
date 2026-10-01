@@ -656,8 +656,12 @@
 		transition: all var(--transition-fast);
 	}
 
-	.hamburger:hover {
-		border-color: var(--color-primary);
+	/* Hover only where a real pointer hovers: on touch screens :hover sticks
+	   after the tap and left the open (X) button outlined. */
+	@media (hover: hover) {
+		.hamburger:hover {
+			border-color: var(--color-primary);
+		}
 	}
 
 	.hamburger-line {
@@ -969,6 +973,55 @@
 
 		.main-nav .btn-primary {
 			margin: 0.25rem 1.5rem;
+		}
+
+		/* Signed-out dropdown: links and auth actions first, then the
+		   theme/language icons side by side in a footer row below a divider.
+		   (Stacked in one column the language button was indented twice:
+		   once by .lang-selector and again by its own .theme-toggle margin.) */
+		.nav-links.mobile-open:not(.has-tabs) {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+		}
+
+		.nav-links:not(.has-tabs) .nav-link,
+		.nav-links:not(.has-tabs) .btn-primary {
+			flex: 1 1 100%;
+		}
+
+		.nav-links:not(.has-tabs)::before {
+			content: '';
+			order: 1;
+			flex: 1 1 100%;
+			margin-top: 0.5rem;
+			padding-top: 0.25rem;
+			border-top: 1px solid var(--color-border);
+		}
+
+		.nav-links:not(.has-tabs) > .theme-toggle,
+		.nav-links:not(.has-tabs) > .lang-selector,
+		.nav-links:not(.has-tabs) > .nav-install-btn {
+			order: 2;
+		}
+
+		.nav-links:not(.has-tabs) .theme-toggle {
+			margin-block: 0.25rem;
+			margin-inline: 0 0.25rem;
+		}
+
+		.nav-links:not(.has-tabs) .nav-link + .theme-toggle {
+			margin-inline-start: 1.5rem;
+		}
+
+		.nav-links:not(.has-tabs) .lang-selector {
+			flex-wrap: wrap;
+			margin-block: 0;
+			margin-inline: 0 1.5rem;
+		}
+
+		.nav-links:not(.has-tabs) .lang-menu {
+			flex-basis: 100%;
 		}
 
 		.mobile-overlay {
