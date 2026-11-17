@@ -33,7 +33,10 @@ The app has two states:
 - **In your language.** English, German, French, Spanish, Dutch, Greek, Ukrainian, Arabic, Farsi, Swahili, Indonesian and Sundanese, with right-to-left layouts for Arabic and Farsi.
 - **Works on phones.** Install it like an app; browsing and requests keep working when the connection drops and are sent once you're back online.
 
-<img width="1103" height="854" alt="The onboarding wizard: search for a community near you, join it, or create a new one" src="https://github.com/user-attachments/assets/0d6556ea-68db-47d8-978e-e65353ef8770" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/onboarding-dark.png">
+  <img src="docs/images/onboarding-light.png" alt="The onboarding wizard, step 1 of 3: searching for Berlin finds three neighbourhood communities to join, or you can create a new one" width="880">
+</picture>
 
 ## Crisis: Red Sky
 
