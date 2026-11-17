@@ -33,12 +33,11 @@ It starts with what you already own. When you join, NeighbourGood asks one simpl
   <img src="docs/images/share-light.png" alt="Onboarding step 3, What do you have at home?: one-tap suggestions such as drill, ladder, projector, cargo bike, folding table, board games and tent, plus a field for anything else you could share" width="880">
 </picture>
 
-Everything your neighbours have listed then shows up in one place, ready to borrow:
+From then on it's a quiet everyday companion on your phone: who wants to borrow your drill, whether the cargo bike you asked for is free, and a message from a neighbour.
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/resources-dark.png">
-  <img src="docs/images/resources-light.png" alt="The shared resources list of a Berlin neighbourhood: a cordless drill, a cargo bike, a projector, beer tables and benches, a sewing machine and a ladder, each lent by a named neighbour" width="880">
-</picture>
+<p align="center">
+  <img src="docs/images/dashboard-phone.png" alt="The dashboard on a phone: Welcome back, Felix. Under Needs your attention: Jonas wants to borrow the cordless drill, a request for the cargo bike waiting for approval, and one unread message" width="320">
+</p>
 
 - **Lend and borrow.** List things you can lend (tools, vehicles, electronics, furniture, …), book them for specific dates, and approve or decline requests.
 - **Swap skills.** Offer what you can do (repairs, tutoring, cooking, languages) or ask for help.
