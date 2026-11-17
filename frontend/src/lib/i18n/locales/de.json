@@ -646,7 +646,14 @@
     "load_communities_failed": "Deine Gemeinschaften konnten nicht geladen werden.",
     "load_tickets_failed": "Tickets konnten nicht geladen werden.",
     "offline_ticket": "Notfall-Ticket: {title}",
-    "untitled": "Ohne Titel"
+    "untitled": "Ohne Titel",
+    "red_active": "Red Sky ist aktiv",
+    "red_active_detail": "{community} ist im Krisenmodus. Anfragen sind nach Dringlichkeit sortiert.",
+    "no_internet": "Kein Internet.",
+    "mesh_reachable": "{count} Nachbarn über das Bluetooth-Mesh erreichbar. Nachrichten werden synchronisiert, sobald die Verbindung zurück ist.",
+    "offline_saved": "Anfragen werden auf diesem Gerät gespeichert und gesendet, sobald die Verbindung zurück ist.",
+    "send_ping": "Notruf senden",
+    "open_requests": "Offene Anfragen"
   },
   "settings": {
     "title": "Kontoeinstellungen",

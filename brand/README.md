@@ -20,7 +20,7 @@ these files the wordmark is converted to outlines, so no font is needed.
 |---|---|
 | `svg/logo.svg` | The default horizontal logo on light backgrounds |
 | `svg/logo-dark.svg` | Dark backgrounds (dark mode) |
-| `svg/logo-redsky.svg` | Red Sky (crisis) material on dark backgrounds |
+| `svg/logo-redsky.svg` | Red Sky (crisis) material: light tile with a dark house, on a dark background |
 | `svg/logo-black.svg`, `svg/logo-white.svg` | One-colour printing, stamps, engraving |
 | `svg/mark.svg` (+ `-dark`, `-redsky`, `-black`, `-white`) | Square spaces: avatars, app icons, stickers |
 | `svg/wordmark.svg` (+ variants) | Where the mark already appears nearby |
@@ -52,11 +52,12 @@ Logos and wordmarks are named by height (`logo-256h.png` is 256 px tall).
 | Ink | `#2d1b0e` | `#e8e8ed` | "Neighbour" and body text |
 | Cream | `#fdf8f3` | `#0f0f1a` | Page background |
 | Warm brown | `#7a5c47` | `#c9b8a6` | Small labels and kickers, mesh hub nodes |
-| Red Sky | `#dc2626` | `#dc2626` | The logo tile and primary actions in crisis mode |
+| Red Sky red | `#dc2626` | `#dc2626` | Primary actions in crisis mode (the only colour in Red Sky) |
+| Red Sky surfaces | `#170f0f` / `#231818` | same | Background and cards in crisis mode; the logo tile there is `#f7eeee` with a `#170f0f` house |
 
 The app reads these from CSS custom properties in `frontend/src/app.css`
-(`--color-primary`, `--color-on-primary`, `--color-accent`, …). In Red Sky mode
-the nav logo tile switches to red automatically, because it uses `--color-primary`.
+(`--color-primary`, `--color-logo`, `--color-accent`, …). In Red Sky mode
+the nav logo switches to the light tile automatically, because it uses `--color-logo`.
 
 ## Typefaces
 
