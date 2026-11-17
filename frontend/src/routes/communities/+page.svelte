@@ -431,8 +431,8 @@
 	}
 
 	.my-community-section h2 {
-		font-size: 1.2rem;
-		font-weight: 500;
+		font-size: 1.15rem;
+		font-weight: 400;
 		margin-bottom: 0.75rem;
 	}
 
@@ -441,9 +441,7 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 1rem;
-		background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-primary-light) 100%);
-		border-color: var(--color-primary);
-		border-inline-start: 4px solid var(--color-success);
+		box-shadow: none;
 	}
 
 	.my-card-left h3 {
@@ -526,8 +524,8 @@
 	}
 
 	.all-communities-section h2 {
-		font-size: 1.2rem;
-		font-weight: 500;
+		font-size: 1.15rem;
+		font-weight: 400;
 		margin-bottom: 0.75rem;
 	}
 
@@ -550,7 +548,7 @@
 	}
 
 	.community-list-card.is-mine {
-		border-inline-start: 4px solid var(--color-success);
+		border-color: var(--color-border-hover);
 	}
 
 	.list-card-info h3 {
