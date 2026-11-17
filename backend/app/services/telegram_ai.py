@@ -32,7 +32,7 @@ def _e(value) -> str:
 #
 # Two distinct system prompts keep the agent's tone and available actions
 # appropriate for the community's current state.  Customise these strings in
-# TELEGRAM_AGENT.md (see project root) — the full guide explains every field.
+# docs/telegram-agent.md — the full guide explains every field.
 
 BLUE_SKY_SYSTEM = (
     "You are a friendly assistant for NeighbourGood, a community resource-sharing platform. "

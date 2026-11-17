@@ -1,5 +1,7 @@
 # Internationalisation (i18n) Plan — NeighbourGood
 
+> **Archived plan.** Kept for history; parts of it are outdated. Current status and open work: [docs/roadmap.md](../roadmap.md).
+
 > **Strategic context:** NeighbourGood is a crisis-capable community platform. The communities
 > that need it most are often those where people speak languages other than English — disaster-
 > prone archipelagos, refugee-host cities, conflict-affected regions, and the Global South.

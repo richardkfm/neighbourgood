@@ -5,42 +5,44 @@
   </picture>
 </h1>
 
-**v2.7.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**Share with your neighbours on ordinary days. Help each other when things go wrong, even without internet.**
 
-[Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Brand and Design](#brand-and-design) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
+NeighbourGood is a free, self-hostable web app for neighbourhoods. People lend each other tools and equipment, offer skills, organise local events and get to know each other. When a flood, storm or power cut hits, the same community switches to crisis mode with one action and coordinates help, even over Bluetooth when the internet is down.
 
-<a id="vision"></a>
-## Vision
+v2.7.0 · 12 languages · [GPL-3.0](LICENSE)
 
-Modern neighbourhoods have everything they need — the problem is that resources sit idle in individual households. NeighbourGood makes it easy to share tools, vehicles, equipment, food, and skills within a community, reducing waste and building real connections between neighbours.
+[What it does](#what-it-does) · [Everyday: Blue Sky](#everyday-blue-sky) · [Crisis: Red Sky](#crisis-red-sky) · [Telegram](#use-it-from-telegram) · [Connected communities](#connected-communities) · [Get started](#get-started) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
-But sharing goes beyond convenience. When a crisis hits — a flood, a power outage, a pandemic — the same network that shared a drill last Tuesday becomes a lifeline. NeighbourGood's **dual-state architecture** switches the platform from everyday comfort mode into emergency coordination mode with a single action.
+## What it does
 
-<a id="dual-state-architecture"></a>
-## Dual-State Architecture
+Most neighbourhoods already have what they need: a drill in one cellar, a cargo bike in a courtyard, someone who fixes bikes, someone who speaks Arabic. It's just not visible. NeighbourGood makes it visible and easy to share, and it builds the trust and the contacts that matter when a crisis comes.
 
-### Blue Sky Mode (Normal Operation)
+The app has two states:
 
-The default mode focuses on community building and resource sharing:
+- **Blue Sky** is everyday sharing and community life.
+- **Red Sky** is crisis coordination: emergency requests, offers and pings, sorted by urgency.
 
-- **Resource Library** – List and browse items available for borrowing (tools, vehicles, electronics, furniture)
-- **Skill Exchange** – Offer and request skills (tutoring, repairs, cooking, languages)
-- **Calendar Booking** – Reserve items with date/time slots
-- **Community Events** – Organise and RSVP to local events (repair cafés, workshops, seed swaps, meetups)
-- **Trust & Reputation** – Earn reputation points, collect trust badges (Reliable Borrower, Trusted Lender, Skilled Helper), review skills and lending experiences, public user profiles
-- **Community Feed** – Updates, requests, offers in a neighbourhood timeline
+## Everyday: Blue Sky
 
-### Red Sky Mode (Crisis Operation)
+- **Lend and borrow.** List things you can lend (tools, vehicles, electronics, furniture, …), book them for specific dates, and approve or decline requests.
+- **Swap skills.** Offer what you can do (repairs, tutoring, cooking, languages) or ask for help.
+- **Local events.** Repair cafés, workshops, seed swaps, street parties, with RSVP and attendee limits.
+- **Messages.** Write directly to other members of your community.
+- **Trust.** Reviews after each loan, reputation levels from *Newcomer* to *Pillar*, and badges such as *Reliable Borrower* or *Trusted Lender* help people decide whom to lend to.
+- **Community feed and map.** See what's new nearby; guests can find communities on a public map before signing up.
+- **In your language.** English, German, French, Spanish, Dutch, Greek, Ukrainian, Arabic, Farsi, Swahili, Indonesian and Sundanese, with right-to-left layouts for Arabic and Farsi.
+- **Works on phones.** Install it like an app; browsing and requests keep working when the connection drops and are sent once you're back online.
 
-Activated per community by an admin or a 60% community vote, or for the whole instance with `NG_PLATFORM_MODE=red` (every community then behaves as Red Sky; each keeps its own setting for when the instance returns to blue):
+<img width="1103" height="854" alt="The onboarding wizard: search for a community near you, join it, or create a new one" src="https://github.com/user-attachments/assets/0d6556ea-68db-47d8-978e-e65353ef8770" />
 
-- **Focused navigation** – Emergency, Resources, Messages and Map up front; other pages stay reachable by URL
-- **Low-Bandwidth UI** – Text-based, high-contrast, no heavy images
-- **Essential Resources Focus** – Food stocks, water filters, generators, medical supplies
-- **Emergency Ticketing** – Replace booking with Request / Offer / Emergency Ping
-- **Neighbourhood Leaders** – Pre-defined coordinators who can triage and assign
-- **Offline-First** – PWA with local caching, BLE mesh networking for internet-free crisis coordination
-- **A screen you can read under stress** – Red Sky is always dark, and red is its only colour. Urgency is written out (CRITICAL, HIGH, MEDIUM, LOW, OFFER), so nothing depends on telling colours apart. The Emergency page opens with a red banner, the connection or mesh status, and one large *Send emergency ping* button, followed by the open requests sorted by urgency
+## Crisis: Red Sky
+
+A community switches to Red Sky when its admin turns it on or when 60 % of members vote for it. An instance admin can also switch every community at once. The app then changes its focus:
+
+- **Emergency tickets.** Members post *requests* ("we need drinking water"), *offers* ("generator available") and *emergency pings*. Each one has an urgency level written out as CRITICAL, HIGH, MEDIUM or LOW, so nothing depends on telling colours apart.
+- **Neighbourhood leaders** triage and assign tickets.
+- **A screen you can read under stress.** Red Sky is always dark, uses red as its only colour, and leaves out heavy images. The Emergency page opens with the connection status and one large *Send emergency ping* button.
+- **No internet? Bluetooth mesh.** With the free [BitChat](https://github.com/permissionlesstech/bitchat) app on nearby phones, tickets travel phone to phone over Bluetooth and are synced to the server when the internet is back.
 
 ### Red Sky in action
 
@@ -50,536 +52,68 @@ Activated per community by an admin or a 60% community vote, or for the whole in
 
 1. **Ping without internet.** A household whose cellar is flooding taps *Send emergency ping*. There's no internet, so the ticket goes out over Bluetooth.
 2. **Hops phone to phone.** Nearby phones running BitChat pass the signed message on, up to 7 hops (about 700 m), until it reaches the neighbourhood coordinator.
-3. **Triaged by urgency.** The ticket lands at the top of every Emergency list in reach as CRITICAL, above the high, medium and offer items.
+3. **Triaged by urgency.** The ticket lands at the top of every Emergency list in reach as CRITICAL, above high, medium and offer items.
 4. **A neighbour helps.** Felix replies over the same mesh, the ticket moves to *In progress*, and it's marked *Resolved* when the sandbags arrive. Once the internet is back, everything syncs to the server without duplicates.
 
-<a id="tech-stack"></a>
-## Tech Stack
+The mesh works in Chrome and Edge (desktop and Android). How it works and how to set it up: [docs/mesh-networking.md](docs/mesh-networking.md).
 
-| Layer      | Technology                     | Why                                              |
-| ---------- | ------------------------------ | ------------------------------------------------ |
-| Backend    | Python + FastAPI               | Lightweight, async, easy to extend with AI later  |
-| Frontend   | SvelteKit                      | Fast, small bundles, good PWA/offline support     |
-| Database   | PostgreSQL (prod) / SQLite (dev) | PostgreSQL in Docker for production, SQLite for quick local dev |
-| Deployment | Docker Compose                 | Single `docker-compose up` to run everything      |
-| Maps       | MapLibre GL + OpenFreeMap      | Free vector tiles, no API key, light and dark style |
-| Offline    | Service worker + Web Bluetooth | PWA caching and a BitChat BLE mesh gateway for crises |
-| Languages  | svelte-i18n                    | 12 languages, including right-to-left Arabic and Farsi |
+## Use it from Telegram
 
-<a id="quick-start"></a>
-## Quick Start
+Many neighbours already live in Telegram, so NeighbourGood comes to them there once the instance admin has connected a bot.
 
-### With Docker (recommended)
+- **Notifications in your chat.** Link your account under **Settings → Telegram** and get new messages, booking requests and updates, and crisis alerts as Telegram messages.
+- **Your community's group chat.** A community admin adds the bot to the group. New resources, skills, members and, in Red Sky, every emergency ticket are posted there automatically. Commands like `/lending Anna` or `/skills Omar` show what a neighbour offers.
+- **Just ask.** If the instance has AI enabled, write to the bot in plain language: *"Does anyone have a ladder?"*, *"Who can help with plumbing?"*. During a crisis: *"What's happening?"* or *"We need food, the power is out"*, which creates an emergency request after you confirm it.
 
-Docker Compose starts three containers: PostgreSQL database, Python/FastAPI backend, and SvelteKit frontend. Everything is wired together automatically.
+The bot never acts without your confirmation, never shares private details such as emails, and only sees your own communities. Setup for admins: [docs/telegram-setup.md](docs/telegram-setup.md).
 
-**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) 24+ and the Compose v2 plugin (`docker compose` — note: no hyphen).
+## Connected communities
 
-```bash
-# 1. Clone the repository
-git clone https://github.com/neighbourgood/neighbourgood.git
-cd neighbourgood
+Every NeighbourGood server is independent: your data stays with whoever runs your instance. Instances can still find each other and stay in touch. They list each other in a directory, show each other's shared items and skills, and send **verified Red Sky alerts** across instances, so a neighbouring town learns about a crisis quickly.
 
-# 2. Create your config file from the template
-cp .env.example .env
+Members can download all their data at any time and delete their account, which anonymises it.
 
-# 3. Generate a secret key — the app refuses to start without one
-echo "NG_SECRET_KEY=$(openssl rand -hex 32)" >> .env
+## Get started
 
-# 4. Make your own account a platform admin (use the email you will sign up with)
-echo 'NG_ADMIN_EMAILS=["you@example.com"]' >> .env
-
-# 5. Build images and start all services (first run takes ~2–3 min)
-docker compose up --build
-```
-
-Once you see `Application startup complete` in the backend logs, the stack is ready:
-
-| Service | URL | What it is |
-|---------|-----|-----------|
-| **Web app** | http://localhost:3800 | Main SvelteKit frontend — open this in your browser |
-| **API** | http://localhost:8300 | FastAPI backend (JSON responses) |
-| **Interactive API docs** | http://localhost:8300/docs | Swagger UI — explore and test every endpoint |
-| **Alternative API docs** | http://localhost:8300/redoc | ReDoc-style reference |
-
-> **First time?** Navigate to http://localhost:3800, click **Sign Up**, create an account, then go through the onboarding flow to create or join a community. Signing up with an email listed in `NG_ADMIN_EMAILS` makes that account a platform admin, which is needed to manage the federation directory and send cross-instance Red Sky alerts.
-
-<img width="1103" height="854" alt="grafik" src="https://github.com/user-attachments/assets/0d6556ea-68db-47d8-978e-e65353ef8770" />
-Frontend User Onboarding
-
-
---
-#### Useful Docker commands
+**Try it or run it for your neighbourhood.** On a Linux server or your computer:
 
 ```bash
-# Start in the background (detached mode)
-docker compose up --build -d
-
-# Stream logs while running in the background
-docker compose logs -f
-
-# Stop everything (data is preserved in the postgres volume)
-docker compose down
-
-# Stop and wipe ALL data (fresh start)
-docker compose down -v
-
-# Rebuild a single service after a code change
-docker compose up --build backend
+curl -fsSL https://raw.githubusercontent.com/neighbourgood/neighbourgood/main/install.sh | bash
 ```
 
-#### Running database migrations inside Docker
+The installer uses Docker when it's available, generates a secret key and starts everything. Then open http://localhost:3800, sign up, and the onboarding wizard helps you create your community. Invite your neighbours with an invite link from the community page.
 
-New columns are added automatically when the backend starts (the log shows `Added missing column …`), so a normal update needs no extra step. Alembic migrations remain the source of truth for everything else (new constraints, data migrations):
+A small rented server (1 CPU, 1 GB RAM, around 5 € a month) is enough for a few hundred people. For a real instance with your own domain and HTTPS, follow **[docs/self-hosting.md](docs/self-hosting.md)**. All settings are in [docs/configuration.md](docs/configuration.md).
 
-```bash
-# Apply Alembic migrations on a running stack
-docker compose exec backend alembic upgrade head
-```
+## Documentation
 
-#### Updating to a new version
-
-```bash
-git pull
-docker compose up --build -d
-```
-
-After an update, open browser tabs show a "new version available" banner once; reload to switch to the new version.
-
-#### Running behind a reverse proxy (nginx / Caddy)
-
-In production you will normally terminate TLS in nginx or Caddy and forward to the `frontend` container (port 3800). **You must tell the frontend (SvelteKit `adapter-node`) which header carries the real client address.** Otherwise the frontend only sees the proxy's IP, forwards that to the backend, and **every user shares one IP** — so the per-IP rate limits (5 logins/min, 200 requests/min) and the per-(email, IP) login lockout trip for everyone at once.
-
-How the address flows: browser → proxy → `frontend` (`hooks.server.ts` calls `event.getClientAddress()` and sends it to the backend as `X-Forwarded-For`) → `backend` (trusts that header only when the connection comes from a private/loopback address, i.e. your Docker network). Set these on the **`frontend`** service:
-
-| Variable | Value | Meaning |
-|----------|-------|---------|
-| `ORIGIN` | `https://neighbourgood.example.com` | Public URL users type; required for form posts and redirects |
-| `ADDRESS_HEADER` | `X-Forwarded-For` | Read the client IP from this header |
-| `XFF_DEPTH` | `1` | Number of trusted proxies in front of the frontend. The client IP is taken that many entries from the **right** of the header, so a client cannot spoof it. Use `2` if a second proxy (e.g. a CDN) sits in front of your nginx/Caddy and appends its own entry |
-
-When `ADDRESS_HEADER` is set, the proxy **must always send that header**, otherwise the frontend answers with a 500. Also keep the `frontend` port reachable only from the proxy (bind it to `127.0.0.1:3800` or an internal Docker network), and do not publish the backend's port 8300 to the internet.
-
-**nginx**
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name neighbourgood.example.com;
-    # ssl_certificate / ssl_certificate_key ...
-
-    client_max_body_size 10m;   # image uploads
-
-    location / {
-        proxy_pass http://127.0.0.1:3800;
-        proxy_set_header Host $host;
-        # Appends the connecting client's address to any X-Forwarded-For the
-        # client sent, so the rightmost entry (XFF_DEPTH=1) is always genuine.
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-**Caddy**
-
-```caddy
-neighbourgood.example.com {
-    # Caddy sets X-Forwarded-For (overwriting anything the client sent) and
-    # handles TLS certificates automatically.
-    reverse_proxy 127.0.0.1:3800
-}
-```
-
-**docker-compose.yml** (`frontend` service)
-
-```yaml
-    environment:
-      ORIGIN: "https://neighbourgood.example.com"
-      PORT: "3800"
-      API_BACKEND: "http://backend:8300"
-      ADDRESS_HEADER: "X-Forwarded-For"
-      XFF_DEPTH: "1"
-```
-
-Also set `NG_CORS_ORIGINS='["https://neighbourgood.example.com"]'` and `NG_FRONTEND_URL=https://neighbourgood.example.com` for the backend. You can check that it works by logging in from two different networks and confirming that failed logins on one do not rate-limit the other.
-
-#### Outbound webhooks and private addresses
-
-Webhook URLs are rejected when they use a scheme other than `http`/`https` or resolve to a private, loopback, link-local, reserved or multicast address (SSRF protection); the check runs when the webhook is created and again at every delivery. Self-hosters who need to notify a service on their LAN can set `NG_WEBHOOK_ALLOW_PRIVATE=true`.
-
----
-
-### Local Development (without Docker)
-
-Use this when you want fast hot-reload and don't need a full Postgres instance. The backend defaults to SQLite.
-
-**Backend** — runs on http://localhost:8300
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-# NG_DEBUG=true allows the default secret key and uses SQLite
-NG_DEBUG=true uvicorn app.main:app --reload --port 8300
-```
-
-**Frontend** — runs on http://localhost:5173
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The Vite dev server automatically proxies `/api/*` requests to the backend at `:8300`, so you only need to open http://localhost:5173 in your browser.
-
-| Service | URL |
-|---------|-----|
-| Web app (dev) | http://localhost:5173 |
-| Backend API | http://localhost:8300 |
-| API docs | http://localhost:8300/docs |
-
-<a id="system-requirements"></a>
-## System Requirements
-
-### Minimum (VPS / Self-hosting)
-
-| Resource | Minimum | Recommended |
-|----------|---------|-------------|
-| CPU | 1 vCPU | 2 vCPU |
-| RAM | 512 MB | 1 GB |
-| Disk | 5 GB | 20 GB |
-| OS | Linux (any modern distro) | Ubuntu 22.04 LTS |
-| Docker | 24+ | latest |
-| Docker Compose | v2 plugin | latest |
-| Open ports | 80, 443 (or 3800/8300 direct) | + 22 for SSH |
-
-A $5–6/month VPS (e.g. Hetzner CX11, DigitalOcean Basic) is sufficient for a small community (< 200 users). PostgreSQL runs inside Docker — no separate DB server needed.
-
-### Advanced: Local AI features
-
-The smart matching engine and Telegram AI assistant support an optional LLM backend (Ollama or any OpenAI-compatible API). If you want to run AI **locally**:
-
-| Resource | Minimum | Notes |
-|----------|---------|-------|
-| CPU | 4+ cores | Inference is slow on < 4 cores |
-| RAM | 8 GB | 16 GB recommended for 7B models |
-| Disk | 10 GB extra | Per model (e.g. `llama3.2:3b` ≈ 2 GB, `mistral:7b` ≈ 4 GB) |
-| GPU (optional) | CUDA / ROCm / Apple Silicon | Dramatically faster; not required |
-
-Recommended model for low-resource hosts: `llama3.2:3b` via [Ollama](https://ollama.com). See [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md) for configuration. Without a local LLM configured, all features remain available — AI re-ranking simply falls back to rule-based matching.
-
----
-
-<a id="project-structure"></a>
-## Project Structure
-
-```
-neighbourgood/
-├── brand/                      # Brand kit: logo, mark and wordmark as SVG + PNG, colour guide
-├── docs/                       # README illustrations (e.g. the Red Sky animation)
-├── backend/
-│   ├── app/
-│   │   ├── main.py            # FastAPI application entry point
-│   │   ├── config.py           # Settings and environment config
-│   │   ├── database.py         # SQLAlchemy database setup
-│   │   ├── dependencies.py     # Auth dependencies (get_current_user)
-│   │   ├── models/             # SQLAlchemy models (User, Resource, Booking, Message, Community)
-│   │   ├── routers/            # API route handlers
-│   │   ├── schemas/            # Pydantic request/response schemas
-│   │   └── services/           # Business logic (auth, JWT, email notifications)
-│   ├── alembic/                # Database migrations
-│   ├── tests/                  # Backend tests
-│   ├── requirements.txt
-│   └── Dockerfile
-├── frontend/
-│   ├── src/
-│   │   ├── routes/             # SvelteKit pages
-│   │   ├── lib/                # Shared components, API client, stores
-│   │   └── app.css             # Global styles (Blue/Red Sky themes)
-│   ├── static/                 # Static assets and PWA manifest
-│   ├── package.json
-│   └── Dockerfile
-├── docker-compose.yml          # One-command deployment
-├── .env.example                # Configuration template
-├── CHANGELOG.md
-└── README.md
-```
-
-<a id="brand-and-design"></a>
-## Brand and Design
-
-The logo is a house on a rounded violet tile; its door is an arch, so it stays readable at favicon size. The wordmark is **Neighbour** in the text colour and **Good** in violet, set in Fraunces. There is no orange or amber anywhere in the palette: warnings use a warm brown, and star ratings use the brand violet.
-
-| Mode | Look |
+| | |
 |---|---|
-| Blue Sky, light | Warm cream background, violet (`#4f46e5`) for actions, links and the logo tile, warm brown for small labels |
-| Blue Sky, dark | Deep night blue, lighter violet (`#818cf8`) |
-| Red Sky | Always dark, warm near-black surfaces, red (`#dc2626`) as the only colour; the logo becomes a light tile with a dark house |
+| [Self-hosting](docs/self-hosting.md) | Install with Docker, updates, reverse proxy (nginx/Caddy), backups, local AI |
+| [Configuration](docs/configuration.md) | All `NG_` settings |
+| [Telegram setup](docs/telegram-setup.md) · [Telegram assistant](docs/telegram-agent.md) | Connect the bot; customise its tone and abilities |
+| [Mesh networking](docs/mesh-networking.md) | Offline crisis communication over Bluetooth |
+| [Brand and design](docs/design.md) | Logo, colours, typefaces; brand kit in [`brand/`](brand/) |
+| [Development](docs/development.md) | Tech stack, local setup, tests, project structure |
+| [API reference](docs/api.md) | All endpoints; interactive docs at `/docs` on a running server |
+| [Roadmap](docs/roadmap.md) | What's done and what's next |
+| [Changelog](CHANGELOG.md) · [Security policy](SECURITY.md) | Release history; how to report vulnerabilities |
 
-Typefaces: Fraunces for headings and the wordmark, Inter for the interface, JetBrains Mono for labels and code (all SIL Open Font License).
-
-**Brand kit:** [`brand/`](brand/) holds the logo, mark, wordmark and app icons as SVG and PNG for light, dark, Red Sky, black and white, with a usage and colour guide in [`brand/README.md`](brand/README.md). All colours in the app come from CSS custom properties in [`frontend/src/app.css`](frontend/src/app.css). The website's design rules are in [neighbourgood/ng-website `DESIGN.md`](https://github.com/neighbourgood/ng-website/blob/main/DESIGN.md).
-
-<a id="offline-first-mesh-networking"></a>
-## Offline-First Mesh Networking
-
-When the internet goes down, NeighbourGood keeps working. In Red Sky mode the web app can connect to a nearby native [BitChat](https://github.com/permissionlesstech/bitchat) node over Bluetooth Low Energy (BLE) and relay crisis data — emergency tickets, votes, pings — through the mesh without any internet connectivity at all.
-
-### How it works
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         INTERNET DOWN                                │
-└──────────────────────────────────────────────────────────────────────┘
-
-  ┌─────────────────────────┐        ┌────────────────────────────────┐
-  │   NeighbourGood         │        │   NeighbourGood                │
-  │   Web App (Chrome)      │        │   Web App (Chrome)             │
-  │                         │        │                                │
-  │  [Connect to Mesh] btn  │        │  Receives mesh tickets         │
-  │  Status: ● Connected    │        │  with "via BLE mesh" badge     │
-  └──────────┬──────────────┘        └──────────────┬─────────────────┘
-             │ Web Bluetooth (1 GATT connection)     │ Web Bluetooth
-             │                                       │
-  ┌──────────▼──────────────┐        ┌──────────────▼─────────────────┐
-  │  BitChat Native Node    │        │  BitChat Native Node           │
-  │  (iOS / Android)        │        │  (iOS / Android)               │
-  │                         │        │                                │
-  │  Acts as BLE relay      ◄────────►  Acts as BLE relay             │
-  │  Handles mesh routing   │  BLE   │  Handles mesh routing          │
-  │  Multi-hop, up to 7 hops│  Mesh  │  Store-and-forward             │
-  └──────────┬──────────────┘        └──────────────┬─────────────────┘
-             │                                       │
-             └──────────────────┬────────────────────┘
-                                │
-             ┌──────────────────▼────────────────────┐
-             │  More BitChat nodes in the            │
-             │  neighbourhood — no limit on count    │
-             │  or distance (up to 7 hops / ~700m)   │
-             └───────────────────────────────────────┘
-
-  ┌──────────────────────────────────────────────────────────────────┐
-  │                    INTERNET RETURNS                              │
-  │                                                                  │
-  │  NeighbourGood shows "Sync N messages" button                    │
-  │  POST /mesh/sync  →  server deduplicates by message UUID         │
-  │  Emergency tickets and votes appear on the server                │
-  └──────────────────────────────────────────────────────────────────┘
-```
-
-### Message flow
-
-Every NeighbourGood crisis action (create ticket, cast vote) is wrapped in a small JSON envelope, signed by the sender's device and encoded as a standard BitChat broadcast message. Messages larger than one BLE packet are split into fragments and reassembled on arrival:
-
-```json
-{
-  "ng": 1,
-  "type": "emergency_ticket",
-  "community_id": 42,
-  "sender_name": "Alice",
-  "ts": 1741910400000,
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "author_user_id": 7,
-  "key_id": "x3Jm…",
-  "sig": "q8Zt…",
-  "data": {
-    "title": "Need drinking water — north block",
-    "ticket_type": "request",
-    "urgency": "critical",
-    "client_id": "9b2f…"
-  }
-}
-```
-
-Native BitChat apps relay this message through the mesh without needing to understand its contents. Other NeighbourGood web clients receive it and display it immediately with a "via BLE mesh" badge.
-
-**Signatures.** Each browser creates an ECDSA P-256 key pair (the private key never leaves the device) and registers the public key with the server while online. On sync the server verifies the signature, so a ticket relayed by a neighbour is credited to its real author. Unsigned messages are still accepted but stored as relayed by whoever synced them and labelled "original sender unverified"; votes and check-ins on behalf of someone else need the author's signature. The signing format is specified in `backend/app/services/mesh_signing.py`.
-
-**Replay protection.** Messages older than `NG_MESH_MAX_MESSAGE_AGE_HOURS` (default 72) are refused, signed messages are deduplicated per author, and crisis mode can never be switched over the mesh (only online, by a community admin or the vote).
-
-### How to use it
-
-> **Requirements:** Chrome or Edge (desktop or Android). Web Bluetooth is not available in Firefox or Safari. A nearby device running the [native BitChat app](https://apps.apple.com/us/app/bitchat-mesh/id6748219622) is required.
-
-1. **Switch your community to Red Sky mode** — the mesh panel only appears during crises.
-2. **Open the Mesh page once while you are still online** (enable mesh in Settings first). This registers your device's signing key; you can see and revoke your devices there.
-3. **Open the Emergency (Triage) page** in Chrome.
-4. **Click "Connect to Mesh"** — Chrome shows a device picker listing nearby BitChat nodes.
-5. **Select a node** — the status dot turns green and peer count appears.
-6. **Create emergency tickets offline** — the form button becomes "Broadcast via Mesh". Your ticket travels through the BLE mesh to other NeighbourGood users.
-7. **When internet returns** — click "Sync N messages" to push mesh-received data to the server. The server deduplicates by message UUID so re-syncing is safe.
-
-### Architecture decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Gateway model (1 BLE connection) | Web Bluetooth supports only 1–2 simultaneous connections; native apps do the multi-hop routing |
-| Native fork unmodified | NG data is encoded as standard BitChat broadcast messages — no Swift/Kotlin changes needed |
-| JSON in bitchat body | Simple, debuggable, and relay-transparent — native nodes forward without parsing |
-| UUID deduplication on server | Safe to replay mesh sync multiple times; idempotent regardless of network partitions |
-| Per-device ECDSA P-256 signatures | Relays can't impersonate authors; WebCrypto supports P-256 in every browser with Web Bluetooth |
-| Ticket `client_id` | The same ticket arriving via mesh and via the offline REST queue is stored once |
-| Chrome/Edge only | Web Bluetooth standard; Firefox/Safari do not support it as of 2026 |
-
-<a id="api"></a>
-## API
-
-See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Interactive docs at `/docs` when the backend is running.
-
-<a id="roadmap"></a>
 ## Roadmap
 
-### Phase 1 — Foundation (MVP)
+NeighbourGood is in active use and development. Next up:
 
-- [x] Project scaffold (FastAPI + SvelteKit + Docker)
-- [x] `/status` endpoint with dual-mode indicator
-- [x] Blue Sky / Red Sky CSS theme system
-- [x] User registration and authentication (JWT)
-- [x] User profiles with neighbourhood assignment
-- [x] Basic resource listing (CRUD for items)
-- [x] Resource detail page
-- [x] SQLite database with Alembic migrations
+- An admin dashboard with usage analytics
+- Signal and Matrix alongside Telegram
+- Notification emails in each member's language, and more languages
+- Audit logging, automated encrypted backups and automated security checks
 
-### Phase 2 — Core Sharing
+Full list: [docs/roadmap.md](docs/roadmap.md).
 
-- [x] Resource categories (tools, vehicles, electronics, furniture, food, clothing)
-- [x] Image upload for resources
-- [x] Search and filter resources
-- [x] Calendar-based booking system
-- [x] Request/approve flow for borrowing
-- [x] User messaging (in-app)
-- [x] Email notifications
-
-### Phase 3 — Community & Trust
-
-- [x] Skill exchange listings (offer/request with 10 categories)
-- [x] Reputation/trust score system (computed from activity, 5 levels)
-- [x] Community feed / activity timeline (auto-generated from events)
-- [x] Community events — create, browse, RSVP; 9 categories, upcoming filter, max-attendee cap (v1.8.0)
-- [x] Neighbourhood groups (Hybrid: PLZ-based with custom names)
-- [x] Community merge function with auto-suggestions
-- [x] Onboarding flow (search/join/create community)
-- [x] Community-scoped resources (soft scoping with community_id)
-- [x] Instance identity and `/instance/info` endpoint (federation prep)
-- [x] PostgreSQL production default (Docker Compose)
-- [x] Invite system for new members (code-based, with expiry/max uses)
-- [x] Rating and review system for transactions (1-5 stars, per-booking)
-- [x] Skill reviews & endorsements — community members can rate skill providers (v2.0.0)
-- [x] Trust badges — Reliable Borrower, Trusted Lender, Skilled Helper (v2.0.0)
-- [x] Public user profile page with trust summary, badges, and paginated reviews (v2.0.0)
-
-### Phase 3.5 — Federation Preparation
-
-- [x] Instance metadata with admin accountability (name, region, contact)
-- [x] `/instance/info` public endpoint for directory crawling
-- [x] Instance directory (discover other NeighbourGood instances)
-- [x] Cross-instance Red Sky alerts
-- [x] User data export (portable backup)
-- [x] Instance migration tooling
-
-### Phase 4 — Red Sky Mode
-
-- [x] Admin toggle for crisis mode (per-community)
-- [x] Community vote mechanism for mode activation (60% threshold)
-- [x] Emergency ticketing system (Request / Offer / Emergency Ping)
-- [x] Neighbourhood leader roles and assignment
-- [x] Explore page with community map for unregistered users
-- [x] Low-bandwidth UI variant (text-only, image-free mode)
-- [x] Essential resource inventory tracking (quantity-based stock management)
-- [x] Priority-based ticket triage (triage dashboard for leaders/admins)
-
-#### Security Phase 4a — Hardening
-
-- [x] Password strength validation (min 8 chars, uppercase + lowercase + digit)
-- [x] Email format validation (EmailStr)
-- [x] Security response headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS)
-- [x] Secret key validation (reject default key in production, require 32+ chars)
-- [x] File upload hardening (magic byte validation, extension sanitisation)
-- [x] Input length limits on all user-facing schemas
-
-#### Security Phase 4b — Access Control
-
-- [x] Rate limiting on auth endpoints (login, register) — 5 req/min; general 60 req/min; uploads 10 req/min (v1.7.0)
-- [x] Account lockout after repeated failed login attempts — 5 failures in 15 min → 15-min lockout (v1.7.0)
-- [x] CSRF protection for state-changing operations — Origin + X-CSRF-Token validation (v1.7.0)
-- [x] Session invalidation on password change, email change and password reset (v2.4.0)
-- [ ] Audit logging for admin actions
-
-#### Security Phase 4c — Data Protection
-
-- [ ] Field-level encryption for sensitive data (email, messages)
-- [ ] Automated database backups with encryption at rest
-- [ ] PII anonymisation for deleted accounts
-- [ ] Content Security Policy tuning per route
-- [ ] Dependency vulnerability scanning (CI integration)
-
-### Phase 5 — Offline & Resilience
-
-- [x] Full PWA with service worker caching (v0.9.9)
-- [x] Offline item browsing and request queuing (v1.1.0)
-- [x] Background sync when connectivity returns (v1.1.0)
-- [x] Data export and backup tools (v1.1.0)
-- [x] BLE mesh gateway for internet-free crisis coordination (v1.2.0)
-
-#### Security Phase 5a — Infrastructure
-
-- [ ] TLS certificate automation (Let's Encrypt)
-- [ ] Container image scanning and hardening
-- [ ] Network segmentation (backend ↔ database)
-- [ ] Secrets management (Vault / sealed secrets)
-- [ ] Incident response runbook
-
-### Phase 6 — Advanced Features
-
-- [x] Smart matching with AI enhancement (v1.5.0) — rule-based skill/resource matching + optional Ollama/OpenAI re-ranking
-- [x] Mesh networking (BitChat BLE gateway) (v1.2.0) — offline crisis comms via Bluetooth mesh
-- [x] Decentralized data sync between instances (v1.4.0) — pull-based federation sync with public snapshot endpoint, incremental cursors, and federated resource/skill browsing
-- [x] Federation explorer UI (v1.9.0) — instance directory browser, federated resource/skill pages, cross-instance alert banners, enriched instance stats
-- [x] Enhanced BLE mesh networking (v1.9.5) — 10-phase overhaul: mesh dashboard, auto-sync, resource sharing, check-ins, multi-hop relay, analytics (the unused E2E encryption and multi-device code was removed in v2.4.0)
-- [x] Signed mesh messages, fragmentation and replay protection (v2.4.0)
-- [x] Multi-language support (i18n) (v1.1.0) — 12 languages with RTL support
-- [x] Community events (v1.8.0) — create, browse and RSVP to local events (repair cafés, workshops, seed swaps, meetups); 9 categories, max-attendee cap, upcoming filter, full-text search
-- [ ] Admin dashboard with analytics
-- [x] Outbound webhook system with HMAC-SHA256 signing (generic integrations)
-- [x] Telegram bot integration (personal notifications, community group alerts, bot commands) + AI natural language interface (v1.6.0)
-- [ ] Signal integration
-- [ ] Matrix integration
-
-<a id="telegram-bot--ai-assistant"></a>
-## Telegram Bot & AI Assistant
-
-NeighbourGood includes a Telegram bot with an AI-powered natural language interface — members can search resources, find skills, and coordinate during crises directly from Telegram without opening the app.
-
-See **[TELEGRAM_SETUP.md](TELEGRAM_SETUP.md)** for the full setup guide, including:
-- Creating and configuring your bot
-- Linking personal accounts and community groups
-- Setting up local AI with Ollama (model recommendations included)
-- What the agent can and cannot do
-- Slash command reference and notification event table
-
-To customise the agent's behaviour, tone, or available intents, see **[TELEGRAM_AGENT.md](TELEGRAM_AGENT.md)**.
-
-<a id="contributing"></a>
 ## Contributing
 
-Contributions, ideas and feedback are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first; [CLAUDE.md](CLAUDE.md) describes the code conventions in detail.
+Help is welcome, and not only with code: translations, testing with a real neighbourhood, design and documentation all count. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Developers start with [docs/development.md](docs/development.md); code conventions are in [CLAUDE.md](CLAUDE.md).
 
-Before opening a pull request, run:
-
-```bash
-cd backend && pytest                     # backend tests
-cd frontend && npm run check             # svelte-check + TypeScript
-cd frontend && npm test                  # frontend unit tests
-cd frontend && npm run check:i18n        # every UI string exists in all 12 languages
-```
-
-New UI text needs a key in all 12 locale files. Use the CSS custom properties in `frontend/src/app.css` instead of hard-coded colours, and keep Red Sky free of any colour other than red.
-
-<a id="license"></a>
 ## License
 
-NeighbourGood is free software under the [GNU General Public License v3.0](LICENSE). The fonts used in the brand kit (Fraunces, Inter, JetBrains Mono) are under the SIL Open Font License.
+NeighbourGood is free software under the [GNU General Public License v3.0](LICENSE). The brand kit's typefaces (Fraunces, Inter, JetBrains Mono) are under the SIL Open Font License.

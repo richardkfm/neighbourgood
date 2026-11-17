@@ -1,5 +1,7 @@
 # Plan: Telegram NL Interface (AI-powered)
 
+> **Archived plan.** Kept for history; parts of it are outdated. Current status and open work: [docs/roadmap.md](../roadmap.md).
+
 ## Goal
 
 Extend the existing Telegram bot webhook so that linked users can send **natural language messages**

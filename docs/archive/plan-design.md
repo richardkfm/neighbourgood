@@ -1,5 +1,7 @@
 # Design & Layout Redesign Plan
 
+> **Archived plan.** Kept for history; parts of it are outdated. Current status and open work: [docs/roadmap.md](../roadmap.md).
+
 **Goal:** Improve the overall visual identity of NeighbourGood — original logo, better typography, consistent layout, fully responsive.
 
 ---
