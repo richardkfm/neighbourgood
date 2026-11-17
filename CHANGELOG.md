@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased] - 2026-11-17
+
+### Documentation
+
+- **README rewritten for communities and organisers** — what NeighbourGood does in Blue Sky and Red Sky, a new *Use it from Telegram* section for members, connected communities (federation), the one-line installer as the way to get started, a documentation index and a short roadmap. Down from 585 to about 120 lines
+- **Longer content moved to `docs/`** — new `self-hosting.md` (installer, Docker, updates, reverse proxy, webhooks, local AI, backups), `configuration.md` (every `NG_` setting, incl. Telegram/AI and limits), `development.md` (tech stack, local setup, checks, migrations, project structure), `mesh-networking.md`, `design.md` and a `docs/README.md` index
+- **Moved** `API_ENDPOINTS.md` → `docs/api.md`, `TELEGRAM_SETUP.md` → `docs/telegram-setup.md`, `TELEGRAM_AGENT.md` → `docs/telegram-agent.md`
+- **One roadmap** — new `docs/roadmap.md` with what's done and what's open (admin dashboard, Signal/Matrix, emails in the member's language, audit log, backups, CI and dependency scanning, …). The outdated `PLAN*.md` files moved to `docs/archive/` with a note that they are historical
+- Corrected the general rate limit in CLAUDE.md (200 requests/min, not 60)
+
 ## [2.7.0] - 2026-11-17
 
 ### Changed

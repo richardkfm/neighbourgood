@@ -54,18 +54,16 @@ Current test count: **711 tests** across 39 test files (plus 15 frontend `node:t
 neighbourgood/
 ├── CLAUDE.md               # This file
 ├── brand/                  # Brand kit (logo SVG/PNG, colours) — see brand/README.md
-├── docs/                   # README illustrations (animated Red Sky flow SVG)
-├── README.md               # User-facing docs and quick start
-├── CHANGELOG.md            # Full version history (v0.1.0 → v1.1.0)
-├── PLAN.md                 # Security hardening roadmap (phases 4a–5a)
-├── PLAN_DESIGN.md          # UI/UX redesign plan
-├── PLAN_I18N.md            # Internationalization plan
-├── API_ENDPOINTS.md        # Full endpoint reference
+├── docs/                   # All longer docs: self-hosting, configuration, development,
+│   │                       #   mesh-networking, design, api, telegram-*, roadmap
+│   └── archive/            # Old PLAN_*.md files, kept for history
+├── README.md               # Short, organiser-facing overview; links into docs/
+├── CHANGELOG.md            # Full version history
 ├── SECURITY.md             # Security policy and vulnerability reporting
 ├── CONTRIBUTING.md         # Contribution guidelines
 ├── CODE_OF_CONDUCT.md      # Community code of conduct
 ├── .env.example            # Config template — copy to .env before running
-├── .github/                # GitHub Actions workflows
+├── install.sh              # One-line installer (Docker, or native fallback)
 ├── docker-compose.yml      # Production-style 3-service stack
 │
 ├── backend/
@@ -377,7 +375,7 @@ Shared TypeScript interfaces that mirror backend Pydantic schemas. Always import
 
 ## API Endpoint Map
 
-Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
+Full reference: `docs/api.md`. Interactive: `http://localhost:8300/docs`.
 
 | Prefix | Router file | Description |
 |--------|-------------|-------------|
@@ -404,7 +402,7 @@ Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
 
 ---
 
-## Security State (from PLAN.md)
+## Security State (open items: docs/roadmap.md)
 
 ### Phase 4a — Implemented in v0.8.0 ✅
 
@@ -417,7 +415,7 @@ Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
 
 ### Phase 4b — Implemented in v1.7.0 ✅
 
-- **Rate limiting** on auth endpoints (`/auth/login`, `/auth/register`): 5 req/min per IP; general API: 60 req/min; uploads: 10 req/min — `app/middleware/rate_limit.py` (in-memory sliding window, `429` with `Retry-After` header)
+- **Rate limiting** on auth endpoints (`/auth/login`, `/auth/register`): 5 req/min per IP; general API: 200 req/min; uploads: 10 req/min — `app/middleware/rate_limit.py` (in-memory sliding window, `429` with `Retry-After` header)
 - **Account lockout**: failed login attempts tracked per email; 15-min lockout after 5 failures in 15 min — `app/services/lockout.py`, checked in `routers/auth.py`
 - **CSRF protection** for state-changing operations — `app/middleware/csrf.py` (double-submit Origin + `X-CSRF-Token` validation)
 - **Hardened auth responses** — unified `"Invalid credentials"` error to prevent user enumeration
@@ -618,7 +616,7 @@ If you only have the English string, add the key with the English value as a pla
    - Root: Check `README.md` or `.env.example` for hardcoded version strings
    - Use **semantic versioning** (major.minor.patch, e.g., `1.9.5.1` → `1.9.6`)
 
-2. **README update**: If changes affect setup, deployment, or feature usage, update `README.md` with:
+2. **Docs update**: Keep `README.md` short and written for communities/organisers; put setup, configuration and technical detail in the matching file under `docs/` (new `NG_` settings → `docs/configuration.md`, deployment → `docs/self-hosting.md`, finished/open work → `docs/roadmap.md`). If changes affect setup, deployment, or feature usage, update:
    - New environment variables or configuration
    - Installation or development workflow changes
    - New features or API changes visible to users
