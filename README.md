@@ -9,7 +9,7 @@
 
 NeighbourGood is a free, self-hostable web app for neighbourhoods. People lend each other tools and equipment, offer skills, organise local events and get to know each other. When a flood, storm or power cut hits, the same community switches to crisis mode with one action and coordinates help, even over Bluetooth when the internet is down.
 
-v2.8.0 · 12 languages · [GPL-3.0](LICENSE)
+v2.8.1 · 12 languages · [GPL-3.0](LICENSE)
 
 [What it does](#what-it-does) · [Everyday: Blue Sky](#everyday-blue-sky) · [Crisis: Red Sky](#crisis-red-sky) · [Telegram](#use-it-from-telegram) · [Connected communities](#connected-communities) · [Get started](#get-started) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing)
 

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.1] - 2026-11-17
+
+### Changed
+
+- **No more coloured stripes on cards** — the communities page drew your community card with a green stripe on the left and a gradient, and marked your community in the list the same way; the explore list did the same for active communities. These now use the calm design-A card: a plain surface, a slightly darker border, and the existing "Your community" badge. Section headings on the communities page match the quiet serif titles elsewhere. Stripes that carry meaning (alert severity, error messages, crisis panel) stay
+
 ## [2.8.0] - 2026-11-17
 
 ### Changed
