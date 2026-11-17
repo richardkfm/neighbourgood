@@ -24,6 +24,13 @@ The app has two states:
 
 ## Everyday: Blue Sky
 
+Crises are rare. Most days NeighbourGood is simply where neighbours lend and borrow things, swap skills and meet each other, and that everyday use is what makes the network work when it's needed.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/resources-dark.png">
+  <img src="docs/images/resources-light.png" alt="The shared resources list of a Berlin neighbourhood: a cordless drill, a cargo bike, a projector, beer tables and benches, a sewing machine and a ladder, each lent by a named neighbour" width="880">
+</picture>
+
 - **Lend and borrow.** List things you can lend (tools, vehicles, electronics, furniture, …), book them for specific dates, and approve or decline requests.
 - **Swap skills.** Offer what you can do (repairs, tutoring, cooking, languages) or ask for help.
 - **Local events.** Repair cafés, workshops, seed swaps, street parties, with RSVP and attendee limits.
@@ -32,11 +39,6 @@ The app has two states:
 - **Community feed and map.** See what's new nearby; guests can find communities on a public map before signing up.
 - **In your language.** English, German, French, Spanish, Dutch, Greek, Ukrainian, Arabic, Farsi, Swahili, Indonesian and Sundanese, with right-to-left layouts for Arabic and Farsi.
 - **Works on phones.** Install it like an app; browsing and requests keep working when the connection drops and are sent once you're back online.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/onboarding-dark.png">
-  <img src="docs/images/onboarding-light.png" alt="The onboarding wizard, step 1 of 3: searching for Berlin finds three neighbourhood communities to join, or you can create a new one" width="880">
-</picture>
 
 ## Crisis: Red Sky
 

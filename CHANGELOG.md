@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Moved** `API_ENDPOINTS.md` → `docs/api.md`, `TELEGRAM_SETUP.md` → `docs/telegram-setup.md`, `TELEGRAM_AGENT.md` → `docs/telegram-agent.md`
 - **One roadmap** — new `docs/roadmap.md` with what's done and what's open (admin dashboard, Signal/Matrix, emails in the member's language, audit log, backups, CI and dependency scanning, …). The outdated `PLAN*.md` files moved to `docs/archive/` with a note that they are historical
 - Corrected the general rate limit in CLAUDE.md (200 requests/min, not 60)
-- **New onboarding screenshot** in the README — step 1 of the wizard with search results, in light and dark (GitHub shows the one matching the reader's theme); images live in `docs/images/` instead of an external attachment
+- **New README screenshot of everyday sharing** — the shared resources list of a demo neighbourhood (drill, cargo bike, projector, beer tables, …) replaces the old onboarding screenshot, so readers see right away that NeighbourGood is mostly an everyday sharing app; light and dark versions (GitHub shows the one matching the reader's theme) live in `docs/images/` instead of an external attachment. The Blue Sky section opens with a line saying so
 
 ## [2.7.0] - 2026-11-17
 
