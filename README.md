@@ -5,7 +5,7 @@
   </picture>
 </h1>
 
-**v2.6.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v2.7.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Brand and Design](#brand-and-design) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -297,7 +297,7 @@ neighbourgood/
 <a id="brand-and-design"></a>
 ## Brand and Design
 
-The logo is a house on a rounded violet tile; its door is an arch, so it stays readable at favicon size. The wordmark is **Neighbour** in the text colour and **Good** in violet, set in Fraunces. There is no orange anywhere in the palette.
+The logo is a house on a rounded violet tile; its door is an arch, so it stays readable at favicon size. The wordmark is **Neighbour** in the text colour and **Good** in violet, set in Fraunces. There is no orange or amber anywhere in the palette: warnings use a warm brown, and star ratings use the brand violet.
 
 | Mode | Look |
 |---|---|

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.7.0] - 2026-11-17
+
+### Changed
+
+- **No amber in light and dark mode** — `--color-warning` is now a warm brown that fits the palette: `#6b4a33` on `#f3e7da` in light mode, `#d4bc9f` on `#2e241b` in dark mode. This covers pending bookings, offline and cache notices, the queued-requests box, "high" urgency, warning-level federation alerts, mesh reconnecting/sync hints, skill "request" badges and the leader badge
+- **Star ratings are violet** — new `--color-rating` token (follows `--color-primary-text`: violet in light and dark, rose-red in Red Sky). Trust stars, review stars, rating breakdowns and the star buttons when rating a booking use it instead of the warning colour, because a rating is a score, not a warning
+
+### Removed
+
+- Hard-coded amber fallbacks (`#f59e0b`, `#92400e`, `rgba(245, 158, 11, …)`) in `var(--color-warning, …)` across the layout banners, resources, bookings, communities and mesh pages
+
 ## [2.6.0] - 2026-11-17
 
 ### Changed

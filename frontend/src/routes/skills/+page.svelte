@@ -424,7 +424,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		color: var(--color-warning);
+		color: var(--color-rating);
 		font-weight: 600;
 	}
 

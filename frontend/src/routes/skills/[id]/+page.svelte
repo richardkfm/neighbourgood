@@ -546,7 +546,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		color: var(--color-warning);
+		color: var(--color-rating);
 		font-weight: 600;
 	}
 
@@ -609,7 +609,7 @@
 
 	.review-item-stars {
 		display: inline-flex;
-		color: var(--color-warning);
+		color: var(--color-rating);
 	}
 
 	.review-item-date {
@@ -663,7 +663,7 @@
 	}
 
 	.star-btn.active {
-		color: var(--color-warning);
+		color: var(--color-rating);
 	}
 
 	.review-form textarea {
