@@ -307,10 +307,8 @@
 	<div class="nav-inner">
 		<a href={$isLoggedIn ? '/dashboard' : '/'} class="nav-brand" onclick={closeMobileMenu}>
 			<span class="brand-icon" aria-hidden="true">
-				<svg width="18" height="17" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<path d="M1 8.5L9 1l8 7.5" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-					<path d="M3 8.5v7a.5.5 0 00.5.5H7v-4.5h4V16h3.5a.5.5 0 00.5-.5v-7" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-					<path d="M9 12c0 0-2.2-1.7-2.2-3 0-.8.6-1.3 1.4-1 .3.1.6.4.8.7.2-.3.5-.6.8-.7.8-.3 1.4.2 1.4 1 0 1.3-2.2 3-2.2 3z" fill="white" opacity="0.9"/>
+				<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+					<path d="M16 6.5 6 14.2V25.5h7.2v-6a2.8 2.8 0 0 1 5.6 0v6H26V14.2z" fill="currentColor"/>
 				</svg>
 			</span>
 			<span class="brand-text">Neighbour<span class="brand-accent">Good</span></span>
@@ -621,10 +619,16 @@
 		justify-content: center;
 		width: 34px;
 		height: 34px;
-		border-radius: var(--radius-sm);
-		background: var(--color-accent);
-		color: var(--color-on-accent);
+		border-radius: 8px;
+		/* The logo tile follows the mode colour: violet in Blue Sky, red in Red Sky. */
+		background: var(--color-primary);
+		color: var(--color-on-primary);
 		flex-shrink: 0;
+	}
+
+	.brand-icon svg {
+		width: 100%;
+		height: 100%;
 	}
 
 	.brand-text {
@@ -636,7 +640,7 @@
 	}
 
 	.brand-accent {
-		color: var(--color-accent);
+		color: var(--color-primary-text);
 	}
 
 	/* ── Hamburger button (hidden on desktop) ────────────────── */

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.5.0] - 2026-11-17
+
+### Changed
+
+- **New logo** — the house mark is redrawn as a rounded tile with an arched door (it used to have a heart). It reads at 16 px and matches the website (v1.3.0). The nav logo tile now uses the mode colour: violet in Blue Sky, red in Red Sky. "Good" in the wordmark is violet
+- **No more orange** — `--color-accent` (kickers, small labels, mesh hub nodes, the update banner) is now warm brown (`#7a5c47` light, `#c9b8a6` dark) instead of terracotta. Red Sky keeps its amber accent for warnings
+- **App icons and theme colour** — `favicon.png`, `icon.svg`, `icon-192.png`, `icon-512.png` and `apple-touch-icon.png` use the new mark. `theme-color` in `app.html`, `manifest.json` and the offline page is now violet `#4f46e5`. The offline page shows the new logo
+
+### Added
+
+- **Brand kit in `brand/`** — the horizontal logo, the mark, the wordmark and a house glyph as SVG and PNG, each for light, dark, Red Sky, black and white. The wordmark is converted to outlines, so no font is needed. Marks come in 16–1024 px, plus a full-bleed maskable app icon. `brand/README.md` covers usage, clear space, minimum sizes, colours and typefaces
+- **Maskable PWA icon** — `icon-512-maskable.png` keeps the house inside the safe zone, so Android no longer crops the rounded tile
+
 ## [2.4.2] - 2026-10-01
 
 ### Fixed

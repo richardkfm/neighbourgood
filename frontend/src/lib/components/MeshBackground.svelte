@@ -28,12 +28,12 @@
 		let lastSpawn = 0;
 		let lastFrame = 0;
 		let rafId = 0;
-		let colors = { line: '#4f46e5', node: '#4f46e5', hub: '#c95d1b', pulse: '#4f46e5' };
+		let colors = { line: '#4f46e5', node: '#4f46e5', hub: '#7a5c47', pulse: '#4f46e5' };
 
 		function readColors() {
 			const styles = getComputedStyle(document.documentElement);
 			const primary = styles.getPropertyValue('--color-primary').trim() || '#4f46e5';
-			const accent = styles.getPropertyValue('--color-accent').trim() || '#c95d1b';
+			const accent = styles.getPropertyValue('--color-accent').trim() || '#7a5c47';
 			colors = { line: primary, node: primary, hub: accent, pulse: primary };
 		}
 
