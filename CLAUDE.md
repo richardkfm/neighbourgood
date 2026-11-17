@@ -20,7 +20,7 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.4.2** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.5.0** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
@@ -53,6 +53,7 @@ Current test count: **711 tests** across 39 test files (plus 15 frontend `node:t
 ```
 neighbourgood/
 ├── CLAUDE.md               # This file
+├── brand/                  # Brand kit (logo SVG/PNG, colours) — see brand/README.md
 ├── README.md               # User-facing docs and quick start
 ├── CHANGELOG.md            # Full version history (v0.1.0 → v1.1.0)
 ├── PLAN.md                 # Security hardening roadmap (phases 4a–5a)
@@ -488,6 +489,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.5.0 | 2026-11-17 | New logo (violet house tile with an arched door) and no more orange: secondary accent becomes warm brown, theme colour violet, nav logo follows Blue/Red Sky; new `brand/` kit with SVG + PNG logos, marks, wordmarks and app icons; maskable PWA icon (711 tests) |
 | 2.4.2 | 2026-10-01 | Community map moves from CARTO (now key-only) to OpenFreeMap vector tiles via MapLibre GL with a real dark style that follows the theme toggle live; logged-out mobile menu: theme/language icons in one footer row, no double indent (711 tests) |
 | 2.4.1 | 2026-10-01 | Fix login 500 after upgrading: missing columns are added on every start (also in production), robust per-dialect defaults; home page hero cards no longer clipped (711 tests) |
 | 2.4.0 | 2026-10-01 | Remaining QA findings: signed mesh messages + fragmentation, global red (`NG_PLATFORM_MODE=red` applies to every community), alert expiry/detail page, session invalidation, per-(email, IP) lockout, webhook SSRF guard, members-only booking/RSVP, password reset, account deletion, data export UI, edit forms, shared UI primitives + SVG icons, full translations of 11 locales (707 tests) |

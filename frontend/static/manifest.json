@@ -6,14 +6,14 @@
   "scope": "/",
   "display": "standalone",
   "background_color": "#fdf8f3",
-  "theme_color": "#c95d1b",
+  "theme_color": "#4f46e5",
   "orientation": "any",
   "categories": ["social", "lifestyle"],
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
