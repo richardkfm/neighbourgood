@@ -12,6 +12,7 @@ import logging
 from datetime import datetime, timezone
 
 import httpx
+from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.services import telegram as tg
@@ -135,7 +136,23 @@ def dispatch_event(
 
     Intended to be called as a FastAPI BackgroundTask so it does not block
     the HTTP response. All failures are logged and swallowed.
+
+    Background tasks run after get_db() has closed the request session.
+    Querying that session again silently checks out a new connection that
+    nothing returns to the pool, so every event leaked one connection and
+    the pool ran dry after ~15 events. Use a session of our own instead.
     """
+    with Session(bind=db.get_bind()) as own_db:
+        _dispatch_event(own_db, event_type, payload, user_ids, community_id)
+
+
+def _dispatch_event(
+    db,
+    event_type: str,
+    payload: dict,
+    user_ids: list[int] | None,
+    community_id: int | None,
+) -> None:
     from app.models.community import Community, CommunityMember
     from app.models.user import User
     from app.models.webhook import Webhook

@@ -9,10 +9,17 @@ connect_args = {}
 if settings.database_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
 
+# SQLAlchemy's defaults, spelled out because ConcurrencyLimitMiddleware is
+# sized from them
+POOL_SIZE = 5
+MAX_OVERFLOW = 10
+
 engine = create_engine(
     settings.database_url,
     connect_args=connect_args,
     pool_pre_ping=True,
+    pool_size=POOL_SIZE,
+    max_overflow=MAX_OVERFLOW,
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

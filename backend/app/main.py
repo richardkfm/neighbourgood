@@ -11,10 +11,11 @@ from sqlalchemy.exc import DataError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import MAX_OVERFLOW, POOL_SIZE, Base, engine
 
 logger = logging.getLogger(__name__)
 from app.middleware.body_limit import BodySizeLimitMiddleware
+from app.middleware.concurrency import ConcurrencyLimitMiddleware
 from app.middleware.csrf import CsrfMiddleware
 from app.middleware.nul_bytes import NulByteMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -133,6 +134,8 @@ async def out_of_range_handler(request: Request, exc: Exception) -> JSONResponse
 # Innermost, so its receive() wrapper feeds the endpoint directly: an oversized
 # streamed body then surfaces as 413 instead of a generic body-parsing error
 app.add_middleware(BodySizeLimitMiddleware)
+# No more requests in the app than database connections (see the module)
+app.add_middleware(ConcurrencyLimitMiddleware, limit=POOL_SIZE + MAX_OVERFLOW)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CsrfMiddleware)
