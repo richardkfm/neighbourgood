@@ -646,7 +646,14 @@
     "load_communities_failed": "Gagal ngamuat komunitas anjeun.",
     "load_tickets_failed": "Gagal ngamuat tiket.",
     "offline_ticket": "Tiket darurat: {title}",
-    "untitled": "Tanpa judul"
+    "untitled": "Tanpa judul",
+    "red_active": "Red Sky keur aktip",
+    "red_active_detail": "{community} keur dina mode krisis. Paménta diurutkeun dumasar kana kadaruratan.",
+    "no_internet": "Teu aya internét.",
+    "mesh_reachable": "{count} tatangga tiasa dihontal ngalangkungan jaringan mesh Bluetooth. Pesen disingkronkeun nalika sambungan uih deui.",
+    "offline_saved": "Paménta disimpen dina alat ieu sareng dikirim nalika sambungan uih deui.",
+    "send_ping": "Kirim sinyal darurat",
+    "open_requests": "Paménta anu kabuka"
   },
   "settings": {
     "title": "Setelan Akun",

@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.6.0] - 2026-11-17
+
+### Changed
+
+- **Red Sky without amber** — the crisis palette now matches the redesign: warm near-black surfaces (`#170f0f`, `#231818`), red as the only colour, and no amber or orange. Warnings and "high" urgency use a light rose, "medium" and "low" are greys, and "critical" is the strongest red. Urgency is always written out as a label (CRITICAL, HIGH, MEDIUM, LOW, OFFER), so it never depends on colour alone. The focus ring is near-white instead of amber
+- **Logo in Red Sky** — the nav logo is now a light tile with a dark house (new `--color-logo` / `--color-on-logo` tokens) instead of a red tile, so it stays recognisable next to the red buttons. The `-redsky` files in `brand/` are updated to match
+- **Emergency page (`/triage`) redesigned** — in Red Sky it opens with a red "Red Sky is active" banner naming the community, a one-line connection status ("No internet. 6 neighbours reachable over the Bluetooth mesh…") when offline or on the mesh, and one large **Send emergency ping** button that opens the form as a critical ping. Requests are a compact list: urgency label, title, type · status · author → assignee, a two-line description, a relative time ("3 min ago"), and quiet Start/Resolve actions. Filters are smaller and sit under the list heading; the mesh controls are a single line of text buttons
+- **README** — logo header (light and dark versions), a new "Brand and Design" section, Red Sky description of the new look, and section headings without emoji
+
+### Added
+
+- 7 i18n keys (`crisis.red_active`, `red_active_detail`, `no_internet`, `mesh_reachable`, `offline_saved`, `send_ping`, `open_requests`), translated into all 12 languages
+
 ## [2.5.0] - 2026-11-17
 
 ### Changed

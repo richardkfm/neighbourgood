@@ -1,20 +1,25 @@
-# 🏘️ NeighbourGood
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/svg/logo-dark.svg">
+    <img src="brand/svg/logo.svg" alt="NeighbourGood" width="320">
+  </picture>
+</h1>
 
-**v2.5.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v2.6.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
-[Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
+[Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Brand and Design](#brand-and-design) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
 <a id="vision"></a>
-## 💡 Vision
+## Vision
 
 Modern neighbourhoods have everything they need — the problem is that resources sit idle in individual households. NeighbourGood makes it easy to share tools, vehicles, equipment, food, and skills within a community, reducing waste and building real connections between neighbours.
 
 But sharing goes beyond convenience. When a crisis hits — a flood, a power outage, a pandemic — the same network that shared a drill last Tuesday becomes a lifeline. NeighbourGood's **dual-state architecture** switches the platform from everyday comfort mode into emergency coordination mode with a single action.
 
 <a id="dual-state-architecture"></a>
-## 🔄 Dual-State Architecture
+## Dual-State Architecture
 
-### 🔵 Blue Sky Mode (Normal Operation)
+### Blue Sky Mode (Normal Operation)
 
 The default mode focuses on community building and resource sharing:
 
@@ -25,7 +30,7 @@ The default mode focuses on community building and resource sharing:
 - **Trust & Reputation** – Earn reputation points, collect trust badges (Reliable Borrower, Trusted Lender, Skilled Helper), review skills and lending experiences, public user profiles
 - **Community Feed** – Updates, requests, offers in a neighbourhood timeline
 
-### 🔴 Red Sky Mode (Crisis Operation)
+### Red Sky Mode (Crisis Operation)
 
 Activated per community by an admin or a 60% community vote, or for the whole instance with `NG_PLATFORM_MODE=red` (every community then behaves as Red Sky; each keeps its own setting for when the instance returns to blue):
 
@@ -35,9 +40,10 @@ Activated per community by an admin or a 60% community vote, or for the whole in
 - **Emergency Ticketing** – Replace booking with Request / Offer / Emergency Ping
 - **Neighbourhood Leaders** – Pre-defined coordinators who can triage and assign
 - **Offline-First** – PWA with local caching, BLE mesh networking for internet-free crisis coordination
+- **A screen you can read under stress** – Red Sky is always dark, and red is its only colour. Urgency is written out (CRITICAL, HIGH, MEDIUM, LOW, OFFER), so nothing depends on telling colours apart. The Emergency page opens with a red banner, the connection or mesh status, and one large *Send emergency ping* button, followed by the open requests sorted by urgency
 
 <a id="tech-stack"></a>
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer      | Technology                     | Why                                              |
 | ---------- | ------------------------------ | ------------------------------------------------ |
@@ -47,7 +53,7 @@ Activated per community by an admin or a 60% community vote, or for the whole in
 | Deployment | Docker Compose                 | Single `docker-compose up` to run everything      |
 
 <a id="quick-start"></a>
-## 🚀 Quick Start
+## Quick Start
 
 ### With Docker (recommended)
 
@@ -223,7 +229,7 @@ The Vite dev server automatically proxies `/api/*` requests to the backend at `:
 | API docs | http://localhost:8300/docs |
 
 <a id="system-requirements"></a>
-## 🖥️ System Requirements
+## System Requirements
 
 ### Minimum (VPS / Self-hosting)
 
@@ -255,7 +261,7 @@ Recommended model for low-resource hosts: `llama3.2:3b` via [Ollama](https://oll
 ---
 
 <a id="project-structure"></a>
-## 📁 Project Structure
+## Project Structure
 
 ```
 neighbourgood/
@@ -288,8 +294,23 @@ neighbourgood/
 └── README.md
 ```
 
+<a id="brand-and-design"></a>
+## Brand and Design
+
+The logo is a house on a rounded violet tile; its door is an arch, so it stays readable at favicon size. The wordmark is **Neighbour** in the text colour and **Good** in violet, set in Fraunces. There is no orange anywhere in the palette.
+
+| Mode | Look |
+|---|---|
+| Blue Sky, light | Warm cream background, violet (`#4f46e5`) for actions, links and the logo tile, warm brown for small labels |
+| Blue Sky, dark | Deep night blue, lighter violet (`#818cf8`) |
+| Red Sky | Always dark, warm near-black surfaces, red (`#dc2626`) as the only colour; the logo becomes a light tile with a dark house |
+
+Typefaces: Fraunces for headings and the wordmark, Inter for the interface, JetBrains Mono for labels and code (all SIL Open Font License).
+
+**Brand kit:** [`brand/`](brand/) holds the logo, mark, wordmark and app icons as SVG and PNG for light, dark, Red Sky, black and white, with a usage and colour guide in [`brand/README.md`](brand/README.md). All colours in the app come from CSS custom properties in [`frontend/src/app.css`](frontend/src/app.css). The website's design rules are in [neighbourgood/ng-website `DESIGN.md`](https://github.com/neighbourgood/ng-website/blob/main/DESIGN.md).
+
 <a id="offline-first-mesh-networking"></a>
-## 📡 Offline-First Mesh Networking
+## Offline-First Mesh Networking
 
 When the internet goes down, NeighbourGood keeps working. In Red Sky mode the web app can connect to a nearby native [BitChat](https://github.com/permissionlesstech/bitchat) node over Bluetooth Low Energy (BLE) and relay crisis data — emergency tickets, votes, pings — through the mesh without any internet connectivity at all.
 
@@ -390,12 +411,12 @@ Native BitChat apps relay this message through the mesh without needing to under
 | Chrome/Edge only | Web Bluetooth standard; Firefox/Safari do not support it as of 2026 |
 
 <a id="api"></a>
-## 📡 API
+## API
 
 See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Interactive docs at `/docs` when the backend is running.
 
 <a id="roadmap"></a>
-## 🗺️ Roadmap
+## Roadmap
 
 ### Phase 1 — Foundation (MVP)
 
@@ -445,7 +466,7 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [x] User data export (portable backup)
 - [x] Instance migration tooling
 
-### Phase 4 — Red Sky Mode 🚨
+### Phase 4 — Red Sky Mode
 
 - [x] Admin toggle for crisis mode (per-community)
 - [x] Community vote mechanism for mode activation (60% threshold)
@@ -514,7 +535,7 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [ ] Matrix integration
 
 <a id="telegram-bot--ai-assistant"></a>
-## 🤖 Telegram Bot & AI Assistant
+## Telegram Bot & AI Assistant
 
 NeighbourGood includes a Telegram bot with an AI-powered natural language interface — members can search resources, find skills, and coordinate during crises directly from Telegram without opening the app.
 
@@ -528,11 +549,11 @@ See **[TELEGRAM_SETUP.md](TELEGRAM_SETUP.md)** for the full setup guide, includi
 To customise the agent's behaviour, tone, or available intents, see **[TELEGRAM_AGENT.md](TELEGRAM_AGENT.md)**.
 
 <a id="contributing"></a>
-## 🤝 Contributing
+## Contributing
 
 This project is in its early stages. Contributions, ideas, and feedback are welcome.
 
 <a id="license"></a>
-## 📄 License
+## License
 
 See [LICENSE](LICENSE) for details.

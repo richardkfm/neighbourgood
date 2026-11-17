@@ -646,7 +646,14 @@
     "load_communities_failed": "Gagal memuat komunitas Anda.",
     "load_tickets_failed": "Gagal memuat tiket.",
     "offline_ticket": "Tiket darurat: {title}",
-    "untitled": "Tanpa judul"
+    "untitled": "Tanpa judul",
+    "red_active": "Red Sky aktif",
+    "red_active_detail": "{community} dalam mode krisis. Permintaan diurutkan berdasarkan urgensi.",
+    "no_internet": "Tidak ada internet.",
+    "mesh_reachable": "{count} tetangga dapat dijangkau lewat jaringan mesh Bluetooth. Pesan disinkronkan saat koneksi kembali.",
+    "offline_saved": "Permintaan disimpan di perangkat ini dan dikirim saat koneksi kembali.",
+    "send_ping": "Kirim panggilan darurat",
+    "open_requests": "Permintaan terbuka"
   },
   "settings": {
     "title": "Pengaturan",

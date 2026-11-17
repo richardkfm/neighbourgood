@@ -620,9 +620,9 @@
 		width: 34px;
 		height: 34px;
 		border-radius: 8px;
-		/* The logo tile follows the mode colour: violet in Blue Sky, red in Red Sky. */
-		background: var(--color-primary);
-		color: var(--color-on-primary);
+		/* Violet tile in Blue Sky; light tile with a dark house in Red Sky. */
+		background: var(--color-logo);
+		color: var(--color-on-logo);
 		flex-shrink: 0;
 	}
 

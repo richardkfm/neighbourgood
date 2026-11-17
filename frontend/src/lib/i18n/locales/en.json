@@ -646,7 +646,14 @@
     "load_communities_failed": "Failed to load your communities.",
     "load_tickets_failed": "Failed to load tickets.",
     "offline_ticket": "Emergency ticket: {title}",
-    "untitled": "Untitled"
+    "untitled": "Untitled",
+    "red_active": "Red Sky is active",
+    "red_active_detail": "{community} is in crisis mode. Requests are sorted by urgency.",
+    "no_internet": "No internet.",
+    "mesh_reachable": "{count} neighbours reachable over the Bluetooth mesh. Messages sync when the connection returns.",
+    "offline_saved": "Requests are saved on this device and sent when the connection returns.",
+    "send_ping": "Send emergency ping",
+    "open_requests": "Open requests"
   },
   "settings": {
     "title": "Account Settings",

@@ -646,7 +646,14 @@
     "load_communities_failed": "Imeshindwa kupakia jamii zako.",
     "load_tickets_failed": "Imeshindwa kupakia tiketi.",
     "offline_ticket": "Tiketi ya dharura: {title}",
-    "untitled": "Bila kichwa"
+    "untitled": "Bila kichwa",
+    "red_active": "Red Sky imewashwa",
+    "red_active_detail": "{community} iko katika hali ya dharura. Maombi yamepangwa kwa uharaka.",
+    "no_internet": "Hakuna intaneti.",
+    "mesh_reachable": "Majirani {count} wanafikika kupitia mtandao wa Bluetooth. Ujumbe utasawazishwa muunganisho ukirudi.",
+    "offline_saved": "Maombi yanahifadhiwa kwenye kifaa hiki na kutumwa muunganisho ukirudi.",
+    "send_ping": "Tuma ishara ya dharura",
+    "open_requests": "Maombi yaliyo wazi"
   },
   "settings": {
     "title": "Mipangilio",
