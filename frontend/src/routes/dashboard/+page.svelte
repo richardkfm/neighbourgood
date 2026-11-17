@@ -3,8 +3,10 @@
 	import { goto } from '$app/navigation';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { api } from '$lib/api';
-	import { t } from 'svelte-i18n';
+	import { t, locale } from 'svelte-i18n';
 	import Icon from '$lib/components/Icon.svelte';
+	import ExpandableItem from '$lib/components/ExpandableItem.svelte';
+	import { RESOURCE_CATEGORY_ICON, EVENT_CATEGORY_ICON } from '$lib/icons';
 
 	interface DashboardData {
 		resources_count: number;
@@ -17,11 +19,13 @@
 
 	interface BookingItem {
 		id: number;
+		resource_id: number;
 		resource_title: string;
 		borrower_name: string;
 		borrower_id: number;
 		start_date: string;
 		end_date: string;
+		message: string | null;
 		status: string;
 	}
 
@@ -30,6 +34,7 @@
 		name: string;
 		mode: string;
 		effective_mode?: string;
+		member_count?: number;
 	}
 
 	interface TicketItem {
@@ -42,7 +47,25 @@
 		assigned_to: { id: number; display_name: string } | null;
 	}
 
-	let dashboard: DashboardData | null = $state(null);
+	interface NearbyItem {
+		id: number;
+		title: string;
+		category: string;
+		is_available: boolean;
+		owner_id: number;
+		owner: { display_name: string };
+	}
+
+	interface EventItem {
+		id: number;
+		title: string;
+		category: string;
+		start_at: string;
+		location: string | null;
+		attendee_count: number;
+	}
+
+	let dashboard = $state<DashboardData | null>(null);
 	let pendingBookings: BookingItem[] = $state([]);
 	// Whose dashboard this is. Filled from the auth store or /users/me, never
 	// guessed: until it is known no pending booking is classified.
@@ -51,8 +74,46 @@
 	const pendingOutgoing = $derived(meId === null ? [] : pendingBookings.filter((b) => b.borrower_id === meId));
 	let communities: CommunityMembership[] = $state([]);
 	let assignedTickets: TicketItem[] = $state([]);
+	let nearby: NearbyItem[] = $state([]);
+	let communityItemCount = $state<number | null>(null);
+	let nextEvent = $state<EventItem | null>(null);
 	let loading = $state(true);
 	let error = $state('');
+	let actionError = $state('');
+	let busyBooking = $state<number | null>(null);
+
+	const community = $derived(communities[0] ?? null);
+	const unread = $derived(dashboard?.messages_unread_count ?? 0);
+	const needsCount = $derived(pendingIncoming.length + pendingOutgoing.length + (unread > 0 ? 1 : 0));
+
+	async function loadBookings() {
+		const bookingsData = await api<{ items: any[] }>('/bookings?status=pending', { auth: true });
+		pendingBookings = (bookingsData.items ?? []).map((b) => ({
+			id: b.id,
+			resource_id: b.resource_id,
+			resource_title: b.resource_title ?? b.resource?.title ?? $t('common.resource_number', { values: { id: b.resource_id } }),
+			borrower_name: b.borrower?.display_name ?? $t('dashboard.someone'),
+			borrower_id: b.borrower_id,
+			start_date: b.start_date,
+			end_date: b.end_date,
+			message: b.message ?? null,
+			status: b.status
+		}));
+	}
+
+	/** Approve or decline a borrow request right here, without leaving the dashboard. */
+	async function answerBooking(id: number, status: 'approved' | 'rejected') {
+		actionError = '';
+		busyBooking = id;
+		try {
+			await api(`/bookings/${id}`, { method: 'PATCH', auth: true, body: { status } });
+			await loadBookings();
+		} catch (err) {
+			actionError = err instanceof Error ? err.message : $t('common.error');
+		} finally {
+			busyBooking = null;
+		}
+	}
 
 	onMount(async () => {
 		if (!$isLoggedIn) {
@@ -71,30 +132,30 @@
 			communities = commData;
 			meId = meData.id;
 
-			// Fetch pending bookings for "needs attention" section
-			const bookingsData = await api<{ items: any[] }>('/bookings?status=pending', { auth: true });
-			pendingBookings = (bookingsData.items ?? []).map((b) => ({
-				id: b.id,
-				resource_title: b.resource_title ?? b.resource?.title ?? $t('common.resource_number', { values: { id: b.resource_id } }),
-				borrower_name: b.borrower?.display_name ?? $t('dashboard.someone'),
-				borrower_id: b.borrower_id,
-				start_date: b.start_date,
-				end_date: b.end_date,
-				status: b.status
-			}));
+			await loadBookings();
+
+			// Coming up + new nearby come from the first community; failures only hide the block
+			const first = commData[0];
+			if (first) {
+				const [eventsData, itemsData] = await Promise.all([
+					api<{ items: EventItem[] }>(`/events?community_id=${first.id}&upcoming=true&limit=1`, { auth: true }).catch(() => null),
+					api<{ items: NearbyItem[]; total: number }>(`/resources?community_id=${first.id}&limit=8`, { auth: true }).catch(() => null)
+				]);
+				nextEvent = eventsData?.items?.[0] ?? null;
+				if (itemsData) {
+					nearby = (itemsData.items ?? []).filter((r) => r.owner_id !== meId).slice(0, 3);
+					communityItemCount = itemsData.total;
+				}
+			}
 
 			// Load assigned tickets from Red Sky communities
-			const redCommunities = commData.filter(c => (c.effective_mode ?? c.mode) === 'red');
+			const redCommunities = commData.filter((c) => (c.effective_mode ?? c.mode) === 'red');
 			const collected: TicketItem[] = [];
 			for (const c of redCommunities) {
 				try {
-					const data = await api<{ items: TicketItem[] }>(
-						`/communities/${c.id}/tickets?limit=100`, { auth: true }
-					);
-					for (const t of data.items ?? []) {
-						if (t.assigned_to?.id === meId && t.status !== 'resolved') {
-							collected.push(t);
-						}
+					const data = await api<{ items: TicketItem[] }>(`/communities/${c.id}/tickets?limit=100`, { auth: true });
+					for (const tk of data.items ?? []) {
+						if (tk.assigned_to?.id === meId && tk.status !== 'resolved') collected.push(tk);
 					}
 				} catch {
 					// skip community on failure
@@ -108,11 +169,30 @@
 		}
 	});
 
-	const hasPendingActions = $derived(
-		pendingIncoming.length > 0 ||
-		pendingOutgoing.length > 0 ||
-		(dashboard?.messages_unread_count ?? 0) > 0
-	);
+	function greetingKey(): string {
+		const h = new Date().getHours();
+		if (h < 12) return 'dashboard.greeting_morning';
+		if (h < 18) return 'dashboard.greeting_afternoon';
+		return 'dashboard.greeting_evening';
+	}
+
+	function fmtDay(d: string): string {
+		return new Intl.DateTimeFormat($locale ?? 'en', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(d));
+	}
+
+	function fmtRange(start: string, end: string): string {
+		return start === end ? fmtDay(start) : $t('dashboard.date_range', { values: { start: fmtDay(start), end: fmtDay(end) } });
+	}
+
+	function eventDay(d: string): { day: string; month: string; time: string } {
+		const date = new Date(d);
+		const loc = $locale ?? 'en';
+		return {
+			day: new Intl.DateTimeFormat(loc, { day: 'numeric' }).format(date),
+			month: new Intl.DateTimeFormat(loc, { month: 'short' }).format(date),
+			time: new Intl.DateTimeFormat(loc, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(date)
+		};
+	}
 
 	// Reputation tier thresholds (mirrors backend routers/users.py)
 	const TIERS = [
@@ -123,7 +203,6 @@
 		{ name: 'Pillar', min: 200, max: Infinity }
 	];
 
-	// Map API tier name → i18n key
 	const TIER_KEYS: Record<string, string> = {
 		Newcomer: 'dashboard.level_newcomer',
 		Neighbour: 'dashboard.level_neighbour',
@@ -135,7 +214,7 @@
 	const repProgress = $derived((() => {
 		if (!dashboard) return null;
 		const score = dashboard.reputation_score;
-		const idx = TIERS.findIndex(t => score >= t.min && (t.max === Infinity || score <= t.max));
+		const idx = TIERS.findIndex((tier) => score >= tier.min && (tier.max === Infinity || score <= tier.max));
 		const current = TIERS[idx];
 		const next = TIERS[idx + 1] ?? null;
 		if (!next) return { ptsToNext: 0, progressPct: 100, nextName: null };
@@ -150,15 +229,27 @@
 </svelte:head>
 
 <div class="dashboard">
-	<h1>{$t('dashboard.welcome', { values: { name: $user?.display_name ?? '' } })}</h1>
+	<header class="dash-head">
+		<div>
+			{#if community}
+				<p class="kicker">
+					{community.member_count
+						? $t('dashboard.community_line', { values: { community: community.name, count: community.member_count } })
+						: community.name}
+				</p>
+			{/if}
+			<h1>{$t(greetingKey(), { values: { name: $user?.display_name ?? '' } })}</h1>
+		</div>
+		{#if community}
+			<a href="/resources?new=1" class="btn btn-primary"><Icon name="plus" size={16} />{$t('dashboard.share_something')}</a>
+		{/if}
+	</header>
 
 	{#if loading}
 		<div class="skeleton-stack" role="status" aria-busy="true">
 			<span class="sr-only">{$t('dashboard.loading')}</span>
-			<div class="skeleton skeleton-card" style="height: 4.5rem"></div>
+			<div class="skeleton skeleton-card" style="height: 9rem"></div>
 			<div class="skeleton-grid">
-				<div class="skeleton skeleton-card"></div>
-				<div class="skeleton skeleton-card"></div>
 				<div class="skeleton skeleton-card"></div>
 				<div class="skeleton skeleton-card"></div>
 			</div>
@@ -166,12 +257,9 @@
 	{:else if error}
 		<div class="alert alert-error">{error}</div>
 	{:else}
-		<!-- Onboarding nudge -->
 		{#if communities.length === 0}
-			<div class="nudge-banner">
-				<div class="nudge-icon">
-					<Icon name="users" size={22} />
-				</div>
+			<div class="card nudge">
+				<span class="nudge-icon"><Icon name="users" size={20} /></span>
 				<div class="nudge-text">
 					<strong>{$t('dashboard.join_title')}</strong>
 					<span>{$t('dashboard.join_desc')}</span>
@@ -180,162 +268,176 @@
 			</div>
 		{/if}
 
-		<!-- My community -->
-		{#if communities.length > 0}
-			<section>
-				<h2>{$t('dashboard.your_community')}</h2>
-				{#each communities.slice(0, 1) as c (c.id)}
-					<a href="/communities/{c.id}" class="card card-interactive community-card-link">
-						<div class="community-card-inner">
-							<div class="community-info">
-								<h3>{c.name}</h3>
-								{#if (c.effective_mode ?? c.mode) === 'red'}
-									<span class="community-crisis-badge">{$t('dashboard.crisis_active')}</span>
-								{/if}
-							</div>
-							<span class="community-arrow"><Icon name="arrow-right" class="flip-rtl" /></span>
-						</div>
-					</a>
-				{/each}
-			</section>
+		{#if community && (community.effective_mode ?? community.mode) === 'red'}
+			<a href="/triage" class="crisis-line">
+				<Icon name="alert" size={16} />
+				<span>{$t('dashboard.crisis_active')} · {community.name}</span>
+				<Icon name="arrow-right" size={16} class="flip-rtl" />
+			</a>
 		{/if}
 
-		<!-- Assigned emergency tickets (Red Sky only) -->
 		{#if assignedTickets.length > 0}
-			<section class="crisis-tickets-section">
-				<h2>{$t('dashboard.assigned_tickets')}</h2>
-				<div class="assigned-tickets-list">
-					{#each assignedTickets as ticket}
-						<a href="/triage/{ticket.id}" class="assigned-ticket-item">
-							<span class="ticket-urgency-dot urgency-{ticket.urgency}"></span>
-							<span class="assigned-ticket-title">{ticket.title}</span>
-							<span class="assigned-ticket-meta">{$t(`crisis.ticket_types.${ticket.ticket_type === 'emergency_ping' ? 'ping' : ticket.ticket_type}`)} · {$t(`crisis.status_${ticket.status}`)}</span>
-							<span class="assigned-ticket-arrow"><Icon name="arrow-right" size={16} class="flip-rtl" /></span>
-						</a>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		<!-- Needs your attention -->
-		{#if hasPendingActions}
-			<section class="attention-section">
-				<h2>{$t('dashboard.needs_attention')}</h2>
-				<div class="attention-list">
-					{#each pendingIncoming as booking}
-						<a href="/bookings" class="attention-item">
-							<span class="attention-dot attention-dot-warning"></span>
-							<span class="attention-text">
-								{$t('dashboard.wants_to_borrow', { values: { name: booking.borrower_name, resource: booking.resource_title } })}
-							</span>
-							<span class="attention-action">{$t('dashboard.review')}</span>
-						</a>
-					{/each}
-					{#each pendingOutgoing as booking}
-						<a href="/bookings" class="attention-item">
-							<span class="attention-dot attention-dot-info"></span>
-							<span class="attention-text">
-								{$t('dashboard.request_waiting', { values: { resource: booking.resource_title } })}
-							</span>
-							<span class="attention-action">{$t('dashboard.view')}</span>
-						</a>
-					{/each}
-					{#if (dashboard?.messages_unread_count ?? 0) > 0}
-						<a href="/messages" class="attention-item">
-							<span class="attention-dot attention-dot-primary"></span>
-							<span class="attention-text">
-								{$t('messages.unread', { values: { count: dashboard?.messages_unread_count } })}
-							</span>
-							<span class="attention-action">{$t('dashboard.read')}</span>
-						</a>
-					{/if}
-				</div>
-			</section>
-		{/if}
-
-		<!-- Quick stats -->
-		{#if dashboard}
 			<section>
-				<h2>{$t('dashboard.your_activity')}</h2>
-				<div class="overview-grid">
-					<a href="/resources" class="card card-interactive overview-card">
-						<div class="card-icon"><Icon name="package" size={22} /></div>
-						<div class="card-content">
-							<div class="card-label">{$t('dashboard.stat_resources')}</div>
-							<div class="card-value">{dashboard.resources_count}</div>
-						</div>
-					</a>
-
-					<a href="/skills" class="card card-interactive overview-card">
-						<div class="card-icon"><Icon name="target" size={22} /></div>
-						<div class="card-content">
-							<div class="card-label">{$t('dashboard.stat_skills')}</div>
-							<div class="card-value">{dashboard.skills_count}</div>
-						</div>
-					</a>
-
-					<a href="/bookings" class="card card-interactive overview-card">
-						<div class="card-icon"><Icon name="clipboard" size={22} /></div>
-						<div class="card-content">
-							<div class="card-label">{$t('dashboard.stat_bookings')}</div>
-							<div class="card-value">{dashboard.bookings_count}</div>
-						</div>
-					</a>
-
-					<a href="/messages" class="card card-interactive overview-card">
-						<div class="card-icon"><Icon name="message" size={22} /></div>
-						<div class="card-content">
-							<div class="card-label">{$t('dashboard.stat_messages')}</div>
-							<div class="card-value">{dashboard.messages_unread_count}</div>
-						</div>
-					</a>
+				<h2 class="section-title">{$t('dashboard.assigned_tickets')} <span class="section-count">{assignedTickets.length}</span></h2>
+				<div class="list-panel">
+					{#each assignedTickets as ticket (ticket.id)}
+						<ExpandableItem
+							title={ticket.title}
+							meta="{$t(`crisis.ticket_types.${ticket.ticket_type === 'emergency_ping' ? 'ping' : ticket.ticket_type}`)} · {$t(`crisis.status_${ticket.status}`)}"
+							icon="alert"
+							tone={ticket.urgency === 'critical' ? 'error' : 'warning'}
+						>
+							{#snippet aside()}<span class="meta-text">{$t(`crisis.priority.${ticket.urgency}`)}</span>{/snippet}
+							<div class="xp-actions">
+								<a href="/triage/{ticket.id}" class="btn btn-primary btn-sm">{$t('dashboard.open_ticket')}</a>
+							</div>
+						</ExpandableItem>
+					{/each}
 				</div>
 			</section>
+		{/if}
 
-			<section class="reputation-section">
-				<h2>{$t('dashboard.reputation')}</h2>
-				<div class="reputation-card">
-					<div class="rep-top">
-						<div class="reputation-score">{dashboard.reputation_score}</div>
-						<div class="reputation-info">
-							<div class="rep-level-row">
-								<span class="reputation-level">{$t(TIER_KEYS[dashboard.reputation_level] ?? dashboard.reputation_level)}</span>
-								{#if $user?.role === 'admin'}
-									<span class="role-badge">{$t('dashboard.admin')}</span>
-								{/if}
-							</div>
-							{#if repProgress?.nextName}
-								<div class="reputation-subtitle">{$t('dashboard.pts_to_level', { values: { pts: repProgress.ptsToNext, level: $t(TIER_KEYS[repProgress.nextName] ?? repProgress.nextName) } })}</div>
-							{:else}
-								<div class="reputation-subtitle">{$t('dashboard.top_tier')}</div>
-							{/if}
-							{#if repProgress}
-								<div class="rep-progress-bar">
-									<div class="rep-progress-fill" style="width: {repProgress.progressPct}%"></div>
+		{#if community}
+			<section>
+				<h2 class="section-title">{$t('dashboard.needs_you')} {#if needsCount > 0}<span class="section-count">{needsCount}</span>{/if}</h2>
+				{#if actionError}<p class="alert alert-error" role="alert">{actionError}</p>{/if}
+				{#if needsCount === 0}
+					<p class="calm-empty">{$t('dashboard.nothing_needed')}</p>
+				{:else}
+					<div class="list-panel">
+						{#each pendingIncoming as booking, i (booking.id)}
+							<ExpandableItem
+								title={$t('dashboard.wants_to_borrow', { values: { name: booking.borrower_name, resource: booking.resource_title } })}
+								meta={fmtRange(booking.start_date, booking.end_date)}
+								icon="tool"
+								open={i === 0}
+							>
+								{#if booking.message}<p>“{booking.message}”</p>{/if}
+								<p>{$t('dashboard.incoming_detail', { values: { name: booking.borrower_name } })}</p>
+								<div class="xp-actions">
+									<button class="btn btn-primary btn-sm" class:is-loading={busyBooking === booking.id} disabled={busyBooking !== null} onclick={() => answerBooking(booking.id, 'approved')}>{$t('bookings.approve')}</button>
+									<button class="btn btn-secondary btn-sm" disabled={busyBooking !== null} onclick={() => answerBooking(booking.id, 'rejected')}>{$t('bookings.reject')}</button>
+									<a href="/messages?partner={booking.borrower_id}" class="btn btn-secondary btn-sm">{$t('dashboard.message_name', { values: { name: booking.borrower_name } })}</a>
 								</div>
-							{/if}
-						</div>
+							</ExpandableItem>
+						{/each}
+						{#each pendingOutgoing as booking (booking.id)}
+							<ExpandableItem
+								title={$t('dashboard.request_waiting', { values: { resource: booking.resource_title } })}
+								meta={fmtRange(booking.start_date, booking.end_date)}
+								icon="clock"
+								tone="warning"
+							>
+								<p>{$t('dashboard.outgoing_detail')}</p>
+								<div class="xp-actions">
+									<a href="/resources/{booking.resource_id}" class="btn btn-secondary btn-sm">{$t('dashboard.view_item')}</a>
+									<a href="/bookings" class="btn btn-secondary btn-sm">{$t('dashboard.open_bookings')}</a>
+								</div>
+							</ExpandableItem>
+						{/each}
+						{#if unread > 0}
+							<ExpandableItem
+								title={$t('dashboard.unread_title', { values: { count: unread } })}
+								meta={$t('dashboard.unread_meta')}
+								icon="message"
+								tone="neutral"
+							>
+								<div class="xp-actions">
+									<a href="/messages" class="btn btn-primary btn-sm">{$t('dashboard.open_messages')}</a>
+								</div>
+							</ExpandableItem>
+						{/if}
 					</div>
+				{/if}
+			</section>
 
-					<div class="rep-details">
+			<div class="cols">
+				<section>
+					<h2 class="section-title">{$t('dashboard.coming_up')} <a href="/events">{$t('dashboard.see_all')}</a></h2>
+					{#if nextEvent}
+						{@const d = eventDay(nextEvent.start_at)}
+						<a href="/events/{nextEvent.id}" class="card card-interactive event-card">
+							<span class="date-block"><b>{d.day}</b><span>{d.month}</span></span>
+							<span class="event-text">
+								<strong>{nextEvent.title}</strong>
+								<span class="meta-text">
+									{d.time}{nextEvent.location ? ` · ${nextEvent.location}` : ''} · {$t('dashboard.going', { values: { count: nextEvent.attendee_count } })}
+								</span>
+							</span>
+						</a>
+					{:else}
+						<p class="calm-empty">{$t('dashboard.no_events')} <a href="/events">{$t('dashboard.plan_event')}</a></p>
+					{/if}
+				</section>
+
+				<section>
+					<h2 class="section-title">{$t('dashboard.new_nearby')} <a href="/resources">{$t('dashboard.see_all')}</a></h2>
+					{#if nearby.length > 0}
+						<div class="list-panel">
+							{#each nearby as item (item.id)}
+								<a href="/resources/{item.id}" class="mini-row">
+									<span class="mini-icon"><Icon name={RESOURCE_CATEGORY_ICON[item.category] ?? 'package'} size={16} /></span>
+									<span class="mini-text">
+										<strong>{item.title}</strong>
+										<span class="meta-text">{item.owner.display_name}</span>
+									</span>
+									<span class="status-text" class:status-ok={item.is_available} class:status-off={!item.is_available}>
+										{item.is_available ? $t('resources.available') : $t('resources.unavailable')}
+									</span>
+								</a>
+							{/each}
+						</div>
+					{:else}
+						<p class="calm-empty">{$t('dashboard.no_new_items')}</p>
+					{/if}
+				</section>
+			</div>
+		{/if}
+
+		{#if dashboard}
+			<div class="footer-stats">
+				{#if community && communityItemCount !== null}
+					<p class="statline">
+						{$t('dashboard.community_stats', { values: { items: communityItemCount, community: community.name, members: community.member_count ?? 0 } })}
+					</p>
+				{/if}
+				<p class="statline">
+					{$t('dashboard.your_stats', { values: { items: dashboard.resources_count, skills: dashboard.skills_count } })}
+				</p>
+			</div>
+
+			<section>
+				<div class="list-panel">
+					<ExpandableItem
+						title={$t('dashboard.reputation_line', { values: { level: $t(TIER_KEYS[dashboard.reputation_level] ?? dashboard.reputation_level), score: dashboard.reputation_score } })}
+						meta={repProgress?.nextName
+							? $t('dashboard.pts_to_level', { values: { pts: repProgress.ptsToNext, level: $t(TIER_KEYS[repProgress.nextName] ?? repProgress.nextName) } })
+							: $t('dashboard.top_tier')}
+						icon="star"
+						tone="neutral"
+					>
+						{#snippet aside()}
+							{#if $user?.role === 'admin'}<span class="meta-text">{$t('dashboard.admin')}</span>{/if}
+						{/snippet}
+						{#if repProgress}
+							<div class="rep-bar" role="presentation"><div class="rep-fill" style="width: {repProgress.progressPct}%"></div></div>
+						{/if}
 						<div class="rep-tiers">
 							{#each TIERS as tier}
 								<span class="rep-tier" class:rep-tier-active={tier.name === dashboard.reputation_level}>
-									{$t(TIER_KEYS[tier.name])} <span class="rep-tier-pts">{tier.min === 0 ? '0' : tier.min}+</span>
+									{$t(TIER_KEYS[tier.name])} <span class="meta-text">{tier.min}+</span>
 								</span>
 							{/each}
 						</div>
-						<div class="rep-breakdown">
-							<span class="rep-breakdown-title">{$t('dashboard.how_to_earn')}</span>
-							<ul class="rep-breakdown-list">
-								<li>{$t('dashboard.earn_lend')}</li>
-								<li>{$t('dashboard.earn_borrow')}</li>
-								<li>{$t('dashboard.earn_share')}</li>
-								<li>{$t('dashboard.earn_skill_offer')}</li>
-								<li>{$t('dashboard.earn_skill_request')}</li>
-							</ul>
-						</div>
-					</div>
+						<p><strong>{$t('dashboard.how_to_earn')}</strong></p>
+						<ul class="rep-list">
+							<li>{$t('dashboard.earn_lend')}</li>
+							<li>{$t('dashboard.earn_borrow')}</li>
+							<li>{$t('dashboard.earn_share')}</li>
+							<li>{$t('dashboard.earn_skill_offer')}</li>
+							<li>{$t('dashboard.earn_skill_request')}</li>
+						</ul>
+					</ExpandableItem>
 				</div>
 			</section>
 		{/if}
@@ -347,63 +449,59 @@
 		max-width: 900px;
 		display: flex;
 		flex-direction: column;
-		gap: 2rem;
+		gap: 1.75rem;
+	}
+
+	.dash-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 1rem;
 	}
 
 	h1 {
-		font-size: 2.1rem;
+		font-size: 1.9rem;
 		font-weight: 400;
 		color: var(--color-text);
 		margin: 0;
 	}
 
-	/* Section labels: quiet uppercase kickers so the serif page title keeps
-	   the spotlight and the page scans in clear blocks. */
-	h2 {
-		font-size: 0.8rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.07em;
-		color: var(--color-text-muted);
-		margin: 0 0 0.9rem 0;
+	.calm-empty {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-subtle);
 	}
 
-	/* ── Onboarding nudge ─────────────────────────────────────── */
+	/* ── Onboarding nudge (no stripe, no gradient) ─────────── */
 
-	.nudge-banner {
+	.nudge {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 1rem;
-		padding: 1.25rem 1.5rem;
-		background: linear-gradient(135deg, var(--color-primary-light), var(--color-surface));
-		border: 1px solid var(--color-border);
-		border-inline-start: 3px solid var(--color-primary);
-		border-radius: var(--radius-md);
 	}
 
 	.nudge-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius);
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		border-radius: var(--radius-sm);
+		background: var(--color-primary-light);
+		color: var(--color-primary-text);
+		flex: none;
 	}
 
 	.nudge-text {
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
+		display: grid;
+		gap: 0.15rem;
 		flex: 1;
-		min-width: 0;
+		min-width: 12rem;
 	}
 
 	.nudge-text strong {
 		font-size: 0.95rem;
-		color: var(--color-text);
 	}
 
 	.nudge-text span {
@@ -411,427 +509,176 @@
 		color: var(--color-text-muted);
 	}
 
-	/* ── Community card ───────────────────────────────────────── */
-
-	.community-card-link {
-		display: block;
-		padding: 1rem 1.25rem;
-		background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-primary-light) 100%);
-		border-inline-start: 4px solid var(--color-primary);
-	}
-
-	.community-card-inner {
+	.crisis-line {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-	}
-
-	.community-info h3 {
-		font-size: 1.05rem;
-		font-weight: 500;
-		color: var(--color-text);
-		margin: 0;
-	}
-
-	.community-crisis-badge {
-		display: inline-block;
-		font-size: 0.7rem;
-		font-weight: 600;
-		padding: 0.15rem 0.5rem;
-		border-radius: 999px;
-		background: var(--color-error);
-		color: var(--color-on-error);
-		margin-top: 0.3rem;
-	}
-
-	.community-arrow {
-		display: inline-flex;
-		color: var(--color-primary-text);
-	}
-
-	/* ── Assigned crisis tickets ─────────────────────────────── */
-
-	.crisis-tickets-section {
-		margin-top: 0.5rem;
-	}
-
-	.assigned-tickets-list {
-		display: flex;
-		flex-direction: column;
-		border: 1px solid var(--color-error);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-
-	.assigned-ticket-item {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.85rem 1.25rem;
-		text-decoration: none;
-		color: inherit;
-		transition: background-color var(--transition-fast);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.assigned-ticket-item:last-child {
-		border-bottom: none;
-	}
-
-	.assigned-ticket-item:hover {
-		background: var(--color-error-bg);
-		text-decoration: none;
-	}
-
-	.ticket-urgency-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-
-	.urgency-critical { background: var(--color-error); }
-	.urgency-high     { background: var(--color-warning); }
-	.urgency-medium   { background: var(--color-text-muted); }
-	.urgency-low      { background: var(--color-border); }
-
-	.assigned-ticket-title {
-		flex: 1;
-		font-size: 0.9rem;
-		font-weight: 500;
-		color: var(--color-text);
-		min-width: 0;
-	}
-
-	.assigned-ticket-meta {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		white-space: nowrap;
-		text-transform: capitalize;
-	}
-
-	.assigned-ticket-arrow {
-		display: inline-flex;
-		color: var(--color-error);
-		flex-shrink: 0;
-	}
-
-	/* ── Needs attention ──────────────────────────────────────── */
-
-	.attention-section {
-		margin-top: 0.5rem;
-	}
-
-	.attention-list {
-		display: flex;
-		flex-direction: column;
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-
-	.attention-item {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.85rem 1.25rem;
-		text-decoration: none;
-		color: inherit;
-		transition: background-color var(--transition-fast);
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.attention-item:last-child {
-		border-bottom: none;
-	}
-
-	.attention-item:hover {
+		gap: 0.5rem;
+		padding: 0.7rem 1rem;
+		border: 1px solid var(--color-primary);
+		border-radius: var(--radius-md, 0.75rem);
 		background: var(--color-primary-light);
+		color: var(--color-primary-text);
+		font-weight: 600;
+		font-size: 0.88rem;
 		text-decoration: none;
 	}
 
-	.attention-dot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-
-	.attention-dot-warning { background: var(--color-warning); }
-	.attention-dot-info { background: var(--color-text-muted); }
-	.attention-dot-primary { background: var(--color-primary); }
-
-	.attention-text {
+	.crisis-line span {
 		flex: 1;
-		font-size: 0.9rem;
-		color: var(--color-text);
-		min-width: 0;
 	}
 
-	.attention-text strong {
-		font-weight: 600;
-	}
+	/* ── Coming up / New nearby ─────────────────────────────── */
 
-	.attention-action {
-		font-size: 0.82rem;
-		font-weight: 600;
-		color: var(--color-primary-text);
-		white-space: nowrap;
-	}
-
-	/* ── Quick Stats Grid ─────────────────────────────────────── */
-
-	.overview-grid {
+	.cols {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 1rem;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.75rem;
 	}
 
-	.overview-card {
-		display: flex;
+	.cols section {
+		min-width: 0;
+	}
+
+	.event-card {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: 0.9rem;
 		align-items: center;
-		gap: 1rem;
+		padding: 0.9rem 1rem;
+		box-shadow: none;
 	}
 
-	.overview-card:hover {
-		border-color: var(--color-primary);
+	.date-block {
+		display: grid;
+		justify-items: center;
+		width: 3.25rem;
+		padding: 0.35rem 0;
+		border-radius: var(--radius-sm);
+		background: var(--color-accent-light);
+		color: var(--color-accent);
 	}
 
-	.card-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		flex: none;
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius);
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-	}
-
-	.card-content {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.card-label {
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
-	.card-value {
-		font-size: 1.5rem;
-		font-weight: 700;
-		color: var(--color-text);
-	}
-
-	/* ── Reputation ───────────────────────────────────────────── */
-
-	.reputation-section {
-		margin-top: 0.5rem;
-	}
-
-	.reputation-card {
-		display: flex;
-		flex-direction: column;
-		gap: 1.25rem;
-		padding: 1.5rem 2rem;
-		background: linear-gradient(135deg, var(--color-primary-light), var(--color-surface));
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-md);
-	}
-
-	.rep-top {
-		display: flex;
-		align-items: center;
-		gap: 2rem;
-	}
-
-	.reputation-score {
-		font-size: 3rem;
-		font-weight: 700;
-		color: var(--color-primary-text);
-		min-width: 70px;
+	.date-block b {
+		font-family: var(--font-heading);
+		font-size: 1.4rem;
+		font-weight: 500;
 		line-height: 1;
 	}
 
-	.reputation-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.35rem;
-		flex: 1;
-	}
-
-	.rep-level-row {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-	}
-
-	.reputation-level {
-		font-size: 1.2rem;
+	.date-block span {
+		font-size: 0.7rem;
 		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.role-badge {
-		font-size: 0.72rem;
-		font-weight: 600;
-		padding: 0.15rem 0.55rem;
-		border-radius: 999px;
-		background: var(--color-primary);
-		color: var(--color-on-primary);
-		letter-spacing: 0.03em;
 		text-transform: uppercase;
 	}
 
-	.reputation-subtitle {
-		font-size: 0.85rem;
+	.event-text {
+		display: grid;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
+	.event-text strong {
+		font-size: 0.9rem;
+		color: var(--color-text);
+	}
+
+	.mini-row {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		gap: 0.7rem;
+		align-items: center;
+		padding: 0.65rem 1rem;
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.mini-row + .mini-row {
+		border-top: 1px solid var(--color-border);
+	}
+
+	.mini-row:hover {
+		background: var(--color-surface-raised);
+		text-decoration: none;
+	}
+
+	.mini-icon {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: var(--radius-sm);
+		background: var(--color-surface-raised);
 		color: var(--color-text-muted);
 	}
 
-	.rep-progress-bar {
-		height: 5px;
-		background: var(--color-border);
-		border-radius: 999px;
-		overflow: hidden;
-		max-width: 200px;
+	.mini-text {
+		display: grid;
+		min-width: 0;
 	}
 
-	.rep-progress-fill {
+	.mini-text strong {
+		font-size: 0.88rem;
+		color: var(--color-text);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* ── Stats + reputation ─────────────────────────────────── */
+
+	.footer-stats {
+		display: grid;
+		gap: 0.2rem;
+	}
+
+	.statline {
+		margin: 0;
+		font-size: 0.82rem;
+		color: var(--color-text-subtle);
+	}
+
+	.rep-bar {
+		height: 6px;
+		border-radius: 999px;
+		background: var(--color-surface-raised);
+		overflow: hidden;
+	}
+
+	.rep-fill {
 		height: 100%;
 		background: var(--color-primary);
-		border-radius: 999px;
-		transition: width var(--transition-slow);
-	}
-
-	/* Tier list + breakdown row */
-	.rep-details {
-		display: flex;
-		gap: 2rem;
-		padding-top: 1rem;
-		border-top: 1px solid var(--color-border);
-		flex-wrap: wrap;
 	}
 
 	.rep-tiers {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 0.4rem;
-		align-items: center;
-	}
-
-	.rep-tier {
-		font-size: 0.75rem;
-		padding: 0.2rem 0.6rem;
-		border-radius: 999px;
-		background: var(--color-bg);
-		color: var(--color-text-muted);
-		border: 1px solid var(--color-border);
+		gap: 0.35rem 0.9rem;
+		font-size: 0.8rem;
 	}
 
 	.rep-tier-active {
-		background: var(--color-primary-light);
 		color: var(--color-primary-text);
-		border-color: var(--color-primary);
 		font-weight: 600;
 	}
 
-	.rep-tier-pts {
-		opacity: 0.65;
-	}
-
-	.rep-breakdown {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
-
-	.rep-breakdown-title {
-		font-size: 0.78rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-muted);
-	}
-
-	.rep-breakdown-list {
-		list-style: none;
-		padding: 0;
+	.rep-list {
 		margin: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 0.2rem;
+		padding-inline-start: 1.1rem;
+		display: grid;
+		gap: 0.15rem;
 	}
 
-	.rep-breakdown-list li {
-		font-size: 0.82rem;
-		color: var(--color-text-muted);
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
-	}
+	@media (max-width: 720px) {
+		.cols {
+			grid-template-columns: 1fr;
+		}
 
-	.rep-pts {
-		font-size: 0.78rem;
-		font-weight: 700;
-		color: var(--color-primary-text);
-		min-width: 28px;
-	}
-
-	/* ── Alerts ────────────────────────────────────────────────── */
-
-	@media (max-width: 600px) {
 		h1 {
-			font-size: 1.5rem;
+			font-size: 1.6rem;
 		}
 
-		/* 2x2 stat tiles keep the whole overview above the fold on phones */
-		.overview-grid {
-			grid-template-columns: 1fr 1fr;
-			gap: 0.75rem;
-		}
-
-		.overview-card {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 0.4rem;
-			padding: 1rem;
-		}
-
-		.card-icon {
-			width: 36px;
-			height: 36px;
-		}
-
-		.card-label {
-			font-size: 0.7rem;
-		}
-
-		.nudge-banner {
-			flex-direction: column;
-			text-align: center;
-		}
-
-		.rep-top {
-			flex-direction: column;
-			align-items: flex-start;
-			gap: 0.75rem;
-		}
-
-		.reputation-score {
-			font-size: 2.5rem;
-		}
-
-		.rep-progress-bar {
-			max-width: 100%;
-		}
-
-		.rep-details {
-			flex-direction: column;
-			gap: 1rem;
+		.dash-head .btn {
+			display: none;
 		}
 	}
 </style>

@@ -223,7 +223,34 @@
     "level_pillar": "Tiang",
     "admin": "Admin",
     "load_failed": "Gagal ngamuat dasbor",
-    "someone": "Sasaha"
+    "someone": "Sasaha",
+    "greeting_morning": "Wilujeng énjing, {name}",
+    "greeting_afternoon": "Wilujeng siang, {name}",
+    "greeting_evening": "Wilujeng wengi, {name}",
+    "community_line": "{community} · {count} anggota",
+    "share_something": "Bagikeun hiji hal",
+    "needs_you": "Ngantosan anjeun",
+    "nothing_needed": "Teu aya nu ngantosan anjeun ayeuna.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Satujuan pikeun mastikeun tanggalna, atanapi tolak sareng {name} bakal dibéjaan.",
+    "outgoing_detail": "Nu gaduh teu acan ngawaler. Anjeun bakal nampi pesen.",
+    "message_name": "Kirim pesen ka {name}",
+    "view_item": "Tingali barang",
+    "open_bookings": "Buka pesenan",
+    "unread_title": "{count} pesen teu acan dibaca",
+    "unread_meta": "Ti tatangga anjeun",
+    "open_messages": "Buka pesen",
+    "open_ticket": "Buka tikét",
+    "coming_up": "Badé sumping",
+    "see_all": "Tingali sadayana",
+    "going": "{count} sumping",
+    "no_events": "Teu acan aya acara.",
+    "plan_event": "Rencanakeun hiji",
+    "new_nearby": "Énggal di caket",
+    "no_new_items": "Teu acan aya nu énggal di komunitas anjeun.",
+    "community_stats": "{items} barang dibagikeun di {community} · {members} anggota",
+    "your_stats": "Anjeun ngabagikeun {items} barang sareng {skills} kaahlian",
+    "reputation_line": "Reputasi: {level} · {score} poin"
   },
   "resources": {
     "title": "Sumber Babagi",
@@ -318,7 +345,9 @@
     "mark_available": "Tandaan Sadia",
     "upload_image": "Unggah Gambar",
     "title_placeholder": "upamana Bor Bosch",
-    "description_placeholder": "Naon nu dibagikeun? Aya syarat?"
+    "description_placeholder": "Naon nu dibagikeun? Aya syarat?",
+    "yours": "Anjeun",
+    "view_details": "Tingali detil"
   },
   "bookings": {
     "title": "Réservasi Kuring",
@@ -541,7 +570,9 @@
     "message_requester": "Kirim Pesen ka nu Ménta",
     "title_placeholder": "upamana Les Piano",
     "description_placeholder": "Kaahlian naon nu anjeun tawarkeun atawa cungsi?",
-    "offline_new": "Kaahlian anyar: {title}"
+    "offline_new": "Kaahlian anyar: {title}",
+    "ask_for_help": "Nyuhunkeun bantosan",
+    "offer_help": "Nawiskeun bantosan"
   },
   "crisis": {
     "title": "Darurat",

@@ -52,6 +52,7 @@
 		x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
 		plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
 		'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+		'chevron-right': '<path d="m9 18 6-6-6-6"/>',
 		'arrow-left': '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
 		clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 		inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
