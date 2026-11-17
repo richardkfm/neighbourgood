@@ -18,13 +18,15 @@ How to run your own NeighbourGood instance: install, update, put it behind a dom
 | Resource | Minimum | Recommended |
 |----------|---------|-------------|
 | CPU | 1 vCPU | 2 vCPU |
-| RAM | 512 MB | 1 GB |
+| RAM | 1 GB | 2 GB |
 | Disk | 5 GB | 20 GB |
 | OS | Linux (any modern distro) | Ubuntu 22.04 LTS or newer |
 | Docker | 24+ with the Compose v2 plugin (`docker compose`, no hyphen) | latest |
 | Open ports | 80, 443 (or 3800 directly for a test) | + 22 for SSH |
 
-A small VPS (around 5 € a month, e.g. Hetzner or DigitalOcean) is enough for a community of a few hundred people. PostgreSQL runs inside Docker, so you don't need a separate database server.
+A small VPS (around 5 € a month, e.g. Hetzner or DigitalOcean) is plenty for a neighbourhood, and can host several neighbourhoods side by side. Running NeighbourGood takes about 250 MB of memory plus the database; on one CPU core it serves around 100 page views a second, far more than even a busy neighbourhood needs. PostgreSQL runs inside Docker, so you don't need a separate database server.
+
+Installing and updating build the app on the server, and that step briefly needs about 1 GB of memory on its own. On a 1 GB server, add 1–2 GB of swap first (your provider's docs explain how) so the build isn't stopped halfway.
 
 ## Install with the one-line installer
 

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.2] - 2026-11-17
+
+### Changed
+
+- **Honest server sizing** in the README and self-hosting guide: a 5 € server is described as plenty for a neighbourhood (and several side by side) instead of "a few hundred people", since most neighbourhoods are smaller. Measured on one CPU core: about 250 MB of memory for the app, around 100 requests a second. Minimum RAM raised from 512 MB to 1 GB, and a note to add swap on 1 GB servers, because the build during install and update needs about 1 GB on its own
+
 ## [2.8.1] - 2026-11-17
 
 ### Changed
