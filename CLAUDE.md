@@ -54,6 +54,7 @@ Current test count: **711 tests** across 39 test files (plus 15 frontend `node:t
 neighbourgood/
 ├── CLAUDE.md               # This file
 ├── brand/                  # Brand kit (logo SVG/PNG, colours) — see brand/README.md
+├── docs/                   # README illustrations (animated Red Sky flow SVG)
 ├── README.md               # User-facing docs and quick start
 ├── CHANGELOG.md            # Full version history (v0.1.0 → v1.1.0)
 ├── PLAN.md                 # Security hardening roadmap (phases 4a–5a)
@@ -491,7 +492,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
-| 2.7.0 | 2026-11-17 | No amber in Blue Sky either: `--color-warning` becomes warm brown (light `#6b4a33`, dark `#d4bc9f`), star ratings move to a new `--color-rating` token (violet), hard-coded amber fallbacks removed (711 tests) |
+| 2.7.0 | 2026-11-17 | No amber in Blue Sky either: `--color-warning` becomes warm brown (light `#6b4a33`, dark `#d4bc9f`), star ratings move to a new `--color-rating` token (violet), hard-coded amber fallbacks removed; animated Red Sky flow (`docs/red-sky-flow.svg`) and refreshed README (711 tests) |
 | 2.6.0 | 2026-11-17 | Red Sky without amber: warm near-black palette with red as the only colour, urgency by text label + lightness, light logo tile (`--color-logo`); Emergency page redesigned (red banner, connection/mesh line, large Send emergency ping button, compact request list with CRITICAL/HIGH/MEDIUM/LOW/OFFER labels); 7 new i18n keys in all 12 locales; README logo header, Brand and Design section, no emoji headings (711 tests) |
 | 2.5.0 | 2026-11-17 | New logo (violet house tile with an arched door) and no more orange: secondary accent becomes warm brown, theme colour violet, nav logo follows Blue/Red Sky; new `brand/` kit with SVG + PNG logos, marks, wordmarks and app icons; maskable PWA icon (711 tests) |
 | 2.4.2 | 2026-10-01 | Community map moves from CARTO (now key-only) to OpenFreeMap vector tiles via MapLibre GL with a real dark style that follows the theme toggle live; logged-out mobile menu: theme/language icons in one footer row, no double indent (711 tests) |
