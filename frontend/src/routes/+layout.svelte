@@ -711,14 +711,15 @@
 
 	.nav-link:hover {
 		color: var(--color-text);
-		background: var(--color-primary-light);
 		text-decoration: none;
 	}
 
+	/* Design A: the active page is underlined, not filled */
 	.nav-link.active {
-		color: var(--color-primary-text);
-		background: var(--color-primary-light);
-		font-weight: 600;
+		color: var(--color-text);
+		background: transparent;
+		box-shadow: inset 0 -2px 0 var(--color-primary);
+		border-radius: 0;
 	}
 
 	.nav-badge {

@@ -9,7 +9,7 @@
 
 NeighbourGood is a free, self-hostable web app for neighbourhoods. People lend each other tools and equipment, offer skills, organise local events and get to know each other. When a flood, storm or power cut hits, the same community switches to crisis mode with one action and coordinates help, even over Bluetooth when the internet is down.
 
-v2.7.0 · 12 languages · [GPL-3.0](LICENSE)
+v2.8.0 · 12 languages · [GPL-3.0](LICENSE)
 
 [What it does](#what-it-does) · [Everyday: Blue Sky](#everyday-blue-sky) · [Crisis: Red Sky](#crisis-red-sky) · [Telegram](#use-it-from-telegram) · [Connected communities](#connected-communities) · [Get started](#get-started) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
@@ -36,7 +36,7 @@ It starts with what you already own. When you join, NeighbourGood asks one simpl
 From then on it's a quiet everyday companion on your phone: who wants to borrow your drill, whether the cargo bike you asked for is free, and a message from a neighbour.
 
 <p align="center">
-  <img src="docs/images/dashboard-phone.png" alt="The dashboard on a phone: Welcome back, Felix. Under Needs your attention: Jonas wants to borrow the cordless drill, a request for the cargo bike waiting for approval, and one unread message" width="320">
+  <img src="docs/images/dashboard-phone.png" alt="The dashboard on a phone: Kreuzberg Wrangelkiez, 48 members. Good evening, Felix. Under Needs you, Jonas asks to borrow the cordless drill with bit set this weekend, opened to show his note and the Approve, Reject and Message Jonas buttons; below it, Felix's own request for the cargo bike is waiting for approval" width="320">
 </p>
 
 - **Lend and borrow.** List things you can lend (tools, vehicles, electronics, furniture, …), book them for specific dates, and approve or decline requests.

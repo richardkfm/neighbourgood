@@ -223,7 +223,34 @@
     "level_pillar": "Nguzo",
     "admin": "Msimamizi",
     "load_failed": "Imeshindwa kupakia dashibodi",
-    "someone": "Mtu"
+    "someone": "Mtu",
+    "greeting_morning": "Habari za asubuhi, {name}",
+    "greeting_afternoon": "Habari za mchana, {name}",
+    "greeting_evening": "Habari za jioni, {name}",
+    "community_line": "{community} · wanachama {count}",
+    "share_something": "Shiriki kitu",
+    "needs_you": "Kinakusubiri",
+    "nothing_needed": "Hakuna kinachokusubiri sasa hivi.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Kubali kuthibitisha tarehe, au kataa na {name} ataarifiwa.",
+    "outgoing_detail": "Mmiliki bado hajajibu. Utapokea ujumbe.",
+    "message_name": "Mtumie {name} ujumbe",
+    "view_item": "Tazama kifaa",
+    "open_bookings": "Fungua uhifadhi",
+    "unread_title": "Jumbe {count} hazijasomwa",
+    "unread_meta": "Kutoka kwa majirani zako",
+    "open_messages": "Fungua jumbe",
+    "open_ticket": "Fungua tiketi",
+    "coming_up": "Vinavyokuja",
+    "see_all": "Tazama vyote",
+    "going": "{count} wanahudhuria",
+    "no_events": "Hakuna matukio yaliyopangwa bado.",
+    "plan_event": "Panga moja",
+    "new_nearby": "Mpya karibu",
+    "no_new_items": "Hakuna jipya katika jamii yako bado.",
+    "community_stats": "Vifaa {items} vimeshirikiwa katika {community} · wanachama {members}",
+    "your_stats": "Unashiriki vifaa {items} na ujuzi {skills}",
+    "reputation_line": "Sifa: {level} · pointi {score}"
   },
   "resources": {
     "title": "Maktaba ya rasilimali",
@@ -318,7 +345,9 @@
     "mark_available": "Weka Kuwa Inapatikana",
     "upload_image": "Pakia Picha",
     "title_placeholder": "mfano Drili ya Bosch",
-    "description_placeholder": "Unashiriki nini? Kuna masharti yoyote?"
+    "description_placeholder": "Unashiriki nini? Kuna masharti yoyote?",
+    "yours": "Wewe",
+    "view_details": "Tazama maelezo"
   },
   "bookings": {
     "title": "Uhifadhi",
@@ -541,7 +570,9 @@
     "message_requester": "Mtumie Mwombaji Ujumbe",
     "title_placeholder": "mfano Masomo ya Piano",
     "description_placeholder": "Unatoa au unatafuta ujuzi gani?",
-    "offline_new": "Ujuzi mpya: {title}"
+    "offline_new": "Ujuzi mpya: {title}",
+    "ask_for_help": "Omba msaada",
+    "offer_help": "Toa msaada"
   },
   "crisis": {
     "title": "Uratibu wa dharura",

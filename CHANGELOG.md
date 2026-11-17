@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.0] - 2026-11-17
+
+### Changed
+
+- **Dashboard rebuilt (design A)** — a small community label with the member count, a time-of-day greeting ("Good evening, Felix") and one *Share something* button. *Needs you* lists borrow requests, your own pending requests and unread messages as rows that open on click: a borrow request shows the borrower's note with **Approve**, **Reject** and **Message** right there. *Coming up* shows the next community event with a date block, *New nearby* the three newest items from neighbours with their availability. A one-line summary (items shared in the community, members, what you share) replaces the four count cards, and reputation folds into a single row that opens to show the tiers and how to earn points. The community card with the coloured stripe and the uppercase section labels are gone
+- **Resources, skills and events as expandable cards** — equal cards in a 3/2/1-column grid. Closed: icon (or photo), title, category and owner, availability or attendee count. Opened: description, condition and trust, one filled main action (*Request to borrow*, *Ask for help*/*Offer help*, *Attend*) and quiet *Message …* / *View details* links
+- **Calmer app-wide style** — `.btn-secondary` is now a quiet text button (no fill, no border); the active page in the desktop navigation is underlined instead of filled; page subtitles and meta text are smaller and use the subtle text colour
+- `/resources?new=1` opens the share form directly (used by the dashboard's *Share something*)
+
+### Added
+
+- `ExpandableItem` component (`frontend/src/lib/components/ExpandableItem.svelte`) and the `.kicker`, `.section-title`, `.list-panel`, `.status-text`, `.meta-text`, `.item-grid` and `.btn-outline` styles; `chevron-right` icon
+- 31 i18n keys (dashboard greetings, sections and actions; resource/skill card actions) in all 12 languages, with ICU plurals where the language uses them
+
+### Documentation
+
+- README dashboard screenshot retaken with the new design (phone, light mode, sample data)
+- `docs/design.md`: layout rules for design A
+
 ## [Unreleased] - 2026-11-17
 
 ### Documentation

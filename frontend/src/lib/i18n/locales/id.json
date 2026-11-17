@@ -223,7 +223,34 @@
     "level_pillar": "Pilar",
     "admin": "Admin",
     "load_failed": "Gagal memuat dasbor",
-    "someone": "Seseorang"
+    "someone": "Seseorang",
+    "greeting_morning": "Selamat pagi, {name}",
+    "greeting_afternoon": "Selamat siang, {name}",
+    "greeting_evening": "Selamat malam, {name}",
+    "community_line": "{community} · {count} anggota",
+    "share_something": "Bagikan sesuatu",
+    "needs_you": "Menunggumu",
+    "nothing_needed": "Tidak ada yang menunggumu saat ini.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Setujui untuk mengonfirmasi tanggal, atau tolak dan {name} akan diberi tahu.",
+    "outgoing_detail": "Pemilik belum menjawab. Kamu akan menerima pesan.",
+    "message_name": "Kirim pesan ke {name}",
+    "view_item": "Lihat barang",
+    "open_bookings": "Buka pemesanan",
+    "unread_title": "{count} pesan belum dibaca",
+    "unread_meta": "Dari tetanggamu",
+    "open_messages": "Buka pesan",
+    "open_ticket": "Buka tiket",
+    "coming_up": "Akan datang",
+    "see_all": "Lihat semua",
+    "going": "{count} ikut",
+    "no_events": "Belum ada acara.",
+    "plan_event": "Rencanakan satu",
+    "new_nearby": "Baru di dekatmu",
+    "no_new_items": "Belum ada yang baru di komunitasmu.",
+    "community_stats": "{items} barang dibagikan di {community} · {members} anggota",
+    "your_stats": "Kamu membagikan {items} barang dan {skills} keahlian",
+    "reputation_line": "Reputasi: {level} · {score} poin"
   },
   "resources": {
     "title": "Perpustakaan sumber daya",
@@ -318,7 +345,9 @@
     "mark_available": "Tandai Tersedia",
     "upload_image": "Unggah Gambar",
     "title_placeholder": "mis. Bor Bosch",
-    "description_placeholder": "Apa yang Anda bagikan? Ada syarat?"
+    "description_placeholder": "Apa yang Anda bagikan? Ada syarat?",
+    "yours": "Kamu",
+    "view_details": "Lihat detail"
   },
   "bookings": {
     "title": "Pemesanan",
@@ -541,7 +570,9 @@
     "message_requester": "Kirim Pesan ke Peminta",
     "title_placeholder": "mis. Les Piano",
     "description_placeholder": "Keahlian apa yang Anda tawarkan atau cari?",
-    "offline_new": "Keahlian baru: {title}"
+    "offline_new": "Keahlian baru: {title}",
+    "ask_for_help": "Minta bantuan",
+    "offer_help": "Tawarkan bantuan"
   },
   "crisis": {
     "title": "Koordinasi darurat",

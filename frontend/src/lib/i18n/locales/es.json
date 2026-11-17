@@ -223,7 +223,34 @@
     "level_pillar": "Pilar",
     "admin": "Admin",
     "load_failed": "No se pudo cargar el panel",
-    "someone": "Alguien"
+    "someone": "Alguien",
+    "greeting_morning": "Buenos días, {name}",
+    "greeting_afternoon": "Buenas tardes, {name}",
+    "greeting_evening": "Buenas noches, {name}",
+    "community_line": "{community} · {count, plural, one {# miembro} other {# miembros}}",
+    "share_something": "Compartir algo",
+    "needs_you": "Te necesita",
+    "nothing_needed": "Nada te espera ahora mismo.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Aprueba para confirmar las fechas o rechaza y se le avisará a {name}.",
+    "outgoing_detail": "El propietario aún no ha respondido. Recibirás un mensaje.",
+    "message_name": "Escribir a {name}",
+    "view_item": "Ver objeto",
+    "open_bookings": "Abrir reservas",
+    "unread_title": "{count, plural, one {# mensaje sin leer} other {# mensajes sin leer}}",
+    "unread_meta": "De tus vecinos",
+    "open_messages": "Abrir mensajes",
+    "open_ticket": "Abrir ticket",
+    "coming_up": "Próximamente",
+    "see_all": "Ver todo",
+    "going": "{count} asistentes",
+    "no_events": "Aún no hay eventos.",
+    "plan_event": "Organiza uno",
+    "new_nearby": "Nuevo cerca",
+    "no_new_items": "Nada nuevo en tu comunidad todavía.",
+    "community_stats": "{items, plural, one {# objeto compartido} other {# objetos compartidos}} en {community} · {members, plural, one {# miembro} other {# miembros}}",
+    "your_stats": "Compartes {items, plural, one {# objeto} other {# objetos}} y {skills, plural, one {# habilidad} other {# habilidades}}",
+    "reputation_line": "Reputación: {level} · {score} puntos"
   },
   "resources": {
     "title": "Recursos compartidos",
@@ -318,7 +345,9 @@
     "mark_available": "Marcar como disponible",
     "upload_image": "Subir imagen",
     "title_placeholder": "p. ej. Taladro Bosch",
-    "description_placeholder": "¿Qué compartes? ¿Alguna condición?"
+    "description_placeholder": "¿Qué compartes? ¿Alguna condición?",
+    "yours": "Tú",
+    "view_details": "Ver detalles"
   },
   "bookings": {
     "title": "Mis reservas",
@@ -541,7 +570,9 @@
     "message_requester": "Escribir a quien lo pide",
     "title_placeholder": "p. ej. Clases de piano",
     "description_placeholder": "¿Qué habilidad ofreces o buscas?",
-    "offline_new": "Habilidad nueva: {title}"
+    "offline_new": "Habilidad nueva: {title}",
+    "ask_for_help": "Pedir ayuda",
+    "offer_help": "Ofrecer ayuda"
   },
   "crisis": {
     "title": "Emergencia",

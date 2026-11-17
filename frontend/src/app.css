@@ -269,13 +269,111 @@ h3, h4, h5, h6 {
 
 .page-header h1 {
 	margin: 0;
-	font-size: 2.1rem;
+	font-size: 1.9rem;
+}
+
+/* ── Design A primitives: kicker, serif section titles, list panels ── */
+
+/* Small mono label above a page title, with a short rule */
+.kicker {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin: 0 0 0.35rem;
+	font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 0.7rem;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.12em;
+	color: var(--color-accent);
+}
+
+.kicker::before {
+	content: '';
+	width: 1.5rem;
+	height: 1px;
+	background: currentColor;
+	flex: none;
+}
+
+/* Section title: quiet serif, never uppercase */
+.section-title {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin: 0 0 0.75rem;
+	font-family: var(--font-heading);
+	font-size: 1.15rem;
+	font-weight: 400;
+	color: var(--color-text);
+}
+
+.section-title a,
+.section-title .section-count {
+	font-family: var(--font-body);
+	font-size: 0.8rem;
+	font-weight: 500;
+	color: var(--color-primary-text);
+}
+
+/* A bordered panel holding rows separated by hairlines */
+.list-panel {
+	background: var(--color-surface);
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-lg);
+	overflow: hidden;
+}
+
+/* Status as a coloured dot + text; only exceptions get a tinted pill */
+.status-text {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.78rem;
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.status-text::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+	flex: none;
+}
+
+.status-ok { color: var(--color-success); }
+.status-off { color: var(--color-text-subtle); }
+.status-off::before { background: transparent; border: 1.5px solid currentColor; width: 5px; height: 5px; }
+.status-warn { color: var(--color-warning); background: var(--color-warning-bg); padding: 0.1rem 0.5rem; border-radius: 999px; }
+
+.meta-text {
+	font-size: 0.8rem;
+	color: var(--color-text-subtle);
+}
+
+/* Equal cards: 3 columns on desktop, 2 on tablets, 1 on phones */
+.item-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.9rem;
+	align-items: start;
+}
+
+@media (max-width: 900px) {
+	.item-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+	.item-grid { grid-template-columns: 1fr; gap: 0.6rem; }
 }
 
 .subtitle {
-	margin: 0.4rem 0 0;
-	font-size: 0.95rem;
-	color: var(--color-text-muted);
+	margin: 0.35rem 0 0;
+	font-size: 0.88rem;
+	color: var(--color-text-subtle);
 }
 
 @media (max-width: 480px) {
@@ -601,7 +699,22 @@ input[type='checkbox'], input[type='radio'] {
 	cursor: not-allowed;
 }
 
+/* Secondary actions stay quiet (design A): no fill, no border, muted text that
+   darkens on hover. Only one filled .btn-primary per area. */
 .btn-secondary {
+	background: transparent;
+	color: var(--color-text-muted);
+	border-color: transparent;
+	font-weight: 500;
+}
+
+.btn-secondary:hover:not(:disabled):not([aria-disabled='true']) {
+	background: var(--color-surface-raised);
+	color: var(--color-text);
+}
+
+/* Bordered variant for the few places a secondary action must read as a button on its own */
+.btn-outline {
 	background: var(--color-surface);
 	color: var(--color-text);
 	border-color: var(--color-border);
