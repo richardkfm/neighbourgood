@@ -9,7 +9,7 @@
 
 NeighbourGood is a free, self-hostable web app for neighbourhoods. People lend each other tools and equipment, offer skills, organise local events and get to know each other. When a flood, storm or power cut hits, the same community switches to crisis mode with one action and coordinates help, even over Bluetooth when the internet is down.
 
-v2.8.1 · 12 languages · [GPL-3.0](LICENSE)
+v2.8.2 · 12 languages · [GPL-3.0](LICENSE)
 
 [What it does](#what-it-does) · [Everyday: Blue Sky](#everyday-blue-sky) · [Crisis: Red Sky](#crisis-red-sky) · [Telegram](#use-it-from-telegram) · [Connected communities](#connected-communities) · [Get started](#get-started) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing)
 
@@ -96,7 +96,7 @@ curl -fsSL https://raw.githubusercontent.com/neighbourgood/neighbourgood/main/in
 
 The installer uses Docker when it's available, generates a secret key and starts everything. Then open http://localhost:3800, sign up, and the onboarding wizard helps you create your community. Invite your neighbours with an invite link from the community page.
 
-A small rented server (1 CPU, 1 GB RAM, around 5 € a month) is enough for a few hundred people. For a real instance with your own domain and HTTPS, follow **[docs/self-hosting.md](docs/self-hosting.md)**. All settings are in [docs/configuration.md](docs/configuration.md).
+A small rented server (1 CPU, 1 GB RAM, around 5 € a month) is plenty for a neighbourhood, and can host several neighbourhoods side by side. For a real instance with your own domain and HTTPS, follow **[docs/self-hosting.md](docs/self-hosting.md)**. All settings are in [docs/configuration.md](docs/configuration.md).
 
 ## Documentation
 
