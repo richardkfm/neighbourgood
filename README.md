@@ -26,6 +26,15 @@ The app has two states:
 
 Crises are rare. Most days NeighbourGood is simply where neighbours lend and borrow things, swap skills and meet each other, and that everyday use is what makes the network work when it's needed.
 
+It starts with what you already own. When you join, NeighbourGood asks one simple question: *what do you have at home?* One tap per item is enough, and you don't commit to lending anything yet.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/share-dark.png">
+  <img src="docs/images/share-light.png" alt="Onboarding step 3, What do you have at home?: one-tap suggestions such as drill, ladder, projector, cargo bike, folding table, board games and tent, plus a field for anything else you could share" width="880">
+</picture>
+
+Everything your neighbours have listed then shows up in one place, ready to borrow:
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/resources-dark.png">
   <img src="docs/images/resources-light.png" alt="The shared resources list of a Berlin neighbourhood: a cordless drill, a cargo bike, a projector, beer tables and benches, a sewing machine and a ladder, each lent by a named neighbour" width="880">
