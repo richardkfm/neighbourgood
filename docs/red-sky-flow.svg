@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 470" width="880" height="470" role="img" aria-labelledby="t d">
+  <title id="t">Red Sky: from emergency ping to help, without internet</title>
+  <desc id="d">A street map in crisis mode. A household with no internet sends an emergency ping. It hops from phone to phone over the Bluetooth mesh to the neighbourhood coordinator, appears as a CRITICAL ticket at the top of the Emergency list, a neighbour replies "On my way" over the mesh, the ticket moves to In progress and is finally resolved.</desc>
+  <defs>
+    <symbol id="house" viewBox="5 5 22 22"><path d="M16 6.5 6 14.2V25.5h7.2v-6a2.8 2.8 0 0 1 5.6 0v6H26V14.2z"/></symbol>
+    <clipPath id="mapclip"><rect x="20" y="20" width="520" height="380" rx="16"/></clipPath>
+    <radialGradient id="glow"><stop offset="0" stop-color="#fb8b8b" stop-opacity=".9"/><stop offset="1" stop-color="#fb8b8b" stop-opacity="0"/></radialGradient>
+  </defs>
+  <style>
+    text { font-family: Inter, "Segoe UI", -apple-system, Helvetica, Arial, sans-serif; }
+    .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+    .serif { font-family: Fraunces, Georgia, "Times New Roman", serif; }
+    .muted { fill: #c9b3b3; }
+    .subtle { fill: #a89393; }
+    .ink { fill: #f7eeee; }
+    .node { fill: #6b4646; }
+    .mesh { stroke: #4a3030; stroke-width: 1.5; stroke-dasharray: 3 5; fill: none; }
+    .route { stroke: #dc2626; stroke-width: 3; stroke-linecap: round; fill: none; }
+
+    /* One 14 s loop. Every element's resting style is the "help is on the way" frame,
+       so with reduced motion the picture still tells the whole story. */
+    .a { animation-duration: 14s; animation-iteration-count: infinite; animation-timing-function: linear; }
+
+    .ring { opacity: 0; transform-box: fill-box; transform-origin: center; animation-timing-function: ease-out; }
+    .ringA1 { animation-name: ringA; }
+    .ringA2 { animation-name: ringA; animation-delay: .35s; }
+    @keyframes ringA { 0%, 5% { opacity: 0; transform: scale(.3); } 6% { opacity: .9; transform: scale(.3); } 13% { opacity: 0; transform: scale(1.6); } 100% { opacity: 0; } }
+    .ringE { animation-name: ringE; }
+    @keyframes ringE { 0%, 32% { opacity: 0; transform: scale(.3); } 33% { opacity: .9; transform: scale(.3); } 40% { opacity: 0; transform: scale(1.6); } 100% { opacity: 0; } }
+    .ringF { animation-name: ringF; }
+    @keyframes ringF { 0%, 50% { opacity: 0; transform: scale(.3); } 51% { opacity: .9; transform: scale(.3); } 58% { opacity: 0; transform: scale(1.6); } 100% { opacity: 0; } }
+
+    .bubbleA { animation-name: bubbleA; }
+    @keyframes bubbleA { 0%, 6% { opacity: 0; } 8%, 32% { opacity: 1; } 35%, 100% { opacity: 0; } }
+    .bubbleF { animation-name: bubbleF; }
+    @keyframes bubbleF { 0%, 51% { opacity: 0; } 53%, 74% { opacity: 1; } 77%, 100% { opacity: 0; } }
+
+    .r1 { opacity: 0; animation-name: r1; }
+    @keyframes r1 { 0%, 14% { opacity: 0; } 15%, 33% { opacity: .9; } 36%, 100% { opacity: 0; } }
+    .r2 { opacity: 0; animation-name: r2; }
+    @keyframes r2 { 0%, 23% { opacity: 0; } 24%, 33% { opacity: .9; } 36%, 100% { opacity: 0; } }
+    .r3 { stroke: #f5c2c7; animation-name: r3; }
+    @keyframes r3 { 0%, 53% { opacity: 0; } 54%, 72% { opacity: .9; } 75%, 100% { opacity: 0; } }
+    .r4 { stroke: #f5c2c7; animation-name: r4; }
+    @keyframes r4 { 0%, 61% { opacity: 0; } 62%, 72% { opacity: .9; } 75%, 100% { opacity: 0; } }
+
+    .dot { opacity: 0; }
+    .d1 { animation-name: d1; }
+    @keyframes d1 { 0%, 13.9% { opacity: 0; transform: translate(90px, 225px); } 14% { opacity: 1; transform: translate(90px, 225px); } 22% { opacity: 1; transform: translate(255px, 215px); } 22.1%, 100% { opacity: 0; transform: translate(255px, 215px); } }
+    .d2 { animation-name: d2; }
+    @keyframes d2 { 0%, 22.9% { opacity: 0; transform: translate(255px, 215px); } 23% { opacity: 1; transform: translate(255px, 215px); } 32% { opacity: 1; transform: translate(440px, 205px); } 32.1%, 100% { opacity: 0; transform: translate(440px, 205px); } }
+    .d3 { animation-name: d3; }
+    @keyframes d3 { 0%, 53.9% { opacity: 0; transform: translate(300px, 345px); } 54% { opacity: 1; transform: translate(300px, 345px); } 61% { opacity: 1; transform: translate(255px, 215px); } 61.1%, 100% { opacity: 0; transform: translate(255px, 215px); } }
+    .d4 { animation-name: d4; }
+    @keyframes d4 { 0%, 61.9% { opacity: 0; transform: translate(255px, 215px); } 62% { opacity: 1; transform: translate(255px, 215px); } 70% { opacity: 1; transform: translate(90px, 225px); } 70.1%, 100% { opacity: 0; transform: translate(90px, 225px); } }
+
+    /* Emergency list: the new ticket slides in on top, the others move down. */
+    .shift { transform: translateY(66px); animation-name: shift; animation-timing-function: ease-in-out; }
+    @keyframes shift { 0%, 34% { transform: translateY(0); } 38%, 93% { transform: translateY(66px); } 97%, 100% { transform: translateY(0); } }
+    .newT { animation-name: newT; animation-timing-function: ease-out; }
+    @keyframes newT { 0%, 35% { opacity: 0; transform: translateY(-14px); } 39% { opacity: 1; transform: translateY(0); } 79% { opacity: 1; } 82%, 92% { opacity: .55; } 95%, 100% { opacity: 0; transform: translateY(0); } }
+    .sOpen { opacity: 0; animation-name: sOpen; }
+    @keyframes sOpen { 0%, 37% { opacity: 0; } 39%, 55% { opacity: 1; } 57%, 100% { opacity: 0; } }
+    .sProg { animation-name: sProg; }
+    @keyframes sProg { 0%, 55% { opacity: 0; } 57%, 77% { opacity: 1; } 79%, 100% { opacity: 0; } }
+    .sDone { opacity: 0; animation-name: sDone; }
+    @keyframes sDone { 0%, 77% { opacity: 0; } 79%, 92% { opacity: 1; } 95%, 100% { opacity: 0; } }
+
+    .step { animation-timing-function: step-end; }
+    .s1 { animation-name: s1; } @keyframes s1 { 0% { opacity: .35; } 5% { opacity: 1; } 14% { opacity: .35; } }
+    .s2 { animation-name: s2; } @keyframes s2 { 0% { opacity: .35; } 14% { opacity: 1; } 34% { opacity: .35; } }
+    .s3 { animation-name: s3; } @keyframes s3 { 0% { opacity: .35; } 34% { opacity: 1; } 51% { opacity: .35; } }
+    .s4 { animation-name: s4; } @keyframes s4 { 0% { opacity: .35; } 51% { opacity: 1; } 93% { opacity: .35; } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .a { animation: none !important; }
+    }
+  </style>
+
+  <rect width="880" height="470" rx="20" fill="#170f0f"/>
+
+  <!-- ── Street map ─────────────────────────────────────────── -->
+  <rect x="20" y="20" width="520" height="380" rx="16" fill="#1d1414" stroke="#3a2626"/>
+  <g clip-path="url(#mapclip)">
+    <path d="M20 150H540M20 290H540M170 20V400M360 20V400" stroke="#2a1d1d" stroke-width="18"/>
+    <path d="M20 150H540M20 290H540M170 20V400M360 20V400" stroke="#332323" stroke-width="1" stroke-dasharray="8 10"/>
+  </g>
+
+  <!-- Bluetooth mesh: which phones can hear each other -->
+  <g class="mesh">
+    <path d="M90 225L95 85M90 225L255 215M90 225L100 350M95 85L270 90M255 215L270 90M255 215L440 205M255 215L300 345M270 90L470 80M440 205L470 80M440 205L470 345M300 345L470 345M300 345L100 350"/>
+  </g>
+
+  <!-- Active route (ping out, reply back) -->
+  <path class="route r1 a" d="M90 225L255 215"/>
+  <path class="route r2 a" d="M255 215L440 205"/>
+  <path class="route r3 a" d="M300 345L255 215"/>
+  <path class="route r4 a" d="M255 215L90 225"/>
+
+  <!-- Households -->
+  <g class="node">
+    <use href="#house" x="84" y="74" width="22" height="22"/>
+    <use href="#house" x="259" y="79" width="22" height="22"/>
+    <use href="#house" x="459" y="69" width="22" height="22"/>
+    <use href="#house" x="244" y="204" width="22" height="22"/>
+    <use href="#house" x="459" y="334" width="22" height="22"/>
+    <use href="#house" x="89" y="339" width="22" height="22"/>
+  </g>
+  <!-- The household asking for help -->
+  <circle class="ring ringA1 a" cx="90" cy="225" r="26" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+  <circle class="ring ringA2 a" cx="90" cy="225" r="26" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+  <use href="#house" x="77" y="212" width="26" height="26" fill="#fb8b8b"/>
+  <text x="90" y="256" text-anchor="middle" font-size="11" class="muted">Lindenstr. 12</text>
+  <!-- Neighbour who helps -->
+  <circle class="ring ringF a" cx="300" cy="345" r="26" fill="none" stroke="#f5c2c7" stroke-width="2.5"/>
+  <use href="#house" x="287" y="332" width="26" height="26" fill="#f5c2c7"/>
+  <text x="300" y="376" text-anchor="middle" font-size="11" class="muted">Felix</text>
+  <!-- Neighbourhood coordinator -->
+  <circle class="ring ringE a" cx="440" cy="205" r="30" fill="none" stroke="#f7eeee" stroke-width="2.5"/>
+  <rect x="425" y="190" width="30" height="30" rx="8" fill="#f7eeee"/>
+  <use href="#house" x="429" y="194" width="22" height="22" fill="#170f0f"/>
+  <text x="440" y="238" text-anchor="middle" font-size="11" class="muted">Coordinator</text>
+
+  <!-- Messages hopping over Bluetooth -->
+  <g>
+    <circle class="dot d1 a" r="14" fill="url(#glow)"/><circle class="dot d1 a" r="5" fill="#fb8b8b"/>
+    <circle class="dot d2 a" r="14" fill="url(#glow)"/><circle class="dot d2 a" r="5" fill="#fb8b8b"/>
+    <circle class="dot d3 a" r="12" fill="url(#glow)"/><circle class="dot d3 a" r="5" fill="#f5c2c7"/>
+    <circle class="dot d4 a" r="12" fill="url(#glow)"/><circle class="dot d4 a" r="5" fill="#f5c2c7"/>
+  </g>
+
+  <!-- Chat bubbles -->
+  <g class="bubbleA a">
+    <rect x="40" y="160" width="196" height="30" rx="10" fill="#3d1212" stroke="#dc2626"/>
+    <text x="52" y="180" font-size="12" class="ink">Cellar flooding, need sandbags</text>
+  </g>
+  <g class="bubbleF a">
+    <rect x="322" y="300" width="92" height="30" rx="10" fill="#2e2020" stroke="#f5c2c7"/>
+    <text x="334" y="320" font-size="12" class="ink">On my way</text>
+  </g>
+
+  <!-- Status pill -->
+  <rect x="36" y="34" width="168" height="26" rx="13" fill="#dc2626"/>
+  <circle cx="51" cy="47" r="4" fill="#ffffff"/>
+  <text x="61" y="51.5" font-size="11.5" font-weight="700" fill="#ffffff">RED SKY · NO INTERNET</text>
+
+  <!-- ── Emergency list ─────────────────────────────────────── -->
+  <rect x="560" y="20" width="300" height="380" rx="16" fill="#231818" stroke="#4a3030"/>
+  <text x="580" y="56" font-size="22" class="serif ink">Emergency</text>
+  <text x="580" y="78" font-size="12" class="subtle">Open requests, most urgent first</text>
+  <line x1="560" y1="92" x2="860" y2="92" stroke="#4a3030"/>
+
+  <g class="shift a">
+    <g>
+      <rect x="578" y="108" width="44" height="18" rx="4" fill="none" stroke="#f5c2c7"/>
+      <text x="600" y="121" text-anchor="middle" font-size="9.5" font-weight="600" class="mono" fill="#f5c2c7">HIGH</text>
+      <text x="636" y="121" font-size="12.5" font-weight="600" class="ink">Check on Mr. Okafor</text>
+      <text x="636" y="139" font-size="10.5" class="subtle">Ping · Open · 12 min ago</text>
+      <line x1="560" y1="156" x2="860" y2="156" stroke="#3a2626"/>
+    </g>
+    <g transform="translate(0 66)">
+      <rect x="578" y="108" width="48" height="18" rx="4" fill="none" stroke="#4ade80"/>
+      <text x="602" y="121" text-anchor="middle" font-size="9.5" font-weight="600" class="mono" fill="#4ade80">OFFER</text>
+      <text x="640" y="121" font-size="12.5" font-weight="600" class="ink">Generator, 2 kW</text>
+      <text x="640" y="139" font-size="10.5" class="subtle">Offer · Ben · 1 h ago</text>
+      <line x1="560" y1="156" x2="860" y2="156" stroke="#3a2626"/>
+    </g>
+    <g transform="translate(0 132)">
+      <rect x="578" y="108" width="54" height="18" rx="4" fill="none" stroke="#c9b3b3"/>
+      <text x="605" y="121" text-anchor="middle" font-size="9.5" font-weight="600" class="mono" fill="#c9b3b3">MEDIUM</text>
+      <text x="646" y="121" font-size="12.5" font-weight="600" class="ink">Water for 3 households</text>
+      <text x="646" y="139" font-size="10.5" class="subtle">Request · Open · 40 min ago</text>
+    </g>
+  </g>
+
+  <g class="newT a">
+    <rect x="561" y="94" width="298" height="62" fill="#2e1a1a"/>
+    <rect x="578" y="108" width="64" height="18" rx="4" fill="#4a1515" stroke="#ff8a80"/>
+    <text x="610" y="121" text-anchor="middle" font-size="9.5" font-weight="600" class="mono" fill="#ff8a80">CRITICAL</text>
+    <text x="654" y="121" font-size="12.5" font-weight="600" class="ink">Sandbags, Lindenstr. 12</text>
+    <text class="sOpen a" x="654" y="139" font-size="10.5" fill="#f5c2c7">Ping · Open · via Bluetooth mesh</text>
+    <text class="sProg a" x="654" y="139" font-size="10.5" fill="#fb8b8b">In progress · Felix is on the way</text>
+    <text class="sDone a" x="654" y="139" font-size="10.5" fill="#4ade80">Resolved · just now</text>
+    <line x1="560" y1="156" x2="860" y2="156" stroke="#3a2626"/>
+  </g>
+
+  <!-- ── Steps ──────────────────────────────────────────────── -->
+  <g font-size="12.5" font-weight="600">
+    <g class="step s1 a"><circle cx="40" cy="436" r="11" fill="#dc2626"/><text x="40" y="440.5" text-anchor="middle" font-size="11" fill="#fff">1</text><text x="58" y="440.5" class="ink">Ping without internet</text></g>
+    <g class="step s2 a"><circle cx="248" cy="436" r="11" fill="#dc2626"/><text x="248" y="440.5" text-anchor="middle" font-size="11" fill="#fff">2</text><text x="266" y="440.5" class="ink">Hops phone to phone</text></g>
+    <g class="step s3 a"><circle cx="446" cy="436" r="11" fill="#dc2626"/><text x="446" y="440.5" text-anchor="middle" font-size="11" fill="#fff">3</text><text x="464" y="440.5" class="ink">Triaged by urgency</text></g>
+    <g class="step s4 a"><circle cx="640" cy="436" r="11" fill="#dc2626"/><text x="640" y="440.5" text-anchor="middle" font-size="11" fill="#fff">4</text><text x="658" y="440.5" class="ink">A neighbour helps</text></g>
+  </g>
+</svg>

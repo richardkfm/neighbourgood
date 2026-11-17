@@ -52,6 +52,8 @@ Logos and wordmarks are named by height (`logo-256h.png` is 256 px tall).
 | Ink | `#2d1b0e` | `#e8e8ed` | "Neighbour" and body text |
 | Cream | `#fdf8f3` | `#0f0f1a` | Page background |
 | Warm brown | `#7a5c47` | `#c9b8a6` | Small labels and kickers, mesh hub nodes |
+| Warning | `#6b4a33` on `#f3e7da` | `#d4bc9f` on `#2e241b` | Pending bookings, offline notices, "high" urgency, warning alerts |
+| Rating | `#4f46e5` | `#818cf8` | Star ratings (same as the link violet) |
 | Red Sky red | `#dc2626` | `#dc2626` | Primary actions in crisis mode (the only colour in Red Sky) |
 | Red Sky surfaces | `#170f0f` / `#231818` | same | Background and cards in crisis mode; the logo tile there is `#f7eeee` with a `#170f0f` house |
 

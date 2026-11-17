@@ -433,7 +433,7 @@
 	}
 
 	.star-btn.active {
-		color: var(--color-warning);
+		color: var(--color-rating);
 	}
 
 	.review-actions {
@@ -444,8 +444,8 @@
 	/* ── Offline queue section ────────────────────────────────── */
 
 	.queued-section {
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.08));
-		border: 1px solid var(--color-warning, #f59e0b);
+		background: var(--color-warning-bg);
+		border: 1px solid var(--color-warning);
 		border-radius: var(--radius);
 		padding: 1rem 1.25rem;
 		margin-bottom: 1.5rem;
@@ -457,7 +457,7 @@
 		gap: 0.5rem;
 		font-size: 0.9rem;
 		font-weight: 700;
-		color: var(--color-warning, #92400e);
+		color: var(--color-warning);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		margin-bottom: 0.25rem;

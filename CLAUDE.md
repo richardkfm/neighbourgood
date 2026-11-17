@@ -20,7 +20,7 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.6.0** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.7.0** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
@@ -54,6 +54,7 @@ Current test count: **711 tests** across 39 test files (plus 15 frontend `node:t
 neighbourgood/
 ├── CLAUDE.md               # This file
 ├── brand/                  # Brand kit (logo SVG/PNG, colours) — see brand/README.md
+├── docs/                   # README illustrations (animated Red Sky flow SVG)
 ├── README.md               # User-facing docs and quick start
 ├── CHANGELOG.md            # Full version history (v0.1.0 → v1.1.0)
 ├── PLAN.md                 # Security hardening roadmap (phases 4a–5a)
@@ -340,7 +341,8 @@ Shared TypeScript interfaces that mirror backend Pydantic schemas. Always import
 
 - Blue Sky / Red Sky themes are CSS custom-property sets in `app.css`.
 - Available variables: `--color-primary`, `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-success`, `--color-warning`, `--color-error`, `--color-logo` / `--color-on-logo` (nav logo tile).
-- Red Sky has no amber or orange: red is its only hue, and urgency uses `--urgency-*` plus a text label, never colour alone.
+- No amber or orange anywhere: `--color-warning` is warm brown in Blue Sky and light rose in Red Sky; star ratings use `--color-rating` (violet), never `--color-warning`.
+- Red Sky: red is its only hue, and urgency uses `--urgency-*` plus a text label, never colour alone.
 - Always use CSS variables — never hardcode hex colors in components (regression from v0.5.0).
 
 ---
@@ -490,6 +492,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.7.0 | 2026-11-17 | No amber in Blue Sky either: `--color-warning` becomes warm brown (light `#6b4a33`, dark `#d4bc9f`), star ratings move to a new `--color-rating` token (violet), hard-coded amber fallbacks removed; animated Red Sky flow (`docs/red-sky-flow.svg`) and refreshed README (711 tests) |
 | 2.6.0 | 2026-11-17 | Red Sky without amber: warm near-black palette with red as the only colour, urgency by text label + lightness, light logo tile (`--color-logo`); Emergency page redesigned (red banner, connection/mesh line, large Send emergency ping button, compact request list with CRITICAL/HIGH/MEDIUM/LOW/OFFER labels); 7 new i18n keys in all 12 locales; README logo header, Brand and Design section, no emoji headings (711 tests) |
 | 2.5.0 | 2026-11-17 | New logo (violet house tile with an arched door) and no more orange: secondary accent becomes warm brown, theme colour violet, nav logo follows Blue/Red Sky; new `brand/` kit with SVG + PNG logos, marks, wordmarks and app icons; maskable PWA icon (711 tests) |
 | 2.4.2 | 2026-10-01 | Community map moves from CARTO (now key-only) to OpenFreeMap vector tiles via MapLibre GL with a real dark style that follows the theme toggle live; logged-out mobile menu: theme/language icons in one footer row, no double indent (711 tests) |

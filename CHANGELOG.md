@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.7.0] - 2026-11-17
+
+### Changed
+
+- **No amber in light and dark mode** — `--color-warning` is now a warm brown that fits the palette: `#6b4a33` on `#f3e7da` in light mode, `#d4bc9f` on `#2e241b` in dark mode. This covers pending bookings, offline and cache notices, the queued-requests box, "high" urgency, warning-level federation alerts, mesh reconnecting/sync hints, skill "request" badges and the leader badge
+- **Star ratings are violet** — new `--color-rating` token (follows `--color-primary-text`: violet in light and dark, rose-red in Red Sky). Trust stars, review stars, rating breakdowns and the star buttons when rating a booking use it instead of the warning colour, because a rating is a score, not a warning
+
+### Removed
+
+- Hard-coded amber fallbacks (`#f59e0b`, `#92400e`, `rgba(245, 158, 11, …)`) in `var(--color-warning, …)` across the layout banners, resources, bookings, communities and mesh pages
+
+### Documentation
+
+- **Red Sky animation** — new `docs/red-sky-flow.svg`, an animated street map shown in the README: a household with no internet sends an emergency ping, it hops phone to phone over the Bluetooth mesh to the coordinator, lands as a CRITICAL ticket on top of the Emergency list, a neighbour replies over the mesh and the ticket goes to In progress and Resolved. Plain SVG + CSS (no GIF or video), loops every 14 s and shows a still frame with reduced motion
+- **README refreshed** — "Red Sky in action" walkthrough, tech stack rows for maps (MapLibre GL + OpenFreeMap), offline (service worker + Web Bluetooth) and languages (12, incl. RTL), `docs/` in the project structure, session invalidation ticked off in the security roadmap (done in 2.4.0), a Contributing section with the checks to run, and the license named (GPL-3.0)
+
 ## [2.6.0] - 2026-11-17
 
 ### Changed

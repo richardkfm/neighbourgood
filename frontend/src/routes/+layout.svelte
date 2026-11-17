@@ -1433,16 +1433,16 @@
 		align-items: center;
 		gap: 0.6rem;
 		padding: 0.55rem 1.5rem;
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-		border-bottom: 1px solid var(--color-warning, #f59e0b);
+		background: var(--color-warning-bg);
+		border-bottom: 1px solid var(--color-warning);
 		font-size: 0.85rem;
-		color: var(--color-warning, #92400e);
+		color: var(--color-warning);
 	}
 
 	.fed-alert-link {
 		margin-inline-start: auto;
 		font-weight: 600;
-		color: var(--color-warning, #92400e);
+		color: var(--color-warning);
 		text-decoration: none;
 		white-space: nowrap;
 	}
@@ -1455,7 +1455,7 @@
 		background: none;
 		border: none;
 		font-size: 1.2rem;
-		color: var(--color-warning, #f59e0b);
+		color: var(--color-warning);
 		cursor: pointer;
 		padding: 0 0.25rem;
 		opacity: 0.7;
@@ -1502,10 +1502,10 @@
 		align-items: center;
 		gap: 0.6rem;
 		padding: 0.55rem 1.5rem;
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-		border-bottom: 1px solid var(--color-warning, #f59e0b);
+		background: var(--color-warning-bg);
+		border-bottom: 1px solid var(--color-warning);
 		font-size: 0.85rem;
-		color: var(--color-warning, #92400e);
+		color: var(--color-warning);
 	}
 
 	.offline-queue-chip {

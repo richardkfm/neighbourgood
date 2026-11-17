@@ -703,7 +703,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		color: var(--color-warning);
+		color: var(--color-rating);
 		font-weight: 600;
 	}
 
@@ -900,9 +900,9 @@
 
 	.offline-note {
 		font-size: 0.83rem;
-		color: var(--color-warning, #92400e);
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.08));
-		border: 1px solid var(--color-warning, #f59e0b);
+		color: var(--color-warning);
+		background: var(--color-warning-bg);
+		border: 1px solid var(--color-warning);
 		border-radius: var(--radius);
 		padding: 0.45rem 0.75rem;
 		margin-bottom: 0.5rem;

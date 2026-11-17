@@ -5,7 +5,7 @@
   </picture>
 </h1>
 
-**v2.6.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
+**v2.7.0** · A self-hostable web platform that helps communities share resources and coordinate during crises — including when the internet is gone.
 
 [Vision](#vision) | [Dual-State Architecture](#dual-state-architecture) | [Tech Stack](#tech-stack) | [Quick Start](#quick-start) | [System Requirements](#system-requirements) | [Project Structure](#project-structure) | [Brand and Design](#brand-and-design) | [Offline-First Mesh](#offline-first-mesh-networking) | [API](#api) | [Roadmap](#roadmap) | [Telegram Bot](#telegram-bot--ai-assistant) | [Contributing](#contributing) | [License](#license)
 
@@ -42,6 +42,17 @@ Activated per community by an admin or a 60% community vote, or for the whole in
 - **Offline-First** – PWA with local caching, BLE mesh networking for internet-free crisis coordination
 - **A screen you can read under stress** – Red Sky is always dark, and red is its only colour. Urgency is written out (CRITICAL, HIGH, MEDIUM, LOW, OFFER), so nothing depends on telling colours apart. The Emergency page opens with a red banner, the connection or mesh status, and one large *Send emergency ping* button, followed by the open requests sorted by urgency
 
+### Red Sky in action
+
+<p align="center">
+  <img src="docs/red-sky-flow.svg" alt="Animated map: a household with no internet sends an emergency ping, it hops phone to phone over Bluetooth to the coordinator, appears as a CRITICAL ticket on the Emergency list, a neighbour replies over the mesh and the ticket is resolved." width="880">
+</p>
+
+1. **Ping without internet.** A household whose cellar is flooding taps *Send emergency ping*. There's no internet, so the ticket goes out over Bluetooth.
+2. **Hops phone to phone.** Nearby phones running BitChat pass the signed message on, up to 7 hops (about 700 m), until it reaches the neighbourhood coordinator.
+3. **Triaged by urgency.** The ticket lands at the top of every Emergency list in reach as CRITICAL, above the high, medium and offer items.
+4. **A neighbour helps.** Felix replies over the same mesh, the ticket moves to *In progress*, and it's marked *Resolved* when the sandbags arrive. Once the internet is back, everything syncs to the server without duplicates.
+
 <a id="tech-stack"></a>
 ## Tech Stack
 
@@ -51,6 +62,9 @@ Activated per community by an admin or a 60% community vote, or for the whole in
 | Frontend   | SvelteKit                      | Fast, small bundles, good PWA/offline support     |
 | Database   | PostgreSQL (prod) / SQLite (dev) | PostgreSQL in Docker for production, SQLite for quick local dev |
 | Deployment | Docker Compose                 | Single `docker-compose up` to run everything      |
+| Maps       | MapLibre GL + OpenFreeMap      | Free vector tiles, no API key, light and dark style |
+| Offline    | Service worker + Web Bluetooth | PWA caching and a BitChat BLE mesh gateway for crises |
+| Languages  | svelte-i18n                    | 12 languages, including right-to-left Arabic and Farsi |
 
 <a id="quick-start"></a>
 ## Quick Start
@@ -266,6 +280,7 @@ Recommended model for low-resource hosts: `llama3.2:3b` via [Ollama](https://oll
 ```
 neighbourgood/
 ├── brand/                      # Brand kit: logo, mark and wordmark as SVG + PNG, colour guide
+├── docs/                       # README illustrations (e.g. the Red Sky animation)
 ├── backend/
 │   ├── app/
 │   │   ├── main.py            # FastAPI application entry point
@@ -297,7 +312,7 @@ neighbourgood/
 <a id="brand-and-design"></a>
 ## Brand and Design
 
-The logo is a house on a rounded violet tile; its door is an arch, so it stays readable at favicon size. The wordmark is **Neighbour** in the text colour and **Good** in violet, set in Fraunces. There is no orange anywhere in the palette.
+The logo is a house on a rounded violet tile; its door is an arch, so it stays readable at favicon size. The wordmark is **Neighbour** in the text colour and **Good** in violet, set in Fraunces. There is no orange or amber anywhere in the palette: warnings use a warm brown, and star ratings use the brand violet.
 
 | Mode | Look |
 |---|---|
@@ -491,7 +506,7 @@ See [API_ENDPOINTS.md](API_ENDPOINTS.md) for the full endpoint reference. Intera
 - [x] Rate limiting on auth endpoints (login, register) — 5 req/min; general 60 req/min; uploads 10 req/min (v1.7.0)
 - [x] Account lockout after repeated failed login attempts — 5 failures in 15 min → 15-min lockout (v1.7.0)
 - [x] CSRF protection for state-changing operations — Origin + X-CSRF-Token validation (v1.7.0)
-- [ ] Session invalidation on password change
+- [x] Session invalidation on password change, email change and password reset (v2.4.0)
 - [ ] Audit logging for admin actions
 
 #### Security Phase 4c — Data Protection
@@ -551,9 +566,20 @@ To customise the agent's behaviour, tone, or available intents, see **[TELEGRAM_
 <a id="contributing"></a>
 ## Contributing
 
-This project is in its early stages. Contributions, ideas, and feedback are welcome.
+Contributions, ideas and feedback are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first; [CLAUDE.md](CLAUDE.md) describes the code conventions in detail.
+
+Before opening a pull request, run:
+
+```bash
+cd backend && pytest                     # backend tests
+cd frontend && npm run check             # svelte-check + TypeScript
+cd frontend && npm test                  # frontend unit tests
+cd frontend && npm run check:i18n        # every UI string exists in all 12 languages
+```
+
+New UI text needs a key in all 12 locale files. Use the CSS custom properties in `frontend/src/app.css` instead of hard-coded colours, and keep Red Sky free of any colour other than red.
 
 <a id="license"></a>
 ## License
 
-See [LICENSE](LICENSE) for details.
+NeighbourGood is free software under the [GNU General Public License v3.0](LICENSE). The fonts used in the brand kit (Fraunces, Inter, JetBrains Mono) are under the SIL Open Font License.

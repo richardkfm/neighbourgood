@@ -444,7 +444,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		color: var(--color-warning);
+		color: var(--color-rating);
 		font-weight: 600;
 	}
 
@@ -509,11 +509,11 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.55rem 0.9rem;
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.08));
-		border: 1px solid var(--color-warning, #f59e0b);
+		background: var(--color-warning-bg);
+		border: 1px solid var(--color-warning);
 		border-radius: var(--radius);
 		font-size: 0.82rem;
-		color: var(--color-warning, #92400e);
+		color: var(--color-warning);
 		margin-bottom: 1rem;
 	}
 </style>

@@ -23,8 +23,8 @@
 	--color-border-hover: #d4b89a;
 	--color-error: #c81e1e;
 	--color-error-bg: #fef2f2;
-	--color-warning: #b45309;
-	--color-warning-bg: #fffbeb;
+	--color-warning: #6b4a33; /* warm brown: 8.3:1 on --color-bg — no amber since v2.7.0 */
+	--color-warning-bg: #f3e7da;
 	--color-success: #15803d;
 	--color-success-bg: #f0fdf4;
 	--color-status-dot: #16a34a;
@@ -33,9 +33,11 @@
 	--color-on-error: #ffffff;
 	--color-on-success: #ffffff; /* 5.0:1 on --color-success */
 	--color-on-accent: #ffffff; /* 6.6:1 on --color-accent */
-	--color-on-warning: #ffffff; /* 5.0:1 on --color-warning */
+	--color-on-warning: #ffffff; /* 8.9:1 on --color-warning */
 	--focus-ring: var(--color-primary);
 	--color-logo: var(--color-primary);
+	/* Star ratings are a score, not a warning: violet in Blue Sky, rose-red in Red Sky */
+	--color-rating: var(--color-primary-text);
 	--color-on-logo: var(--color-on-primary);
 	--tap-target: 44px;
 	--bottom-nav-height: 64px;
@@ -90,15 +92,15 @@
 	--color-border-hover: #3d3d5c;
 	--color-error: #f87171;
 	--color-error-bg: #450a0a;
-	--color-warning: #fbbf24;
-	--color-warning-bg: #451a03;
+	--color-warning: #d4bc9f; /* warm sand: 10:1 on --color-bg */
+	--color-warning-bg: #2e241b;
 	--color-success: #34d399;
 	--color-success-bg: #064e3b;
 	--color-status-dot: #34d399;
 	--color-on-error: #1a0a0a;
 	--color-on-success: #052e16; /* 7.7:1 on the dark-theme success green */
 	--color-on-accent: #1a1512; /* 9.8:1 on the dark-theme accent */
-	--color-on-warning: #1f1206;
+	--color-on-warning: #1a1410;
 
 	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
 	--shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);

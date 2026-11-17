@@ -652,8 +652,8 @@
 	}
 
 	.fed-alert-card.severity-warning {
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
-		border-color: var(--color-warning, #f59e0b);
+		background: var(--color-warning-bg);
+		border-color: var(--color-warning);
 	}
 
 	.fed-alert-card.severity-critical {
