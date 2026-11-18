@@ -20,7 +20,7 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.8.3** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.8.4** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
@@ -491,6 +491,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.8.4 | 2026-11-18 | `install.sh` adds a 2 GB swap file (kept in `/etc/fstab`) when RAM + swap is under 2 GB, so the ~1 GB frontend build doesn't get killed on small VPSes; `NG_NO_SWAP=1` opts out (713 tests) |
 | 2.8.3 | 2026-11-17 | Fix connection leak (webhook/Telegram fan-out reused the closed request session, ~15 shared items or messages emptied the pool) and burst stall (thread pool vs. connection pool deadlock above ~55 in-flight requests) with `ConcurrencyLimitMiddleware` capping requests at the pool size (713 tests) |
 | 2.8.2 | 2026-11-17 | Honest server sizing in README and self-hosting guide: a 5 € server is plenty for a neighbourhood (not "a few hundred people"), minimum RAM 1 GB, swap note for the on-server build (711 tests) |
 | 2.8.1 | 2026-11-17 | Remove the decorative coloured left stripes on the communities page (your community card, your entry in the list) and the explore list; activity and membership shown by border tint and the existing badge (711 tests) |

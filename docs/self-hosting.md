@@ -26,7 +26,7 @@ How to run your own NeighbourGood instance: install, update, put it behind a dom
 
 A small VPS (around 5 € a month, e.g. Hetzner or DigitalOcean) is plenty for a neighbourhood, and can host several neighbourhoods side by side. Running NeighbourGood takes about 250 MB of memory plus the database; on one CPU core it serves around 100 page views a second, far more than even a busy neighbourhood needs. PostgreSQL runs inside Docker, so you don't need a separate database server.
 
-Installing and updating build the app on the server, and that step briefly needs about 1 GB of memory on its own. On a 1 GB server, add 1–2 GB of swap first (your provider's docs explain how) so the build isn't stopped halfway.
+Installing and updating build the app on the server, and that step briefly needs about 1 GB of memory on its own. The one-line installer takes care of this: when the server has less than 2 GB of memory and swap together, it adds a 2 GB swap file at `/swapfile` (asking for your sudo password if needed) and keeps it across reboots. Set `NG_NO_SWAP=1` to skip that. If you install by hand, add 1–2 GB of swap first (your provider's docs explain how) so the build isn't stopped halfway.
 
 ## Install with the one-line installer
 

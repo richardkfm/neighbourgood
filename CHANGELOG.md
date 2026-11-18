@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.4] - 2026-11-18
+
+### Added
+
+- **Swap on small servers** — the one-line installer adds a 2 GB swap file (`/swapfile`, kept across reboots via `/etc/fstab`) when the server has less than 2 GB of memory and swap together. The frontend build on install and update needs about 1 GB on its own, so on a 1 GB VPS without swap it was killed halfway. It uses sudo when not run as root, leaves an existing `/swapfile` alone, and only warns when there is no sudo, too little disk, or the host doesn't allow swap (OpenVZ, LXC). Opt out with `NG_NO_SWAP=1`
+
 ## [2.8.3] - 2026-11-17
 
 ### Fixed
