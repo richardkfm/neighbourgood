@@ -5,6 +5,15 @@
   </picture>
 </h1>
 
+
+##THIS REPO HAS MOVED 
+NEW URL: https://github.com/neighbourgood/neighbourgood
+THIS WILL BE DELETED END JAN-27
+
+<br>
+<br>
+<br>
+
 **Share with your neighbours on ordinary days. Help each other when things go wrong, even without internet.**
 
 NeighbourGood is a free, self-hostable web app for neighbourhoods. People lend each other tools and equipment, offer skills, organise local events and get to know each other. When a flood, storm or power cut hits, the same community switches to crisis mode with one action and coordinates help, even over Bluetooth when the internet is down.
