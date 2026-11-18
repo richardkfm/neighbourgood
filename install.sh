@@ -79,7 +79,65 @@ wait_for_status() {
   done
 }
 
+# The frontend image is built on the server (`docker compose up --build`) on
+# install and on every update, and that build alone peaks at about 1 GB. On a
+# small VPS without swap the kernel kills it halfway. Below 2 GB of RAM + swap,
+# add a 2 GB swap file and keep it across reboots. Opt out with NG_NO_SWAP=1.
+SWAP_FILE="/swapfile"
+SWAP_MIN_KB=$((2 * 1024 * 1024))
+SWAP_SIZE_MB=2048
+
+ensure_swap() {
+  [ "${NG_NO_SWAP:-}" = "1" ] && return
+  [ -r /proc/meminfo ] || return  # not Linux
+
+  local mem_kb swap_kb
+  mem_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)"
+  swap_kb="$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)"
+  [ $((mem_kb + swap_kb)) -ge "$SWAP_MIN_KB" ] && return
+
+  local manual="Add 1–2 GB of swap yourself before updating (see docs/self-hosting.md), or the build may be stopped halfway."
+  if [ -e "$SWAP_FILE" ]; then
+    warn "Less than 2 GB of memory + swap, and $SWAP_FILE already exists, so it is left alone."
+    warn "$manual"
+    return
+  fi
+
+  local sudo=""
+  if [ "$(id -u)" -ne 0 ]; then
+    if ! command_exists sudo; then
+      warn "Less than 2 GB of memory + swap, and no sudo to add a swap file. $manual"
+      return
+    fi
+    sudo="sudo"
+  fi
+
+  local avail_kb
+  avail_kb="$(df -Pk / | awk 'NR==2 {print $4}')"
+  if [ "$avail_kb" -lt $(((SWAP_SIZE_MB + 1024) * 1024)) ]; then
+    warn "Less than 2 GB of memory + swap, and not enough free disk for a swap file. $manual"
+    return
+  fi
+
+  log "Less than 2 GB of memory + swap — adding a 2 GB swap file at $SWAP_FILE so the build doesn't run out of memory..."
+  if ! { $sudo fallocate -l "${SWAP_SIZE_MB}M" "$SWAP_FILE" 2>/dev/null \
+           || $sudo dd if=/dev/zero of="$SWAP_FILE" bs=1M count="$SWAP_SIZE_MB" status=none; } \
+     || ! $sudo chmod 600 "$SWAP_FILE" \
+     || ! $sudo mkswap "$SWAP_FILE" >/dev/null \
+     || ! $sudo swapon "$SWAP_FILE"; then
+    # Some containers and VPS types (OpenVZ, LXC) don't allow swap at all
+    $sudo rm -f "$SWAP_FILE"
+    warn "Couldn't enable a swap file here. $manual"
+    return
+  fi
+  if ! grep -qs "^$SWAP_FILE " /etc/fstab; then
+    echo "$SWAP_FILE none swap sw 0 0" | $sudo tee -a /etc/fstab >/dev/null
+  fi
+  log "Swap file active and kept across reboots (remove it with: swapoff $SWAP_FILE, delete its line in /etc/fstab, rm $SWAP_FILE)."
+}
+
 setup_docker() {
+  ensure_swap
   log "Docker detected — building and starting containers (this can take a few minutes on first run)..."
   cd "$INSTALL_DIR"
   docker compose up --build -d
