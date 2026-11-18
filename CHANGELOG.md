@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.3] - 2026-11-17
+
+### Fixed
+
+- **Connection leak that froze the instance** — webhook and Telegram fan-out (`dispatch_event`) ran as a background task on the request's database session, which `get_db()` had already closed. Its queries quietly checked out a fresh connection that was never returned, so every shared resource, message, booking, event, member join or crisis ticket leaked one. After about 15 of them the pool was empty and every request hung for 30 seconds before failing. It now uses its own short-lived session
+- **Stall under a burst of requests** — a request takes two trips through FastAPI's 40-thread pool (dependencies, then the route) and holds its database connection in between. With more than about 55 requests in flight, every thread waited for a connection while every connection belonged to a request waiting for a thread, and everything timed out after 30 seconds. A new `ConcurrencyLimitMiddleware` lets at most as many requests into the app as there are database connections (15); the rest queue briefly. Load test on one CPU core with PostgreSQL: 100 concurrent requests went from 14 req/s with timeouts to about 105 req/s with none, and it stays there at 400 concurrent
+- 2 regression tests (713 total)
+
 ## [2.8.2] - 2026-11-17
 
 ### Changed

@@ -1,6 +1,6 @@
 # Roadmap
 
-Where NeighbourGood stands (v2.8.2, November 2026) and what is still open. The detailed release history is in [CHANGELOG.md](../CHANGELOG.md); older planning documents are kept in [archive/](archive/).
+Where NeighbourGood stands (v2.8.3, November 2026) and what is still open. The detailed release history is in [CHANGELOG.md](../CHANGELOG.md); older planning documents are kept in [archive/](archive/).
 
 ## What's done
 

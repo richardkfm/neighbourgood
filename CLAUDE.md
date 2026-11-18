@@ -20,14 +20,14 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.8.2** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.8.3** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
 
 Each instance exposes `/instance/info` so instances can discover and federate with each other.
 
-Current test count: **711 tests** across 39 test files (plus 15 frontend `node:test` tests via `npm test`) (all backend, pytest + in-memory SQLite).
+Current test count: **713 tests** across 40 test files (plus 15 frontend `node:test` tests via `npm test`) (all backend, pytest + in-memory SQLite).
 
 ---
 
@@ -491,6 +491,7 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.8.3 | 2026-11-17 | Fix connection leak (webhook/Telegram fan-out reused the closed request session, ~15 shared items or messages emptied the pool) and burst stall (thread pool vs. connection pool deadlock above ~55 in-flight requests) with `ConcurrencyLimitMiddleware` capping requests at the pool size (713 tests) |
 | 2.8.2 | 2026-11-17 | Honest server sizing in README and self-hosting guide: a 5 € server is plenty for a neighbourhood (not "a few hundred people"), minimum RAM 1 GB, swap note for the on-server build (711 tests) |
 | 2.8.1 | 2026-11-17 | Remove the decorative coloured left stripes on the communities page (your community card, your entry in the list) and the explore list; activity and membership shown by border tint and the existing badge (711 tests) |
 | 2.8.0 | 2026-11-17 | Design A in the app: dashboard rebuilt (kicker, greeting, Share something, expandable Needs you rows with inline approve/decline, Coming up, New nearby, stats line, collapsible reputation), resources/skills/events as expandable cards (`ExpandableItem`), quiet `.btn-secondary`, underlined active nav, `.kicker`/`.section-title`/`.list-panel`/`.item-grid` primitives; 31 new i18n keys in 12 locales; README dashboard screenshot retaken (711 tests) |
