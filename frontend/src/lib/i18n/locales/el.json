@@ -223,7 +223,34 @@
     "level_pillar": "Πυλώνας",
     "admin": "Διαχειριστής",
     "load_failed": "Η φόρτωση του πίνακα απέτυχε",
-    "someone": "Κάποιος"
+    "someone": "Κάποιος",
+    "greeting_morning": "Καλημέρα, {name}",
+    "greeting_afternoon": "Καλό απόγευμα, {name}",
+    "greeting_evening": "Καλησπέρα, {name}",
+    "community_line": "{community} · {count, plural, one {# μέλος} other {# μέλη}}",
+    "share_something": "Μοιράσου κάτι",
+    "needs_you": "Σε περιμένει",
+    "nothing_needed": "Τίποτα δεν σε περιμένει αυτή τη στιγμή.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Έγκρινε για να επιβεβαιώσεις τις ημερομηνίες ή απόρριψε και θα ενημερωθεί ο/η {name}.",
+    "outgoing_detail": "Ο ιδιοκτήτης δεν έχει απαντήσει ακόμη. Θα λάβεις μήνυμα.",
+    "message_name": "Μήνυμα στον/στην {name}",
+    "view_item": "Δες το αντικείμενο",
+    "open_bookings": "Άνοιγμα κρατήσεων",
+    "unread_title": "{count, plural, one {# μη αναγνωσμένο μήνυμα} other {# μη αναγνωσμένα μηνύματα}}",
+    "unread_meta": "Από τους γείτονές σου",
+    "open_messages": "Άνοιγμα μηνυμάτων",
+    "open_ticket": "Άνοιγμα αιτήματος",
+    "coming_up": "Επερχόμενα",
+    "see_all": "Δες όλα",
+    "going": "{count} συμμετέχουν",
+    "no_events": "Δεν υπάρχουν προγραμματισμένες εκδηλώσεις.",
+    "plan_event": "Οργάνωσε μία",
+    "new_nearby": "Νέα κοντά σου",
+    "no_new_items": "Τίποτα νέο στην κοινότητά σου ακόμη.",
+    "community_stats": "{items, plural, one {# αντικείμενο} other {# αντικείμενα}} κοινόχρηστα στο {community} · {members, plural, one {# μέλος} other {# μέλη}}",
+    "your_stats": "Μοιράζεσαι {items, plural, one {# αντικείμενο} other {# αντικείμενα}} και {skills, plural, one {# δεξιότητα} other {# δεξιότητες}}",
+    "reputation_line": "Φήμη: {level} · {score} πόντοι"
   },
   "resources": {
     "title": "Βιβλιοθήκη πόρων",
@@ -318,7 +345,9 @@
     "mark_available": "Σήμανση ως διαθέσιμο",
     "upload_image": "Ανέβασμα εικόνας",
     "title_placeholder": "π.χ. Τρυπάνι Bosch",
-    "description_placeholder": "Τι μοιράζεσαι; Υπάρχουν όροι;"
+    "description_placeholder": "Τι μοιράζεσαι; Υπάρχουν όροι;",
+    "yours": "Εσύ",
+    "view_details": "Δες λεπτομέρειες"
   },
   "bookings": {
     "title": "Οι κρατήσεις μου",
@@ -541,7 +570,9 @@
     "message_requester": "Μήνυμα σε αυτόν που ζητά",
     "title_placeholder": "π.χ. Μαθήματα πιάνου",
     "description_placeholder": "Ποια δεξιότητα προσφέρεις ή ψάχνεις;",
-    "offline_new": "Νέα δεξιότητα: {title}"
+    "offline_new": "Νέα δεξιότητα: {title}",
+    "ask_for_help": "Ζήτα βοήθεια",
+    "offer_help": "Πρόσφερε βοήθεια"
   },
   "crisis": {
     "title": "Συντονισμός έκτακτης ανάγκης",
@@ -646,7 +677,14 @@
     "load_communities_failed": "Η φόρτωση των κοινοτήτων σου απέτυχε.",
     "load_tickets_failed": "Η φόρτωση των δελτίων απέτυχε.",
     "offline_ticket": "Δελτίο έκτακτης ανάγκης: {title}",
-    "untitled": "Χωρίς τίτλο"
+    "untitled": "Χωρίς τίτλο",
+    "red_active": "Το Red Sky είναι ενεργό",
+    "red_active_detail": "Η κοινότητα {community} είναι σε λειτουργία κρίσης. Τα αιτήματα ταξινομούνται κατά επείγον.",
+    "no_internet": "Χωρίς internet.",
+    "mesh_reachable": "{count} γείτονες προσβάσιμοι μέσω του δικτύου Bluetooth. Τα μηνύματα συγχρονίζονται όταν επανέλθει η σύνδεση.",
+    "offline_saved": "Τα αιτήματα αποθηκεύονται σε αυτή τη συσκευή και αποστέλλονται όταν επανέλθει η σύνδεση.",
+    "send_ping": "Αποστολή σήματος έκτακτης ανάγκης",
+    "open_requests": "Ανοιχτά αιτήματα"
   },
   "settings": {
     "title": "Ρυθμίσεις λογαριασμού",

@@ -6,6 +6,8 @@
 	import { isLoggedIn } from '$lib/stores/auth';
 	import { isOnline } from '$lib/stores/offline';
 	import Icon from '$lib/components/Icon.svelte';
+	import ExpandableItem from '$lib/components/ExpandableItem.svelte';
+	import { user } from '$lib/stores/auth';
 	import { SKILL_CATEGORY_ICON, TRUST_BADGE_ICON } from '$lib/icons';
 
 	import type { OwnerTrust } from '$lib/types';
@@ -259,17 +261,10 @@
 	</div>
 
 	{#if loading}
-		<div class="skill-grid" role="status" aria-busy="true">
+		<div class="item-grid" role="status" aria-busy="true">
 			<span class="sr-only">{$t('common.loading')}</span>
 			{#each [1, 2, 3, 4, 5, 6] as n (n)}
-				<div class="card skill-card" aria-hidden="true">
-					<span class="skeleton card-icon"></span>
-					<div class="card-body">
-						<span class="skeleton" style="height: 0.9rem; width: 40%"></span>
-						<span class="skeleton" style="height: 1.1rem; width: 75%; margin-top: 0.6rem"></span>
-						<span class="skeleton" style="height: 0.8rem; width: 90%; margin-top: 0.6rem"></span>
-					</div>
-				</div>
+				<div class="skeleton skeleton-card" style="height: 4.5rem" aria-hidden="true"></div>
 			{/each}
 		</div>
 	{:else if skills.length === 0}
@@ -289,37 +284,39 @@
 			{/if}
 		</div>
 	{:else}
-		<div class="skill-grid">
-			{#each skills as skill}
-				<a href="/skills/{skill.id}" class="card card-interactive skill-card">
-					<div class="card-icon">
-						<Icon name={SKILL_CATEGORY_ICON[skill.category] ?? 'star'} size={22} />
-					</div>
-					<div class="card-body">
-						<div class="card-header">
-							<span class="badge badge-primary badge-caps">{$t('skills.categories.' + skill.category)}</span>
-							<span class="badge" class:badge-success={skill.skill_type === 'offer'} class:badge-warning={skill.skill_type === 'request'}>
-								{skill.skill_type === 'offer' ? $t('skills.offering') : $t('skills.looking_for')}
-							</span>
-						</div>
-						<h3>{skill.title}</h3>
-						{#if skill.description}
-							<p class="description">{skill.description}</p>
-						{/if}
-						<div class="card-spacer"></div>
-						<div class="card-footer">
-							<span class="owner">{$t('common.by_name', { values: { name: skill.owner.display_name } })}</span>
-							{#if skill.owner_trust}
-								{#if skill.owner_trust.total_reviews > 0}
-									<span class="trust-stars"><Icon name="star" size={13} />{skill.owner_trust.average_rating.toFixed(1)}</span>
-								{/if}
-								{#each skill.owner_trust.badges as badge}
-									<span class="trust-pill"><Icon name={TRUST_BADGE_ICON[badge] ?? 'handshake'} size={14} /></span>
-								{/each}
+		<div class="item-grid">
+			{#each skills as skill (skill.id)}
+				{@const mine = $user?.id === skill.owner.id}
+				<ExpandableItem
+					variant="card"
+					title={skill.title}
+					meta="{$t('skills.categories.' + skill.category)} · {mine ? $t('resources.yours') : skill.owner.display_name}"
+					icon={SKILL_CATEGORY_ICON[skill.category] ?? 'star'}
+					tone={skill.skill_type === 'offer' ? 'primary' : 'accent'}
+				>
+					{#snippet aside()}
+						<span class="meta-text">{skill.skill_type === 'offer' ? $t('skills.offering') : $t('skills.looking_for')}</span>
+					{/snippet}
+					{#if skill.description}<p class="clamp">{skill.description}</p>{/if}
+					{#if skill.owner_trust && (skill.owner_trust.total_reviews > 0 || skill.owner_trust.badges.length > 0)}
+						<p class="meta-text item-facts">
+							{#if skill.owner_trust.total_reviews > 0}
+								<span class="trust-stars"><Icon name="star" size={13} />{skill.owner_trust.average_rating.toFixed(1)}</span>
 							{/if}
-						</div>
+							{#each skill.owner_trust.badges as badge}
+								<span class="trust-pill" title={badge}><Icon name={TRUST_BADGE_ICON[badge] ?? 'handshake'} size={14} /></span>
+							{/each}
+						</p>
+					{/if}
+					<div class="xp-actions">
+						<a href="/skills/{skill.id}" class="btn btn-sm" class:btn-primary={!mine} class:btn-secondary={mine}>
+							{mine ? $t('resources.view_details') : skill.skill_type === 'offer' ? $t('skills.ask_for_help') : $t('skills.offer_help')}
+						</a>
+						{#if $isLoggedIn && !mine}
+							<a href="/messages?partner={skill.owner.id}&skill={skill.id}" class="btn btn-secondary btn-sm">{$t('dashboard.message_name', { values: { name: skill.owner.display_name } })}</a>
+						{/if}
 					</div>
-				</a>
+				</ExpandableItem>
 			{/each}
 		</div>
 	{/if}
@@ -345,86 +342,26 @@
 		white-space: nowrap;
 	}
 
-	.skill-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-		gap: 1.5rem;
-	}
-
-	.skill-card {
-		display: flex;
-		gap: 1rem;
-	}
-
-	.skill-card:hover {
-		border-color: var(--color-primary);
-		transform: translateY(-3px);
-	}
-
-	.card-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 44px;
-		height: 44px;
-		border-radius: var(--radius);
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-		flex-shrink: 0;
-	}
-
-	.card-body {
-		display: flex;
-		flex-direction: column;
-		flex: 1;
-		min-width: 0;
-	}
-
-	.card-spacer {
-		flex: 1;
-	}
-
-	.card-header {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 0.6rem;
-		flex-wrap: wrap;
-	}
-
-	.skill-card h3 {
-		font-size: 1.05rem;
-		margin-bottom: 0.35rem;
-		line-height: 1.35;
-	}
-
-	.description {
-		font-size: 0.84rem;
-		color: var(--color-text-muted);
-		line-height: 1.55;
+	.clamp {
 		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
+		-webkit-line-clamp: 4;
+		line-clamp: 4;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
 
-	.card-footer {
-		font-size: 0.78rem;
-		color: var(--color-text-muted);
+	.item-facts {
 		display: flex;
-		align-items: center;
-		gap: 0.4rem;
 		flex-wrap: wrap;
-		border-top: 1px solid var(--color-border);
-		padding-top: 0.7rem;
-		margin-top: 0.85rem;
+		align-items: center;
+		gap: 0.6rem;
 	}
 
 	.trust-stars {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		color: var(--color-warning);
+		color: var(--color-rating);
 		font-weight: 600;
 	}
 

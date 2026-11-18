@@ -196,7 +196,7 @@ async function loadResources() {
 - Keep README.md up to date with major changes
 - Update CHANGELOG.md for all user-facing changes
 - Add docstrings to new functions (follow existing patterns)
-- Update API_ENDPOINTS.md if adding new routes
+- Update docs/api.md if adding new routes
 - Keep CLAUDE.md updated with new conventions or processes
 
 ## Security

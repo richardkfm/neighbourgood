@@ -223,7 +223,34 @@
     "level_pillar": "Steunpilaar",
     "admin": "Beheerder",
     "load_failed": "Dashboard laden mislukt",
-    "someone": "Iemand"
+    "someone": "Iemand",
+    "greeting_morning": "Goedemorgen, {name}",
+    "greeting_afternoon": "Goedemiddag, {name}",
+    "greeting_evening": "Goedenavond, {name}",
+    "community_line": "{community} · {count, plural, one {# lid} other {# leden}}",
+    "share_something": "Iets delen",
+    "needs_you": "Wacht op jou",
+    "nothing_needed": "Er wacht nu niets op je.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Keur goed om de data te bevestigen, of wijs af en {name} krijgt bericht.",
+    "outgoing_detail": "De eigenaar heeft nog niet gereageerd. Je krijgt een bericht.",
+    "message_name": "Bericht aan {name}",
+    "view_item": "Voorwerp bekijken",
+    "open_bookings": "Boekingen openen",
+    "unread_title": "{count, plural, one {# ongelezen bericht} other {# ongelezen berichten}}",
+    "unread_meta": "Van je buren",
+    "open_messages": "Berichten openen",
+    "open_ticket": "Ticket openen",
+    "coming_up": "Binnenkort",
+    "see_all": "Alles bekijken",
+    "going": "{count} gaan",
+    "no_events": "Nog geen activiteiten gepland.",
+    "plan_event": "Plan er een",
+    "new_nearby": "Nieuw in de buurt",
+    "no_new_items": "Nog niets nieuws in je buurt.",
+    "community_stats": "{items, plural, one {# voorwerp} other {# voorwerpen}} gedeeld in {community} · {members, plural, one {# lid} other {# leden}}",
+    "your_stats": "Je deelt {items, plural, one {# voorwerp} other {# voorwerpen}} en {skills, plural, one {# vaardigheid} other {# vaardigheden}}",
+    "reputation_line": "Reputatie: {level} · {score} punten"
   },
   "resources": {
     "title": "Gedeelde items",
@@ -318,7 +345,9 @@
     "mark_available": "Markeren als beschikbaar",
     "upload_image": "Afbeelding uploaden",
     "title_placeholder": "bijv. Bosch-boormachine",
-    "description_placeholder": "Wat deel je? Zijn er voorwaarden?"
+    "description_placeholder": "Wat deel je? Zijn er voorwaarden?",
+    "yours": "Jij",
+    "view_details": "Details bekijken"
   },
   "bookings": {
     "title": "Mijn boekingen",
@@ -541,7 +570,9 @@
     "message_requester": "Bericht aan aanvrager",
     "title_placeholder": "bijv. Pianolessen",
     "description_placeholder": "Welke vaardigheid bied je aan of zoek je?",
-    "offline_new": "Nieuwe vaardigheid: {title}"
+    "offline_new": "Nieuwe vaardigheid: {title}",
+    "ask_for_help": "Om hulp vragen",
+    "offer_help": "Hulp aanbieden"
   },
   "crisis": {
     "title": "Noodgeval",
@@ -646,7 +677,14 @@
     "load_communities_failed": "Je gemeenschappen laden mislukt.",
     "load_tickets_failed": "Tickets laden mislukt.",
     "offline_ticket": "Noodticket: {title}",
-    "untitled": "Zonder titel"
+    "untitled": "Zonder titel",
+    "red_active": "Red Sky is actief",
+    "red_active_detail": "{community} is in crisismodus. Verzoeken zijn gesorteerd op urgentie.",
+    "no_internet": "Geen internet.",
+    "mesh_reachable": "{count} buren bereikbaar via het Bluetooth-mesh. Berichten worden gesynchroniseerd zodra de verbinding terug is.",
+    "offline_saved": "Verzoeken worden op dit apparaat bewaard en verstuurd zodra de verbinding terug is.",
+    "send_ping": "Noodmelding versturen",
+    "open_requests": "Open verzoeken"
   },
   "settings": {
     "title": "Accountinstellingen",

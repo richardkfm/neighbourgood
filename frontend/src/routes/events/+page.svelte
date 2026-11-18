@@ -6,6 +6,7 @@
 	import { isLoggedIn } from '$lib/stores/auth';
 	import type { CommunityEvent } from '$lib/types';
 	import Icon from '$lib/components/Icon.svelte';
+	import ExpandableItem from '$lib/components/ExpandableItem.svelte';
 	import { EVENT_CATEGORY_ICON } from '$lib/icons';
 
 	interface MyCommunity {
@@ -171,6 +172,10 @@
 		}
 	}
 
+	function formatShort(iso: string): string {
+		return new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+	}
+
 	function formatDate(iso: string): string {
 		return new Date(iso).toLocaleString(undefined, {
 			weekday: 'short',
@@ -313,16 +318,12 @@
 	{/if}
 
 	{#if loading}
-		<ul class="event-list" role="status" aria-busy="true">
+		<div class="item-grid" role="status" aria-busy="true">
 			<span class="sr-only">{$t('common.loading')}</span>
 			{#each [1, 2, 3] as n (n)}
-				<li class="card event-card" aria-hidden="true">
-					<span class="skeleton skeleton-line" style="width: 55%; height: 1.1rem"></span>
-					<span class="skeleton skeleton-line is-short"></span>
-					<span class="skeleton skeleton-line"></span>
-				</li>
+				<div class="skeleton skeleton-card" style="height: 4.5rem" aria-hidden="true"></div>
 			{/each}
-		</ul>
+		</div>
 	{:else if events.length === 0}
 		<div class="empty-state">
 			<span class="empty-icon"><Icon name="calendar" size={26} /></span>
@@ -336,51 +337,39 @@
 			{/if}
 		</div>
 	{:else}
-		<ul class="event-list">
+		<div class="item-grid">
 			{#each events as event (event.id)}
-				<li class="event-card card" class:event-past={isPast(event)}>
-					<a class="event-link" href={`/events/${event.id}`}>
-						<div class="event-header">
-							<div class="category-icon-wrap">
-								<Icon name={EVENT_CATEGORY_ICON[event.category] ?? 'calendar'} size={22} />
-							</div>
-							<div class="event-meta">
-								<h3 class="event-title">
-									{event.title}
-									{#if isPast(event)}
-										<span class="badge badge-caps past-badge">{$t('events.past_badge')}</span>
-									{/if}
-								</h3>
-								<p class="event-date">{formatDate(event.start_at)}
-									{#if event.end_at} — {formatDate(event.end_at)}{/if}
-								</p>
-								{#if event.location}
-									<p class="event-location"><Icon name="pin" size={14} /> {event.location}</p>
-								{/if}
-							</div>
-						</div>
-						{#if event.description}
-							<p class="event-description">{event.description}</p>
+				{@const full = !event.is_attending && event.max_attendees !== null && event.attendee_count >= event.max_attendees}
+				<ExpandableItem
+					variant="card"
+					title={event.title}
+					meta="{formatShort(event.start_at)}{event.location ? ` · ${event.location}` : ''}"
+					icon={EVENT_CATEGORY_ICON[event.category] ?? 'calendar'}
+					tone="accent"
+				>
+					{#snippet aside()}
+						{#if isPast(event)}
+							<span class="status-text status-off">{$t('events.past_badge')}</span>
+						{:else}
+							<span class="meta-text">{event.attendee_count}{event.max_attendees ? `/${event.max_attendees}` : ''} {$t('events.attendees')}</span>
 						{/if}
-					</a>
-					<div class="event-footer">
-						<span class="attendee-count">
-							<Icon name="users" size={15} /> {event.attendee_count}{event.max_attendees ? `/${event.max_attendees}` : ''} {$t('events.attendees')}
-						</span>
-						<span class="organizer">{$t('events.organizer_by', { values: { name: event.organizer.display_name } })}</span>
-						{#if $isLoggedIn}
-							<button
-								class="btn btn-sm {event.is_attending ? 'btn-secondary' : 'btn-primary'}"
-								onclick={(e) => { e.preventDefault(); e.stopPropagation(); toggleAttend(event); }}
-								disabled={!event.is_attending && event.max_attendees !== null && event.attendee_count >= event.max_attendees}
-							>
+					{/snippet}
+					{#if event.description}<p class="clamp">{event.description}</p>{/if}
+					<p class="meta-text">
+						{formatDate(event.start_at)}{#if event.end_at} — {formatDate(event.end_at)}{/if}
+						· {$t('events.organizer_by', { values: { name: event.organizer.display_name } })}
+					</p>
+					<div class="xp-actions">
+						{#if $isLoggedIn && !isPast(event)}
+							<button class="btn btn-sm {event.is_attending ? 'btn-secondary' : 'btn-primary'}" onclick={() => toggleAttend(event)} disabled={full}>
 								{event.is_attending ? $t('events.unattend') : $t('events.attend')}
 							</button>
 						{/if}
+						<a href="/events/{event.id}" class="btn btn-secondary btn-sm">{$t('resources.view_details')}</a>
 					</div>
-				</li>
+				</ExpandableItem>
 			{/each}
-		</ul>
+		</div>
 	{/if}
 </div>
 
@@ -433,113 +422,12 @@
 		margin-inline-start: auto;
 	}
 
-	.event-list {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	.event-card {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.event-card:hover {
-		box-shadow: var(--shadow-md);
-		border-color: var(--color-border-hover);
-	}
-
-	.event-card.event-past {
-		opacity: 0.6;
-	}
-
-	.past-badge {
-		margin-inline-start: 0.5rem;
-		vertical-align: middle;
-	}
-
-	.event-link {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		text-decoration: none;
-		color: inherit;
-	}
-
-	.event-link:hover .event-title {
-		color: var(--color-primary-text);
-	}
-
-	.event-header {
-		display: flex;
-		gap: 0.75rem;
-		align-items: flex-start;
-	}
-
-	.category-icon-wrap {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 44px;
-		height: 44px;
-		flex-shrink: 0;
-		border-radius: var(--radius);
-		background: var(--color-primary-light);
-		color: var(--color-primary-text);
-	}
-
-	.event-meta {
-		flex: 1;
-	}
-
-	.event-title {
-		margin: 0 0 0.2rem;
-		font-size: 1.05rem;
-	}
-
-	.event-date {
-		margin: 0;
-		font-size: 0.875rem;
-		color: var(--color-primary-text);
-	}
-
-	.event-location {
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-		margin: 0.15rem 0 0;
-		font-size: 0.85rem;
-		color: var(--color-text-muted);
-	}
-
-	.event-description {
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-muted);
-		white-space: pre-wrap;
-	}
-
-	.event-footer {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-		margin-top: 0.25rem;
-	}
-
-	.attendee-count {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.3rem;
-		font-size: 0.85rem;
-		color: var(--color-text-muted);
-	}
-
-	.organizer {
-		font-size: 0.85rem;
-		color: var(--color-text-muted);
-		margin-inline-start: auto;
+	.clamp {
+		display: -webkit-box;
+		-webkit-line-clamp: 4;
+		line-clamp: 4;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
 	}
 
 	@media (max-width: 640px) {

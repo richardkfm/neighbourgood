@@ -787,7 +787,7 @@
 	}
 
 	.sync-partial {
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.1));
+		background: var(--color-warning-bg);
 		color: var(--color-warning);
 	}
 

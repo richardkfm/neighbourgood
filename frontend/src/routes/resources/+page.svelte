@@ -7,6 +7,9 @@
 	import { bandwidth } from '$lib/stores/theme';
 	import { isOnline } from '$lib/stores/offline';
 	import Icon from '$lib/components/Icon.svelte';
+	import ExpandableItem from '$lib/components/ExpandableItem.svelte';
+	import { page } from '$app/stores';
+	import { user } from '$lib/stores/auth';
 	import { RESOURCE_CATEGORY_ICON, TRUST_BADGE_ICON } from '$lib/icons';
 
 	import type { Resource } from '$lib/types';
@@ -130,6 +133,8 @@
 	}
 
 	onMount(async () => {
+		// The dashboard's "Share something" links here with ?new=1
+		if ($page.url.searchParams.get('new') === '1' && $isLoggedIn) showCreateForm = true;
 		if ($isLoggedIn) {
 			await loadMyCommunities();
 		} else {
@@ -257,17 +262,10 @@
 	</div>
 
 	{#if loading}
-		<div class="resource-grid" role="status" aria-live="polite" aria-busy="true">
+		<div class="item-grid" role="status" aria-live="polite" aria-busy="true">
 			<span class="sr-only">{$t('common.loading')}</span>
 			{#each [1, 2, 3, 4, 5, 6] as n (n)}
-				<div class="card card-flush resource-card" aria-hidden="true">
-					<div class="card-image skeleton"></div>
-					<div class="card-body">
-						<span class="skeleton" style="height: 0.9rem; width: 30%"></span>
-						<span class="skeleton" style="height: 1.1rem; width: 70%; margin-top: 0.6rem"></span>
-						<span class="skeleton" style="height: 0.8rem; width: 90%; margin-top: 0.6rem"></span>
-					</div>
-				</div>
+				<div class="skeleton skeleton-card" style="height: 4.5rem" aria-hidden="true"></div>
 			{/each}
 		</div>
 	{:else if resources.length === 0}
@@ -287,46 +285,42 @@
 				{/if}
 			</div>
 	{:else}
-		<div class="resource-grid">
-			{#each resources as resource}
-				<a href="/resources/{resource.id}" class="card card-flush card-interactive resource-card">
-					{#if resource.image_url && $bandwidth !== 'low'}
-						<div class="card-image">
-							<img src="/api{resource.image_url}" alt={resource.title} />
-						</div>
-					{:else}
-						<div class="card-image card-image-placeholder">
-							<span class="placeholder-icon"><Icon name={RESOURCE_CATEGORY_ICON[resource.category] ?? 'package'} size={40} strokeWidth={1.5} /></span>
-						</div>
-					{/if}
-					<div class="card-body">
-						<div class="card-header">
-							<span class="badge badge-primary badge-caps">{$t('resources.categories.' + resource.category)}</span>
-							{#if !resource.is_available}
-								<span class="badge badge-error">{$t('resources.unavailable')}</span>
-							{/if}
-						</div>
-						<h3>{resource.title}</h3>
-						{#if resource.description}
-							<p class="description">{resource.description}</p>
+		<div class="item-grid">
+			{#each resources as resource (resource.id)}
+				{@const mine = $user?.id === resource.owner_id}
+				<ExpandableItem
+					variant="card"
+					title={resource.title}
+					meta="{$t('resources.categories.' + resource.category)} · {mine ? $t('resources.yours') : resource.owner.display_name}"
+					icon={RESOURCE_CATEGORY_ICON[resource.category] ?? 'package'}
+					image={resource.image_url && $bandwidth !== 'low' ? `/api${resource.image_url}` : null}
+				>
+					{#snippet aside()}
+						<span class="status-text" class:status-ok={resource.is_available} class:status-off={!resource.is_available}>
+							{resource.is_available ? $t('resources.available') : $t('resources.unavailable')}
+						</span>
+					{/snippet}
+					{#if resource.description}<p class="clamp">{resource.description}</p>{/if}
+					<p class="meta-text item-facts">
+						{#if resource.condition}<span>{$t('resources.conditions.' + resource.condition)}</span>{/if}
+						{#if resource.owner_trust && resource.owner_trust.total_reviews > 0}
+							<span class="trust-stars"><Icon name="star" size={13} />{resource.owner_trust.average_rating.toFixed(1)}</span>
 						{/if}
-						<div class="card-spacer"></div>
-						<div class="card-footer">
-							<span class="owner">{$t('common.by_name', { values: { name: resource.owner.display_name } })}</span>
-							{#if resource.owner_trust && resource.owner_trust.total_reviews > 0}
-								<span class="trust-stars"><Icon name="star" size={13} />{resource.owner_trust.average_rating.toFixed(1)}</span>
-							{/if}
-							{#if resource.owner_trust}
-								{#each resource.owner_trust.badges as badge}
-									<span class="trust-pill"><Icon name={TRUST_BADGE_ICON[badge] ?? 'handshake'} size={14} /></span>
-								{/each}
-							{/if}
-							{#if resource.condition}
-								<span class="condition">{$t('resources.conditions.' + resource.condition)}</span>
-							{/if}
-						</div>
+						{#if resource.owner_trust}
+							{#each resource.owner_trust.badges as badge}
+								<span class="trust-pill" title={badge}><Icon name={TRUST_BADGE_ICON[badge] ?? 'handshake'} size={14} /></span>
+							{/each}
+						{/if}
+					</p>
+					<div class="xp-actions">
+						<a href="/resources/{resource.id}" class="btn btn-sm" class:btn-primary={resource.is_available && !mine} class:btn-secondary={!resource.is_available || mine}>
+							{resource.is_available && !mine ? $t('resources.borrow') : $t('resources.view_details')}
+						</a>
+						{#if $isLoggedIn && !mine}
+							<a href="/messages?partner={resource.owner_id}" class="btn btn-secondary btn-sm">{$t('dashboard.message_name', { values: { name: resource.owner.display_name } })}</a>
+						{/if}
 					</div>
-				</a>
+				</ExpandableItem>
 			{/each}
 		</div>
 	{/if}
@@ -342,109 +336,36 @@
 	}
 
 	.filter-bar {
-		margin-bottom: 2rem;
+		margin-bottom: 1.5rem;
 	}
 
 	.result-count {
 		margin-inline-start: auto;
-		font-size: 0.85rem;
-		color: var(--color-text-muted);
+		font-size: 0.8rem;
+		color: var(--color-text-subtle);
 		white-space: nowrap;
 	}
 
-	.resource-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-		gap: 1.5rem;
-	}
-
-	.resource-card {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.resource-card:hover {
-		border-color: var(--color-primary);
-		transform: translateY(-3px);
-	}
-
-	.card-image {
-		width: 100%;
-		height: 160px;
-		overflow: hidden;
-		background: var(--color-bg);
-	}
-
-	.card-image img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.card-image-placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: linear-gradient(135deg, var(--color-primary-light), var(--color-bg));
-	}
-
-	.placeholder-icon {
-		display: inline-flex;
-		color: var(--color-primary-text);
-		opacity: 0.55;
-	}
-
-	.card-body {
-		display: flex;
-		flex-direction: column;
-		flex: 1;
-		padding: 1.1rem 1.25rem 1.25rem;
-	}
-
-	.card-spacer {
-		flex: 1;
-	}
-
-	.card-header {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 0.6rem;
-	}
-
-	.resource-card h3 {
-		font-size: 1.05rem;
-		margin-bottom: 0.35rem;
-		line-height: 1.35;
-	}
-
-	.description {
-		font-size: 0.84rem;
-		color: var(--color-text-muted);
-		line-height: 1.55;
+	.clamp {
 		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
+		-webkit-line-clamp: 4;
+		line-clamp: 4;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
 	}
 
-	.card-footer {
+	.item-facts {
 		display: flex;
-		align-items: center;
-		gap: 0.4rem;
 		flex-wrap: wrap;
-		font-size: 0.78rem;
-		color: var(--color-text-muted);
-		border-top: 1px solid var(--color-border);
-		padding-top: 0.7rem;
-		margin-top: 0.85rem;
+		align-items: center;
+		gap: 0.6rem;
 	}
 
 	.trust-stars {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.2rem;
-		color: var(--color-warning);
+		color: var(--color-rating);
 		font-weight: 600;
 	}
 
@@ -453,15 +374,9 @@
 		color: var(--color-primary-text);
 	}
 
-	.condition {
-		margin-inline-start: auto;
-	}
-
-	/* Phones: a dense list (thumbnail left, details right) instead of one huge
-	   image per screen-height, so ~4 items fit instead of ~1.5. */
 	@media (max-width: 560px) {
 		.filter-bar {
-			margin-bottom: 1.25rem;
+			margin-bottom: 1rem;
 		}
 
 		.filter-bar .input-grow {
@@ -472,36 +387,6 @@
 			flex: 1;
 			min-width: 0;
 		}
-
-		.resource-grid {
-			grid-template-columns: 1fr;
-			gap: 0.75rem;
-		}
-
-		.resource-card {
-			flex-direction: row;
-		}
-
-		.resource-card:hover {
-			transform: none;
-		}
-
-		.card-image {
-			width: 96px;
-			height: auto;
-			min-height: 120px;
-			flex-shrink: 0;
-		}
-
-		.card-body {
-			min-width: 0;
-			padding: 0.85rem 1rem;
-		}
-
-		.card-footer {
-			margin-top: 0.5rem;
-			padding-top: 0.5rem;
-		}
 	}
 
 	.cache-notice {
@@ -509,11 +394,11 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.55rem 0.9rem;
-		background: var(--color-warning-bg, rgba(245, 158, 11, 0.08));
-		border: 1px solid var(--color-warning, #f59e0b);
+		background: var(--color-warning-bg);
+		border: 1px solid var(--color-warning);
 		border-radius: var(--radius);
 		font-size: 0.82rem;
-		color: var(--color-warning, #92400e);
+		color: var(--color-warning);
 		margin-bottom: 1rem;
 	}
 </style>

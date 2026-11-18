@@ -1,5 +1,7 @@
 # NeighbourGood Security Hardening Plan
 
+> **Archived plan.** Kept for history; parts of it are outdated. Current status and open work: [docs/roadmap.md](../roadmap.md).
+
 ## Current State Summary
 
 The platform (FastAPI + SvelteKit, v0.7.0) has **solid fundamentals**:

@@ -20,7 +20,7 @@ Token efficiency matters. Use the right model for the right task:
 
 ## Project Overview
 
-**NeighbourGood v2.4.2** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
+**NeighbourGood v2.8.2** — a self-hostable, federation-ready community resource-sharing platform with a **dual-state architecture**:
 
 - **Blue Sky Mode** (normal operation): resource library, skill exchange, calendar bookings, community events, reputation/trust scores, community feed, direct messaging
 - **Red Sky Mode** (crisis operation): per-community crisis toggle or 60%-threshold community vote, emergency ticketing (request / offer / ping), neighbourhood leader roles, cross-instance Red Sky alerts
@@ -53,17 +53,17 @@ Current test count: **711 tests** across 39 test files (plus 15 frontend `node:t
 ```
 neighbourgood/
 ├── CLAUDE.md               # This file
-├── README.md               # User-facing docs and quick start
-├── CHANGELOG.md            # Full version history (v0.1.0 → v1.1.0)
-├── PLAN.md                 # Security hardening roadmap (phases 4a–5a)
-├── PLAN_DESIGN.md          # UI/UX redesign plan
-├── PLAN_I18N.md            # Internationalization plan
-├── API_ENDPOINTS.md        # Full endpoint reference
+├── brand/                  # Brand kit (logo SVG/PNG, colours) — see brand/README.md
+├── docs/                   # All longer docs: self-hosting, configuration, development,
+│   │                       #   mesh-networking, design, api, telegram-*, roadmap
+│   └── archive/            # Old PLAN_*.md files, kept for history
+├── README.md               # Short, organiser-facing overview; links into docs/
+├── CHANGELOG.md            # Full version history
 ├── SECURITY.md             # Security policy and vulnerability reporting
 ├── CONTRIBUTING.md         # Contribution guidelines
 ├── CODE_OF_CONDUCT.md      # Community code of conduct
 ├── .env.example            # Config template — copy to .env before running
-├── .github/                # GitHub Actions workflows
+├── install.sh              # One-line installer (Docker, or native fallback)
 ├── docker-compose.yml      # Production-style 3-service stack
 │
 ├── backend/
@@ -338,8 +338,11 @@ Shared TypeScript interfaces that mirror backend Pydantic schemas. Always import
 ### Theming
 
 - Blue Sky / Red Sky themes are CSS custom-property sets in `app.css`.
-- Available variables: `--color-primary`, `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-success`, `--color-warning`, `--color-error`.
+- Available variables: `--color-primary`, `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`, `--color-success`, `--color-warning`, `--color-error`, `--color-logo` / `--color-on-logo` (nav logo tile).
+- No amber or orange anywhere: `--color-warning` is warm brown in Blue Sky and light rose in Red Sky; star ratings use `--color-rating` (violet), never `--color-warning`.
+- Red Sky: red is its only hue, and urgency uses `--urgency-*` plus a text label, never colour alone.
 - Always use CSS variables — never hardcode hex colors in components (regression from v0.5.0).
+- Lists use `ExpandableItem` (`variant="card"` in `.item-grid`, `variant="row"` in `.list-panel`): one line of meta when closed, details and actions when opened. One filled `.btn-primary` per area; everything else is `.btn-secondary` (quiet text button). `.btn-outline` is the bordered variant for the rare stand-alone secondary button.
 
 ---
 
@@ -373,7 +376,7 @@ Shared TypeScript interfaces that mirror backend Pydantic schemas. Always import
 
 ## API Endpoint Map
 
-Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
+Full reference: `docs/api.md`. Interactive: `http://localhost:8300/docs`.
 
 | Prefix | Router file | Description |
 |--------|-------------|-------------|
@@ -400,7 +403,7 @@ Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
 
 ---
 
-## Security State (from PLAN.md)
+## Security State (open items: docs/roadmap.md)
 
 ### Phase 4a — Implemented in v0.8.0 ✅
 
@@ -413,7 +416,7 @@ Full reference: `API_ENDPOINTS.md`. Interactive: `http://localhost:8300/docs`.
 
 ### Phase 4b — Implemented in v1.7.0 ✅
 
-- **Rate limiting** on auth endpoints (`/auth/login`, `/auth/register`): 5 req/min per IP; general API: 60 req/min; uploads: 10 req/min — `app/middleware/rate_limit.py` (in-memory sliding window, `429` with `Retry-After` header)
+- **Rate limiting** on auth endpoints (`/auth/login`, `/auth/register`): 5 req/min per IP; general API: 200 req/min; uploads: 10 req/min — `app/middleware/rate_limit.py` (in-memory sliding window, `429` with `Retry-After` header)
 - **Account lockout**: failed login attempts tracked per email; 15-min lockout after 5 failures in 15 min — `app/services/lockout.py`, checked in `routers/auth.py`
 - **CSRF protection** for state-changing operations — `app/middleware/csrf.py` (double-submit Origin + `X-CSRF-Token` validation)
 - **Hardened auth responses** — unified `"Invalid credentials"` error to prevent user enumeration
@@ -488,6 +491,12 @@ Current test files (29): `test_activity`, `test_auth`, `test_bookings`, `test_co
 
 | Version | Date | Highlights |
 |---------|------|-----------|
+| 2.8.2 | 2026-11-17 | Honest server sizing in README and self-hosting guide: a 5 € server is plenty for a neighbourhood (not "a few hundred people"), minimum RAM 1 GB, swap note for the on-server build (711 tests) |
+| 2.8.1 | 2026-11-17 | Remove the decorative coloured left stripes on the communities page (your community card, your entry in the list) and the explore list; activity and membership shown by border tint and the existing badge (711 tests) |
+| 2.8.0 | 2026-11-17 | Design A in the app: dashboard rebuilt (kicker, greeting, Share something, expandable Needs you rows with inline approve/decline, Coming up, New nearby, stats line, collapsible reputation), resources/skills/events as expandable cards (`ExpandableItem`), quiet `.btn-secondary`, underlined active nav, `.kicker`/`.section-title`/`.list-panel`/`.item-grid` primitives; 31 new i18n keys in 12 locales; README dashboard screenshot retaken (711 tests) |
+| 2.7.0 | 2026-11-17 | No amber in Blue Sky either: `--color-warning` becomes warm brown (light `#6b4a33`, dark `#d4bc9f`), star ratings move to a new `--color-rating` token (violet), hard-coded amber fallbacks removed; animated Red Sky flow (`docs/red-sky-flow.svg`) and refreshed README (711 tests) |
+| 2.6.0 | 2026-11-17 | Red Sky without amber: warm near-black palette with red as the only colour, urgency by text label + lightness, light logo tile (`--color-logo`); Emergency page redesigned (red banner, connection/mesh line, large Send emergency ping button, compact request list with CRITICAL/HIGH/MEDIUM/LOW/OFFER labels); 7 new i18n keys in all 12 locales; README logo header, Brand and Design section, no emoji headings (711 tests) |
+| 2.5.0 | 2026-11-17 | New logo (violet house tile with an arched door) and no more orange: secondary accent becomes warm brown, theme colour violet, nav logo follows Blue/Red Sky; new `brand/` kit with SVG + PNG logos, marks, wordmarks and app icons; maskable PWA icon (711 tests) |
 | 2.4.2 | 2026-10-01 | Community map moves from CARTO (now key-only) to OpenFreeMap vector tiles via MapLibre GL with a real dark style that follows the theme toggle live; logged-out mobile menu: theme/language icons in one footer row, no double indent (711 tests) |
 | 2.4.1 | 2026-10-01 | Fix login 500 after upgrading: missing columns are added on every start (also in production), robust per-dialect defaults; home page hero cards no longer clipped (711 tests) |
 | 2.4.0 | 2026-10-01 | Remaining QA findings: signed mesh messages + fragmentation, global red (`NG_PLATFORM_MODE=red` applies to every community), alert expiry/detail page, session invalidation, per-(email, IP) lockout, webhook SSRF guard, members-only booking/RSVP, password reset, account deletion, data export UI, edit forms, shared UI primitives + SVG icons, full translations of 11 locales (707 tests) |
@@ -611,7 +620,7 @@ If you only have the English string, add the key with the English value as a pla
    - Root: Check `README.md` or `.env.example` for hardcoded version strings
    - Use **semantic versioning** (major.minor.patch, e.g., `1.9.5.1` → `1.9.6`)
 
-2. **README update**: If changes affect setup, deployment, or feature usage, update `README.md` with:
+2. **Docs update**: Keep `README.md` short and written for communities/organisers; put setup, configuration and technical detail in the matching file under `docs/` (new `NG_` settings → `docs/configuration.md`, deployment → `docs/self-hosting.md`, finished/open work → `docs/roadmap.md`). If changes affect setup, deployment, or feature usage, update:
    - New environment variables or configuration
    - Installation or development workflow changes
    - New features or API changes visible to users

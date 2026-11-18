@@ -367,7 +367,7 @@
 	}
 
 	.stars {
-		color: var(--color-warning);
+		color: var(--color-rating);
 	}
 
 	.rating-number {
@@ -400,7 +400,7 @@
 	}
 
 	.breakdown-stars {
-		color: var(--color-warning);
+		color: var(--color-rating);
 	}
 
 	.breakdown-count {
@@ -465,7 +465,7 @@
 	}
 
 	.review-stars {
-		color: var(--color-warning);
+		color: var(--color-rating);
 	}
 
 	.review-comment {

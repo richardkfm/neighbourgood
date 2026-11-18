@@ -175,14 +175,13 @@
 		transform: translateY(-2px);
 	}
 
+	/* Activity level shown by border tint, not a coloured stripe (design A) */
 	.card-active {
 		border-color: var(--color-primary);
-		border-inline-start: 3px solid var(--color-primary);
-		background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-primary-light) 100%);
 	}
 
 	.card-medium {
-		border-inline-start: 3px solid var(--color-accent);
+		border-color: var(--color-border-hover);
 	}
 
 	.list-card-header {

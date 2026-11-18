@@ -223,7 +223,34 @@
     "level_pillar": "Stütze",
     "admin": "Admin",
     "load_failed": "Dashboard konnte nicht geladen werden",
-    "someone": "Jemand"
+    "someone": "Jemand",
+    "greeting_morning": "Guten Morgen, {name}",
+    "greeting_afternoon": "Guten Tag, {name}",
+    "greeting_evening": "Guten Abend, {name}",
+    "community_line": "{community} · {count, plural, one {# Mitglied} other {# Mitglieder}}",
+    "share_something": "Etwas teilen",
+    "needs_you": "Wartet auf dich",
+    "nothing_needed": "Gerade wartet nichts auf dich.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Bestätige die Termine oder lehne ab – {name} wird benachrichtigt.",
+    "outgoing_detail": "Die Besitzerin oder der Besitzer hat noch nicht geantwortet. Du bekommst eine Nachricht.",
+    "message_name": "{name} schreiben",
+    "view_item": "Gegenstand ansehen",
+    "open_bookings": "Buchungen öffnen",
+    "unread_title": "{count, plural, one {# ungelesene Nachricht} other {# ungelesene Nachrichten}}",
+    "unread_meta": "Von deinen Nachbarn",
+    "open_messages": "Nachrichten öffnen",
+    "open_ticket": "Ticket öffnen",
+    "coming_up": "Demnächst",
+    "see_all": "Alle ansehen",
+    "going": "{count} dabei",
+    "no_events": "Noch keine Termine geplant.",
+    "plan_event": "Einen planen",
+    "new_nearby": "Neu in der Nähe",
+    "no_new_items": "Noch nichts Neues in deiner Nachbarschaft.",
+    "community_stats": "{items, plural, one {# Gegenstand} other {# Gegenstände}} geteilt in {community} · {members, plural, one {# Mitglied} other {# Mitglieder}}",
+    "your_stats": "Du teilst {items, plural, one {# Gegenstand} other {# Gegenstände}} und {skills, plural, one {# Fähigkeit} other {# Fähigkeiten}}",
+    "reputation_line": "Ansehen: {level} · {score} Punkte"
   },
   "resources": {
     "title": "Geteilte Gegenstände",
@@ -318,7 +345,9 @@
     "mark_available": "Als verfügbar markieren",
     "upload_image": "Bild hochladen",
     "title_placeholder": "z. B. Bosch-Bohrmaschine",
-    "description_placeholder": "Was teilst du? Gibt es Bedingungen?"
+    "description_placeholder": "Was teilst du? Gibt es Bedingungen?",
+    "yours": "Du",
+    "view_details": "Details ansehen"
   },
   "bookings": {
     "title": "Meine Buchungen",
@@ -541,7 +570,9 @@
     "message_requester": "Anfragende Person schreiben",
     "title_placeholder": "z. B. Klavierunterricht",
     "description_placeholder": "Welche Fähigkeit bietest du an oder suchst du?",
-    "offline_new": "Neue Fähigkeit: {title}"
+    "offline_new": "Neue Fähigkeit: {title}",
+    "ask_for_help": "Um Hilfe bitten",
+    "offer_help": "Hilfe anbieten"
   },
   "crisis": {
     "title": "Notfall",
@@ -646,7 +677,14 @@
     "load_communities_failed": "Deine Gemeinschaften konnten nicht geladen werden.",
     "load_tickets_failed": "Tickets konnten nicht geladen werden.",
     "offline_ticket": "Notfall-Ticket: {title}",
-    "untitled": "Ohne Titel"
+    "untitled": "Ohne Titel",
+    "red_active": "Red Sky ist aktiv",
+    "red_active_detail": "{community} ist im Krisenmodus. Anfragen sind nach Dringlichkeit sortiert.",
+    "no_internet": "Kein Internet.",
+    "mesh_reachable": "{count} Nachbarn über das Bluetooth-Mesh erreichbar. Nachrichten werden synchronisiert, sobald die Verbindung zurück ist.",
+    "offline_saved": "Anfragen werden auf diesem Gerät gespeichert und gesendet, sobald die Verbindung zurück ist.",
+    "send_ping": "Notruf senden",
+    "open_requests": "Offene Anfragen"
   },
   "settings": {
     "title": "Kontoeinstellungen",

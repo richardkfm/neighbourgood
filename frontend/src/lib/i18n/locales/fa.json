@@ -223,7 +223,34 @@
     "level_pillar": "ستون",
     "admin": "مدیر",
     "load_failed": "بارگذاری داشبورد ناموفق بود",
-    "someone": "یک نفر"
+    "someone": "یک نفر",
+    "greeting_morning": "صبح بخیر، {name}",
+    "greeting_afternoon": "عصر بخیر، {name}",
+    "greeting_evening": "شب بخیر، {name}",
+    "community_line": "{community} · {count} عضو",
+    "share_something": "چیزی به اشتراک بگذار",
+    "needs_you": "منتظر توست",
+    "nothing_needed": "فعلاً چیزی منتظر تو نیست.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "برای تأیید تاریخ‌ها موافقت کن، یا رد کن تا به {name} اطلاع داده شود.",
+    "outgoing_detail": "مالک هنوز پاسخ نداده است. وقتی پاسخ دهد پیام می‌گیری.",
+    "message_name": "پیام به {name}",
+    "view_item": "دیدن وسیله",
+    "open_bookings": "باز کردن رزروها",
+    "unread_title": "{count} پیام خوانده‌نشده",
+    "unread_meta": "از همسایه‌هایت",
+    "open_messages": "باز کردن پیام‌ها",
+    "open_ticket": "باز کردن درخواست",
+    "coming_up": "به‌زودی",
+    "see_all": "دیدن همه",
+    "going": "{count} نفر می‌آیند",
+    "no_events": "هنوز رویدادی برنامه‌ریزی نشده.",
+    "plan_event": "یکی برنامه‌ریزی کن",
+    "new_nearby": "جدید در نزدیکی",
+    "no_new_items": "هنوز چیز تازه‌ای در محله‌ات نیست.",
+    "community_stats": "{items} وسیله در {community} به اشتراک گذاشته شده · {members} عضو",
+    "your_stats": "تو {items} وسیله و {skills} مهارت به اشتراک گذاشته‌ای",
+    "reputation_line": "اعتبار: {level} · {score} امتیاز"
   },
   "resources": {
     "title": "منابع مشترک",
@@ -318,7 +345,9 @@
     "mark_available": "موجود کردن",
     "upload_image": "بارگذاری تصویر",
     "title_placeholder": "مثلاً: دریل بوش",
-    "description_placeholder": "چه چیزی را به اشتراک می‌گذارید؟ شرطی دارد؟"
+    "description_placeholder": "چه چیزی را به اشتراک می‌گذارید؟ شرطی دارد؟",
+    "yours": "تو",
+    "view_details": "دیدن جزئیات"
   },
   "bookings": {
     "title": "رزروهای من",
@@ -541,7 +570,9 @@
     "message_requester": "پیام به درخواست‌کننده",
     "title_placeholder": "مثلاً: کلاس پیانو",
     "description_placeholder": "چه مهارتی ارائه می‌دهید یا به دنبال آن هستید؟",
-    "offline_new": "مهارت جدید: {title}"
+    "offline_new": "مهارت جدید: {title}",
+    "ask_for_help": "درخواست کمک",
+    "offer_help": "پیشنهاد کمک"
   },
   "crisis": {
     "title": "اضطراری",
@@ -646,7 +677,14 @@
     "load_communities_failed": "بارگذاری جوامع شما ناموفق بود.",
     "load_tickets_failed": "بارگذاری تیکت‌ها ناموفق بود.",
     "offline_ticket": "تیکت اضطراری: {title}",
-    "untitled": "بدون عنوان"
+    "untitled": "بدون عنوان",
+    "red_active": "حالت Red Sky فعال است",
+    "red_active_detail": "{community} در حالت بحران است. درخواست‌ها بر اساس فوریت مرتب شده‌اند.",
+    "no_internet": "اینترنت در دسترس نیست.",
+    "mesh_reachable": "{count} همسایه از طریق شبکه بلوتوث در دسترس هستند. پیام‌ها پس از بازگشت اتصال همگام می‌شوند.",
+    "offline_saved": "درخواست‌ها روی این دستگاه ذخیره و پس از بازگشت اتصال ارسال می‌شوند.",
+    "send_ping": "ارسال هشدار اضطراری",
+    "open_requests": "درخواست‌های باز"
   },
   "settings": {
     "title": "تنظیمات حساب",

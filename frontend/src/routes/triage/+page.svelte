@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { isLoggedIn, user } from '$lib/stores/auth';
 	import { api } from '$lib/api';
@@ -20,7 +20,7 @@
 	import { isBluetoothSupported } from '$lib/bluetooth/connection';
 	import { meshEnabled } from '$lib/stores/mesh-settings';
 	import type { CommunityOut, NGMeshMessage } from '$lib/types';
-	import { t } from 'svelte-i18n';
+	import { t, locale } from 'svelte-i18n';
 	import Icon from '$lib/components/Icon.svelte';
 
 	interface Ticket {
@@ -306,6 +306,39 @@
 		})
 	);
 
+	let selectedCommunity = $derived(communities.find((c) => c.id === selectedCommunityId) ?? null);
+	let isRed = $derived(selectedCommunityMode === 'red');
+
+	/** Label for the left-hand tag: offers say OFFER, everything else its urgency. */
+	function levelKind(ticketType: string, urgency: string): string {
+		return ticketType === 'offer' ? 'offer' : urgency;
+	}
+	function levelLabel(ticketType: string, urgency: string): string {
+		return (ticketType === 'offer' ? $t('crisis.ticket_types.offer') : $t(`crisis.priority.${urgency}`)).toUpperCase();
+	}
+
+	/** Short relative time ("3 min ago") in the current UI language. */
+	function timeAgo(iso: string | number): string {
+		const then = typeof iso === 'number' ? iso : new Date(iso).getTime();
+		const mins = Math.round((Date.now() - then) / 60000);
+		const rtf = new Intl.RelativeTimeFormat($locale ?? 'en', { numeric: 'auto', style: 'short' });
+		if (Math.abs(mins) < 60) return rtf.format(-mins, 'minute');
+		const hours = Math.round(mins / 60);
+		if (Math.abs(hours) < 24) return rtf.format(-hours, 'hour');
+		return rtf.format(-Math.round(hours / 24), 'day');
+	}
+
+	let newTicketTitleInput: HTMLInputElement | undefined = $state();
+
+	/** The big Red Sky button: open the form as a critical emergency ping. */
+	async function openPing() {
+		newTicketType = 'emergency_ping';
+		newTicketUrgency = 'critical';
+		showNewTicketForm = true;
+		await tick();
+		newTicketTitleInput?.focus();
+	}
+
 	onMount(async () => {
 		if (!$isLoggedIn) {
 			goto('/login');
@@ -319,12 +352,17 @@
 	<title>{$t('nav.emergency')} – NeighbourGood</title>
 </svelte:head>
 
-<div class="emergency-page">
-	<div class="page-header">
-		<div>
-			<h1>{$t('crisis.title')}</h1>
-			<p class="subtitle">{$t('crisis.page_subtitle')}</p>
+<div class="emergency-page" class:is-red={isRed}>
+	{#if isRed && selectedCommunity}
+		<div class="redband" role="status">
+			<strong><Icon name="alert" size={18} /> {$t('crisis.red_active')}</strong>
+			<span>{$t('crisis.red_active_detail', { values: { community: selectedCommunity.name } })}</span>
 		</div>
+	{/if}
+
+	<div class="page-header">
+		<h1>{$t('crisis.title')}</h1>
+		<p class="subtitle">{$t('crisis.page_subtitle')}</p>
 	</div>
 
 	{#if loadingCommunities}
@@ -341,124 +379,73 @@
 			<a href="/communities" class="btn btn-primary">{$t('crisis.find_community_link')}</a>
 		</div>
 	{:else}
-		<div class="card controls">
-			{#if communities.length > 1}
-			<div class="field control-group">
-				<label for="community-select">{$t('crisis.filter_community')}</label>
-				<select id="community-select" class="input" bind:value={selectedCommunityId} onchange={onCommunityChange}>
-					{#each communities as c}
-						<option value={c.id}>{c.name}{effectiveMode(c) === 'red' ? ' 🔴' : ''}</option>
-					{/each}
-				</select>
-			</div>
+		{#if isRed}
+			{#if !$isOnline || $meshStatus === 'connected'}
+				<p class="meshline">
+					<span class="meshline-icon"><Icon name="radio" size={18} /></span>
+					<span>
+						{#if !$isOnline}<b>{$t('crisis.no_internet')}</b>{/if}
+						{#if $meshStatus === 'connected'}
+							{$t('crisis.mesh_reachable', { values: { count: $meshPeerCount } })}
+						{:else}
+							{$t('crisis.offline_saved')}
+						{/if}
+					</span>
+				</p>
 			{/if}
 
-			<div class="field control-group">
-				<label for="urgency-filter">{$t('crisis.filter_urgency')}</label>
-				<select id="urgency-filter" class="input" bind:value={filterUrgency}>
-					<option value="">{$t('crisis.filter_all')}</option>
-					{#each URGENCY_ORDER as u}
-						<option value={u}>{$t(`crisis.priority.${u}`)}</option>
-					{/each}
-				</select>
-			</div>
-
-			<div class="field control-group">
-				<label for="status-filter">{$t('crisis.filter_status')}</label>
-				<select id="status-filter" class="input" bind:value={filterStatus}>
-					<option value="">{$t('crisis.filter_open_excl')}</option>
-					<option value="open">{$t('crisis.filter_open')}</option>
-					<option value="in_progress">{$t('crisis.filter_in_progress')}</option>
-					<option value="resolved">{$t('crisis.filter_resolved')}</option>
-				</select>
-			</div>
-
-			<button class="btn btn-primary btn-new-ticket" onclick={() => showNewTicketForm = !showNewTicketForm} aria-expanded={showNewTicketForm}>
-				{showNewTicketForm ? $t('common.cancel') : $t('crisis.new_ticket')}
+			<button class="ping" onclick={openPing}>
+				<Icon name="alert" size={20} />
+				{$t('crisis.send_ping')}
 			</button>
-		</div>
+		{/if}
 
-		{#if $meshEnabled && isBluetoothSupported() && selectedCommunityMode === 'red'}
-			<div class="card mesh-panel">
-				<div class="mesh-header">
-					<div class="mesh-status-row">
-						<span class="mesh-dot" class:mesh-connected={$meshStatus === 'connected'} class:mesh-scanning={$meshStatus === 'scanning' || $meshStatus === 'connecting'} class:mesh-reconnecting={$meshStatus === 'reconnecting'}></span>
-						<span class="mesh-label">
-							{#if $meshStatus === 'connected'}
-								{$meshDeviceName ? $t('mesh.connected_to', { values: { device: $meshDeviceName } }) : $t('mesh.connected')}
-							{:else if $meshStatus === 'reconnecting'}
-								{$t('mesh.reconnecting')}
-							{:else if $meshStatus === 'scanning' || $meshStatus === 'connecting'}
-								{$t('mesh.scanning')}
-							{:else}
-								{$t('mesh.disconnected')}
-							{/if}
-						</span>
-						{#if $meshStatus === 'connected'}
-							<span class="mesh-peers">{$t('mesh.peer_count', { values: { count: $meshPeerCount } })}</span>
-						{/if}
-					</div>
-					<div class="mesh-actions">
-						{#if $meshStatus === 'disconnected'}
-							<button class="btn btn-primary btn-sm" class:is-loading={meshConnecting} onclick={handleMeshConnect} disabled={meshConnecting}>
-								{meshConnecting ? $t('mesh.connecting') : $t('mesh.connect')}
-							</button>
-						{:else if $meshStatus === 'reconnecting'}
-							<button class="btn btn-secondary btn-sm" disabled>{$t('mesh.reconnecting')}</button>
-						{:else if $meshStatus === 'connected'}
-							<button class="btn btn-danger-outline btn-sm" onclick={handleMeshDisconnect}>{$t('mesh.disconnect')}</button>
-						{/if}
-						{#if $isOnline && $meshMessages.length > 0}
-							<button class="btn btn-secondary btn-sm" class:is-loading={syncing} onclick={syncMeshMessages} disabled={syncing}>
-								{syncing ? $t('mesh.syncing') : $t('mesh.sync_messages', { values: { count: $meshMessages.length } })}
-							</button>
-						{/if}
-						<a href="/mesh" class="btn btn-secondary btn-sm">{$t('settings.mesh_open_dashboard')}</a>
-					</div>
-				</div>
+		{#if $meshEnabled && isBluetoothSupported() && isRed}
+			<div class="mesh-bar">
+				<span class="mesh-dot" class:mesh-connected={$meshStatus === 'connected'} class:mesh-scanning={$meshStatus === 'scanning' || $meshStatus === 'connecting'} class:mesh-reconnecting={$meshStatus === 'reconnecting'}></span>
+				<span class="mesh-label">
+					{#if $meshStatus === 'connected'}
+						{$meshDeviceName ? $t('mesh.connected_to', { values: { device: $meshDeviceName } }) : $t('mesh.connected')}
+						<span class="mesh-peers">{$t('mesh.peer_count', { values: { count: $meshPeerCount } })}</span>
+					{:else if $meshStatus === 'reconnecting'}
+						{$t('mesh.reconnecting')}
+					{:else if $meshStatus === 'scanning' || $meshStatus === 'connecting'}
+						{$t('mesh.scanning')}
+					{:else}
+						{$t('mesh.disconnected')}
+					{/if}
+				</span>
+				<span class="mesh-actions">
+					{#if $meshStatus === 'disconnected'}
+						<button class="btn btn-ghost btn-sm" class:is-loading={meshConnecting} onclick={handleMeshConnect} disabled={meshConnecting}>
+							{meshConnecting ? $t('mesh.connecting') : $t('mesh.connect')}
+						</button>
+					{:else if $meshStatus === 'connected'}
+						<button class="btn btn-ghost btn-sm" onclick={handleMeshDisconnect}>{$t('mesh.disconnect')}</button>
+					{/if}
+					{#if $isOnline && $meshMessages.length > 0}
+						<button class="btn btn-ghost btn-sm" class:is-loading={syncing} onclick={syncMeshMessages} disabled={syncing}>
+							{syncing ? $t('mesh.syncing') : $t('mesh.sync_messages', { values: { count: $meshMessages.length } })}
+						</button>
+					{/if}
+					<a href="/mesh" class="btn btn-ghost btn-sm">{$t('settings.mesh_open_dashboard')}</a>
+				</span>
 				{#if meshError}
 					<p class="mesh-error">{meshError}</p>
 				{/if}
 			</div>
 		{/if}
 
-		{#if $meshEnabled && communityMeshTickets.length > 0}
-			<div class="mesh-tickets-section">
-				<h2>{$t('mesh.mesh_tickets')} <span class="badge badge-warning badge-caps">{$t('mesh.via_mesh')}</span></h2>
-				<div class="ticket-list">
-					{#each communityMeshTickets as msg (msg.id)}
-						<div class="card ticket-card mesh-ticket-card">
-							<div class="ticket-header">
-								<span class="badge urgency-badge" style="--u: {urgencyColor(String(msg.data.urgency ?? 'medium'))}">
-									{$t(`crisis.priority.${String(msg.data.urgency ?? 'medium')}`).toUpperCase()}
-								</span>
-								<span class="badge badge-warning badge-caps">{$t('mesh.badge')}</span>
-								<span class="ticket-type">{ticketTypeLabel(String(msg.data.ticket_type ?? 'request'))}</span>
-							</div>
-							<h3 class="ticket-title">{msg.data.title ?? $t('crisis.untitled')}</h3>
-							{#if msg.data.description}
-								<p class="ticket-desc">{msg.data.description}</p>
-							{/if}
-							<div class="ticket-meta">
-								<span>{$t('crisis.by_author', { values: { author: msg.sender_name } })}</span>
-								<span class="ticket-id">{new Date(msg.ts).toLocaleTimeString()}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
 		{#if showNewTicketForm}
 			<div class="card new-ticket-form">
-				<h2>{$t('crisis.form_title')}</h2>
+				<h2>{newTicketType === 'emergency_ping' ? $t('crisis.send_ping') : $t('crisis.form_title')}</h2>
 				<div class="field-row">
 					<label class="field">
 						<span>{$t('crisis.form_type')}</span>
 						<select bind:value={newTicketType}>
 							<option value="request">{$t('crisis.ticket_types.request')}</option>
 							<option value="offer">{$t('crisis.ticket_types.offer')}</option>
-							{#if selectedCommunityMode === 'red'}
+							{#if isRed}
 								<option value="emergency_ping">{$t('crisis.ticket_types.ping')}</option>
 							{/if}
 						</select>
@@ -475,363 +462,440 @@
 				</div>
 				<label class="field">
 					<span>{$t('crisis.form_title_field')}</span>
-					<input type="text" bind:value={newTicketTitle} placeholder={$t('crisis.title_placeholder')} maxlength="300" />
+					<input type="text" bind:this={newTicketTitleInput} bind:value={newTicketTitle} placeholder={$t('crisis.title_placeholder')} maxlength="300" />
 				</label>
 				<label class="field">
 					<span>{$t('crisis.form_description')}</span>
 					<textarea bind:value={newTicketDesc} rows="3" placeholder={$t('crisis.description_placeholder')} maxlength="5000"></textarea>
 				</label>
-				{#if $meshEnabled && !$isOnline && $meshStatus === 'connected'}
-				<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
-					{creatingTicket ? $t('mesh.syncing') : $t('mesh.broadcast_ticket')}
-				</button>
-			{:else}
-				<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicket} disabled={creatingTicket || !newTicketTitle.trim()}>
-					{creatingTicket ? $t('crisis.creating_ticket') : $t('crisis.create_ticket')}
-				</button>
-			{/if}
+				<div class="form-actions">
+					{#if $meshEnabled && !$isOnline && $meshStatus === 'connected'}
+						<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicketViaMesh} disabled={creatingTicket || !newTicketTitle.trim()}>
+							{creatingTicket ? $t('mesh.syncing') : $t('mesh.broadcast_ticket')}
+						</button>
+					{:else}
+						<button class="btn btn-primary" class:is-loading={creatingTicket} onclick={createTicket} disabled={creatingTicket || !newTicketTitle.trim()}>
+							{creatingTicket ? $t('crisis.creating_ticket') : $t('crisis.create_ticket')}
+						</button>
+					{/if}
+					<button class="btn btn-ghost" onclick={() => (showNewTicketForm = false)}>{$t('common.cancel')}</button>
+				</div>
 			</div>
 		{/if}
 
-		{#if error}
-			<div class="alert alert-error">{error}</div>
-		{:else if loading}
-			<div class="skeleton-stack" role="status" aria-busy="true">
-				<span class="sr-only">{$t('crisis.loading_tickets')}</span>
-				{#each [1, 2, 3] as n (n)}
-					<div class="skeleton skeleton-card" style="height: 7rem" aria-hidden="true"></div>
-				{/each}
+		{#if $meshEnabled && communityMeshTickets.length > 0}
+			<section class="list-section">
+				<h2 class="list-heading">{$t('mesh.mesh_tickets')} <span class="list-count">{$t('mesh.via_mesh')}</span></h2>
+				<div class="tk-panel">
+					{#each communityMeshTickets as msg (msg.id)}
+						{@const kind = levelKind(String(msg.data.ticket_type ?? 'request'), String(msg.data.urgency ?? 'medium'))}
+						<div class="tk">
+							<span class="lvl lvl-{kind}">{levelLabel(String(msg.data.ticket_type ?? 'request'), String(msg.data.urgency ?? 'medium'))}</span>
+							<span class="tk-main">
+								<strong>{msg.data.title ?? $t('crisis.untitled')}</strong>
+								<span class="tk-meta">{ticketTypeLabel(String(msg.data.ticket_type ?? 'request'))} · {$t('crisis.by_author', { values: { author: msg.sender_name } })} · {$t('mesh.badge')}</span>
+								{#if msg.data.description}<span class="tk-desc">{msg.data.description}</span>{/if}
+							</span>
+							<time>{timeAgo(msg.ts)}</time>
+						</div>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		<section class="list-section">
+			<div class="list-head">
+				<h2 class="list-heading">{$t('crisis.open_requests')} {#if !loading && !error}<span class="list-count">{filtered.length}</span>{/if}</h2>
+				<button class="btn btn-sm" class:btn-primary={!isRed} class:btn-ghost={isRed} onclick={() => { newTicketType = 'request'; newTicketUrgency = 'medium'; showNewTicketForm = !showNewTicketForm; }} aria-expanded={showNewTicketForm}>
+					{$t('crisis.new_ticket')}
+				</button>
 			</div>
-		{:else if filtered.length === 0}
-			<div class="empty-state">
-				<span class="empty-icon"><Icon name="inbox" size={26} /></span>
-				<p>{tickets.length === 0 ? $t('crisis.no_tickets_yet') : $t('crisis.no_tickets')}</p>
-				{#if tickets.length === 0}
-					<button class="btn btn-primary" onclick={() => (showNewTicketForm = true)}>{$t('crisis.new_ticket')}</button>
+
+			<div class="filters">
+				{#if communities.length > 1}
+					<label class="filter">
+						<span class="sr-only">{$t('crisis.filter_community')}</span>
+						<select id="community-select" class="input" bind:value={selectedCommunityId} onchange={onCommunityChange}>
+							{#each communities as c}
+								<option value={c.id}>{c.name}{effectiveMode(c) === 'red' ? ` · ${$t('nav.crisis_mode')}` : ''}</option>
+							{/each}
+						</select>
+					</label>
 				{/if}
+				<label class="filter">
+					<span class="sr-only">{$t('crisis.filter_urgency')}</span>
+					<select id="urgency-filter" class="input" bind:value={filterUrgency}>
+						<option value="">{$t('crisis.filter_urgency')}: {$t('crisis.filter_all')}</option>
+						{#each URGENCY_ORDER as u}
+							<option value={u}>{$t(`crisis.priority.${u}`)}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="filter">
+					<span class="sr-only">{$t('crisis.filter_status')}</span>
+					<select id="status-filter" class="input" bind:value={filterStatus}>
+						<option value="">{$t('crisis.filter_open_excl')}</option>
+						<option value="open">{$t('crisis.filter_open')}</option>
+						<option value="in_progress">{$t('crisis.filter_in_progress')}</option>
+						<option value="resolved">{$t('crisis.filter_resolved')}</option>
+					</select>
+				</label>
 			</div>
-		{:else}
-			<p class="count-label">{filtered.length !== 1 ? $t('common.results', { values: { count: filtered.length } }) : $t('common.result', { values: { count: filtered.length } })}</p>
-			<div class="ticket-list">
-				{#each filtered as ticket (ticket.id)}
-					<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="card card-interactive ticket-card" class:overdue={isOverdue(ticket.due_at)} style="--u: {urgencyColor(ticket.urgency)}">
-						<div class="ticket-header">
-							<span class="badge urgency-badge" style="--u: {urgencyColor(ticket.urgency)}">
-								{$t(`crisis.priority.${ticket.urgency}`).toUpperCase()}
-							</span>
-							{#if ticket.status !== 'resolved' && isOverdue(ticket.due_at)}
-								<span class="badge badge-error badge-caps">{$t('crisis.overdue')}</span>
-							{/if}
-							{#if isAdminOrLeader && ticket.triage_score !== undefined}
-								<span class="badge" title={$t('crisis.detail.triage_score')}>{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
-							{/if}
-							<span class="status-chip" style="color: {statusColor(ticket.status)}">
-								{ticketStatusLabel(ticket.status)}
-							</span>
-							<span class="ticket-type">{ticketTypeLabel(ticket.ticket_type)}</span>
-						</div>
 
-						<h3 class="ticket-title">{ticket.title}</h3>
-
-						{#if ticket.description}
-							<p class="ticket-desc">{ticket.description}</p>
-						{/if}
-
-						<div class="ticket-footer">
-							<div class="ticket-meta">
-								<span>{$t('crisis.by_author', { values: { author: ticket.author.display_name } })}</span>
-								{#if ticket.assigned_to}
-									<span class="assigned"><Icon name="arrow-right" size={13} class="flip-rtl" /> {ticket.assigned_to.display_name}</span>
-								{:else}
-									<span class="unassigned">{$t('crisis.unassigned')}</span>
-								{/if}
-								<span class="ticket-id">#{ticket.id}</span>
-							</div>
-							{#if ticket.status !== 'resolved' && (isAdminOrLeader || ticket.author.id === $user?.id)}
-								<div class="ticket-actions">
-									{#if ticket.status === 'open'}
-										<button class="btn btn-secondary btn-sm" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'in_progress'); }}>{$t('crisis.start_ticket')}</button>
+			{#if error}
+				<div class="alert alert-error">{error}</div>
+			{:else if loading}
+				<div class="skeleton-stack" role="status" aria-busy="true">
+					<span class="sr-only">{$t('crisis.loading_tickets')}</span>
+					{#each [1, 2, 3] as n (n)}
+						<div class="skeleton skeleton-card" style="height: 4.5rem" aria-hidden="true"></div>
+					{/each}
+				</div>
+			{:else if filtered.length === 0}
+				<div class="empty-state">
+					<span class="empty-icon"><Icon name="inbox" size={26} /></span>
+					<p>{tickets.length === 0 ? $t('crisis.no_tickets_yet') : $t('crisis.no_tickets')}</p>
+				</div>
+			{:else}
+				<div class="tk-panel">
+					{#each filtered as ticket (ticket.id)}
+						{@const kind = levelKind(ticket.ticket_type, ticket.urgency)}
+						<a href="/triage/{ticket.id}?community={selectedCommunityId}" class="tk" class:overdue={ticket.status !== 'resolved' && isOverdue(ticket.due_at)}>
+							<span class="lvl lvl-{kind}">{levelLabel(ticket.ticket_type, ticket.urgency)}</span>
+							<span class="tk-main">
+								<strong>{ticket.title}</strong>
+								<span class="tk-meta">
+									{ticketTypeLabel(ticket.ticket_type)} · <span style="color: {statusColor(ticket.status)}">{ticketStatusLabel(ticket.status)}</span>
+									· {ticket.author.display_name}
+									{#if ticket.assigned_to}
+										<Icon name="arrow-right" size={12} class="flip-rtl" /> {ticket.assigned_to.display_name}
+									{:else}
+										· <em>{$t('crisis.unassigned')}</em>
 									{/if}
-									<button class="btn btn-secondary btn-sm" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'resolved'); }}>{$t('crisis.resolve_ticket')}</button>
-								</div>
-							{/if}
-						</div>
-					</a>
-				{/each}
-			</div>
-		{/if}
+									{#if ticket.status !== 'resolved' && isOverdue(ticket.due_at)}
+										· <span class="tk-overdue">{$t('crisis.overdue')}</span>
+									{/if}
+									{#if isAdminOrLeader && ticket.triage_score !== undefined}
+										· <span title={$t('crisis.detail.triage_score')}>{$t('crisis.score', { values: { n: ticket.triage_score } })}</span>
+									{/if}
+								</span>
+								{#if ticket.description}
+									<span class="tk-desc">{ticket.description}</span>
+								{/if}
+								{#if ticket.status !== 'resolved' && (isAdminOrLeader || ticket.author.id === $user?.id)}
+									<span class="tk-actions">
+										{#if ticket.status === 'open'}
+											<button class="btn btn-ghost btn-sm" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'in_progress'); }}>{$t('crisis.start_ticket')}</button>
+										{/if}
+										<button class="btn btn-ghost btn-sm" onclick={(e) => { e.preventDefault(); e.stopPropagation(); updateTicketStatus(ticket.id, 'resolved'); }}>{$t('crisis.resolve_ticket')}</button>
+									</span>
+								{/if}
+							</span>
+							<time datetime={ticket.created_at}>{timeAgo(ticket.created_at)}</time>
+						</a>
+					{/each}
+				</div>
+			{/if}
+		</section>
 	{/if}
 </div>
 
 <style>
 	.emergency-page {
-		max-width: 900px;
+		max-width: 820px;
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
 	}
 
 	.page-header {
-		margin-bottom: 1.5rem;
+		display: block;
+		margin: 0;
 	}
 
-	h1 {
-		font-size: 2.1rem;
+	.page-header h1 {
+		font-size: 1.9rem;
 		font-weight: 400;
-		margin-bottom: 0.25rem;
-	}
-
-	h2 {
-		font-size: 1.2rem;
-		font-weight: 500;
-		color: var(--color-text);
-		margin: 0 0 1rem 0;
+		margin-bottom: 0.2rem;
 	}
 
 	.subtitle {
-		color: var(--color-text-muted);
-		font-size: 0.9rem;
+		color: var(--color-text-subtle);
+		font-size: 0.85rem;
 	}
 
-	/* ── Controls bar ────────────────────────────────── */
+	/* ── Red Sky banner, mesh line and ping button (as in the redesign mockup) ── */
 
-	.controls {
+	.redband {
+		display: grid;
+		gap: 0.2rem;
+		padding: 0.9rem 1.1rem;
+		border-radius: var(--radius-md, 0.75rem);
+		background: var(--color-primary-light);
+		border: 1px solid var(--color-primary);
+	}
+
+	.redband strong {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 1rem;
+		font-weight: 700;
+		color: var(--color-primary-text);
+	}
+
+	.redband span {
+		font-size: 0.85rem;
+		color: var(--color-text-muted);
+	}
+
+	.meshline {
+		display: flex;
+		gap: 0.6rem;
+		align-items: flex-start;
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-muted);
+	}
+
+	.meshline b {
+		color: var(--color-text);
+		font-weight: 600;
+	}
+
+	.meshline-icon {
+		color: var(--color-accent);
+		display: inline-flex;
+		margin-top: 1px;
+	}
+
+	.ping {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.6rem;
+		width: 100%;
+		min-height: 3.25rem;
+		padding: 0.9rem 1rem;
+		border: 0;
+		border-radius: var(--radius-md, 0.75rem);
+		background: var(--color-primary);
+		color: var(--color-on-primary);
+		font: inherit;
+		font-size: 1.05rem;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.ping:hover {
+		background: var(--color-primary-hover);
+	}
+
+	.ping:focus-visible {
+		outline: 3px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+
+	/* ── Mesh connection bar ─────────────────────────── */
+
+	.mesh-bar {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: flex-end;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-		padding: 1rem 1.25rem;
+		align-items: center;
+		gap: 0.4rem 0.75rem;
+		font-size: 0.82rem;
+		color: var(--color-text-muted);
 	}
 
-	.control-group {
+	.mesh-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: var(--color-text-subtle);
+		flex-shrink: 0;
+	}
+
+	.mesh-dot.mesh-connected { background: var(--color-success); }
+	.mesh-dot.mesh-scanning { background: var(--color-warning); animation: pulse 1.2s infinite; }
+	.mesh-dot.mesh-reconnecting { background: var(--color-warning); animation: pulse 0.8s infinite; }
+
+	.mesh-label { color: var(--color-text); font-weight: 500; }
+	.mesh-peers { color: var(--color-text-subtle); margin-inline-start: 0.35rem; font-weight: 400; }
+
+	.mesh-actions {
 		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		flex: 1;
-		min-width: 140px;
+		flex-wrap: wrap;
+		gap: 0.25rem;
+		margin-inline-start: auto;
 	}
 
-	@media (max-width: 600px) {
-		.controls {
-			flex-direction: column;
-			align-items: stretch;
-			gap: 0.75rem;
-		}
-
-		.control-group {
-			min-width: 0;
-		}
-
-	}
-
-	.btn-new-ticket {
-		align-self: flex-end;
+	.mesh-error {
+		flex-basis: 100%;
+		font-size: 0.82rem;
+		color: var(--color-error);
+		margin: 0;
 	}
 
 	/* ── New ticket form ─────────────────────────────── */
 
 	.new-ticket-form {
 		padding: 1.25rem;
-		margin-bottom: 1.5rem;
 		display: flex;
 		flex-direction: column;
 		gap: 0.85rem;
 	}
 
-	.new-ticket-form .btn-primary {
-		align-self: flex-start;
+	.new-ticket-form h2 {
+		font-size: 1.05rem;
+		font-weight: 600;
+		margin: 0;
 	}
 
-	/* ── Ticket list ─────────────────────────────────── */
-
-	.count-label {
-		font-size: 0.85rem;
-		color: var(--color-text-muted);
-		margin-bottom: 0.75rem;
+	.form-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
 	}
 
-	.ticket-list {
+	/* ── Request list ────────────────────────────────── */
+
+	.list-section {
 		display: flex;
 		flex-direction: column;
 		gap: 0.6rem;
 	}
 
-	.ticket-card {
-		display: block;
-		padding: 1rem 1.25rem;
-		border-inline-start: 4px solid var(--u, transparent);
-		cursor: pointer;
-	}
-
-	.ticket-card.overdue {
-		border-inline-start-color: var(--color-error);
-	}
-
-	.ticket-header {
+	.list-head {
 		display: flex;
 		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.list-heading {
+		font-family: var(--font-body);
+		font-size: 0.9rem;
+		font-weight: 600;
+		margin: 0;
+		display: flex;
+		align-items: baseline;
 		gap: 0.5rem;
+	}
+
+	.list-count {
+		font-size: 0.8rem;
+		font-weight: 500;
+		color: var(--color-primary-text);
+	}
+
+	.filters {
+		display: flex;
 		flex-wrap: wrap;
-		margin-bottom: 0.5rem;
+		gap: 0.5rem;
 	}
 
-	.urgency-badge {
-		color: var(--u);
-		background: color-mix(in srgb, var(--u) 14%, transparent);
-		border-color: color-mix(in srgb, var(--u) 45%, transparent);
-		font-weight: 700;
-		letter-spacing: 0.04em;
-	}
-
-	.status-chip {
-		font-size: 0.78rem;
-		font-weight: 600;
-		text-transform: capitalize;
-	}
-
-	.ticket-type {
-		font-size: 0.78rem;
+	.filter select {
+		font-size: 0.82rem;
+		padding-block: 0.35rem;
+		min-height: 2.25rem;
 		color: var(--color-text-muted);
-		text-transform: capitalize;
-		margin-inline-start: auto;
 	}
 
-	.ticket-title {
-		font-size: 1rem;
-		font-weight: 600;
+	.tk-panel {
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md, 0.75rem);
+		overflow: hidden;
+	}
+
+	.tk {
+		display: grid;
+		/* fixed label column so titles line up across rows */
+		grid-template-columns: 6rem minmax(0, 1fr) auto;
+		gap: 0.25rem 0.75rem;
+		align-items: start;
+		padding: 0.8rem 1rem;
+		border-top: 1px solid var(--color-border);
 		color: var(--color-text);
-		margin: 0 0 0.35rem 0;
+		text-decoration: none;
 	}
 
-	.ticket-desc {
-		font-size: 0.88rem;
+	.tk:first-child { border-top: 0; }
+	a.tk:hover { background: var(--color-surface-raised); text-decoration: none; }
+	a.tk:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+	.tk.overdue { box-shadow: inset 3px 0 0 var(--color-error); }
+
+	/* Urgency is a text label first; colour only reinforces it. */
+	.lvl {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 0.66rem;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		padding: 0.15rem 0.4rem;
+		border-radius: 4px;
+		border: 1px solid currentColor;
+		margin-top: 0.1rem;
+		justify-self: start;
+		max-width: 100%;
+		overflow-wrap: anywhere;
+	}
+
+	.lvl-critical { color: var(--urgency-critical); background: var(--color-error-bg); }
+	.lvl-high { color: var(--urgency-high); }
+	.lvl-medium { color: var(--urgency-medium); }
+	.lvl-low { color: var(--urgency-low); }
+	.lvl-offer { color: var(--color-success); }
+
+	.tk-main {
+		display: grid;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
+	.tk-main strong {
+		font-weight: 600;
+		font-size: 0.92rem;
+	}
+
+	.tk-meta {
+		font-size: 0.78rem;
+		color: var(--color-text-subtle);
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.tk-overdue { color: var(--color-error); font-weight: 600; }
+
+	.tk-desc {
+		font-size: 0.82rem;
 		color: var(--color-text-muted);
 		display: -webkit-box;
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-		margin: 0 0 0.5rem 0;
 	}
 
-	.ticket-footer {
+	.tk-actions {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.5rem;
 		flex-wrap: wrap;
+		gap: 0.25rem;
+		margin-top: 0.15rem;
+		margin-inline-start: -0.6rem; /* ghost buttons: align their text with the title */
 	}
 
-	.ticket-meta {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-size: 0.8rem;
-		color: var(--color-text-muted);
-		flex-wrap: wrap;
+	.tk time {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 0.72rem;
+		color: var(--color-text-subtle);
+		white-space: nowrap;
 	}
 
-	.assigned { display: inline-flex; align-items: center; gap: 0.2rem; color: var(--color-primary-text); }
-	.unassigned { font-style: italic; }
-	.ticket-id { opacity: 0.5; }
-
-	.ticket-actions {
-		display: flex;
-		gap: 0.4rem;
-	}
-
-	/* ── States ──────────────────────────────────────── */
-
-	/* ── Mesh panel ─────────────────────────────────── */
-
-	.mesh-panel {
-		padding: 0.85rem 1.25rem;
-		margin-bottom: 1rem;
-		border-inline-start: 3px solid var(--color-warning);
-	}
-
-	.mesh-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-		flex-wrap: wrap;
-	}
-
-	.mesh-status-row {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.mesh-dot {
-		width: 10px;
-		height: 10px;
-		border-radius: 50%;
-		background: var(--color-text-muted);
-		flex-shrink: 0;
-	}
-
-	.mesh-dot.mesh-connected {
-		background: var(--color-success);
-	}
-
-	.mesh-dot.mesh-scanning {
-		background: var(--color-warning);
-		animation: pulse 1.2s infinite;
-	}
-
-	.mesh-dot.mesh-reconnecting {
-		background: var(--color-warning);
-		animation: pulse 0.8s infinite;
-	}
-
-	.mesh-label {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-
-	.mesh-peers {
-		font-size: 0.78rem;
-		color: var(--color-text-muted);
-		background: var(--color-bg);
-		padding: 0.15rem 0.5rem;
-		border-radius: var(--radius-sm);
-		border: 1px solid var(--color-border);
-	}
-
-	.mesh-actions {
-		display: flex;
-		gap: 0.5rem;
-		flex-wrap: wrap;
-	}
-
-	.mesh-error {
-		font-size: 0.82rem;
-		color: var(--color-error);
-		margin: 0.5rem 0 0 0;
-	}
-
-	.mesh-tickets-section {
-		margin-bottom: 1.5rem;
-	}
-
-	.mesh-tickets-section h2 {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.mesh-ticket-card {
-		border-inline-start: 3px solid var(--color-warning);
-	}
-
-	@media (max-width: 640px) {
-		.controls {
-			flex-direction: column;
-		}
-
-		.ticket-type {
-			margin-inline-start: 0;
-		}
+	@media (max-width: 480px) {
+		.tk { grid-template-columns: 5.25rem minmax(0, 1fr); padding-inline: 0.85rem; }
+		.tk time { grid-column: 2; }
+		.mesh-actions { margin-inline-start: 0; }
 	}
 </style>

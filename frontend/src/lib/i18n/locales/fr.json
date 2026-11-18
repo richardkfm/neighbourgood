@@ -223,7 +223,34 @@
     "level_pillar": "Pilier",
     "admin": "Admin",
     "load_failed": "Échec du chargement du tableau de bord",
-    "someone": "Quelqu'un"
+    "someone": "Quelqu'un",
+    "greeting_morning": "Bonjour, {name}",
+    "greeting_afternoon": "Bon après-midi, {name}",
+    "greeting_evening": "Bonsoir, {name}",
+    "community_line": "{community} · {count, plural, one {# membre} other {# membres}}",
+    "share_something": "Partager quelque chose",
+    "needs_you": "À traiter",
+    "nothing_needed": "Rien ne vous attend pour l'instant.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Acceptez pour confirmer les dates, ou refusez et {name} sera prévenu·e.",
+    "outgoing_detail": "Le propriétaire n'a pas encore répondu. Vous recevrez un message.",
+    "message_name": "Écrire à {name}",
+    "view_item": "Voir l'objet",
+    "open_bookings": "Ouvrir les réservations",
+    "unread_title": "{count, plural, one {# message non lu} other {# messages non lus}}",
+    "unread_meta": "De vos voisins",
+    "open_messages": "Ouvrir les messages",
+    "open_ticket": "Ouvrir le ticket",
+    "coming_up": "À venir",
+    "see_all": "Tout voir",
+    "going": "{count} participants",
+    "no_events": "Aucun événement prévu.",
+    "plan_event": "En organiser un",
+    "new_nearby": "Nouveau près de chez vous",
+    "no_new_items": "Rien de nouveau dans votre communauté.",
+    "community_stats": "{items, plural, one {# objet partagé} other {# objets partagés}} dans {community} · {members, plural, one {# membre} other {# membres}}",
+    "your_stats": "Vous partagez {items, plural, one {# objet} other {# objets}} et {skills, plural, one {# compétence} other {# compétences}}",
+    "reputation_line": "Réputation : {level} · {score} points"
   },
   "resources": {
     "title": "Ressources partagées",
@@ -318,7 +345,9 @@
     "mark_available": "Marquer comme disponible",
     "upload_image": "Envoyer une image",
     "title_placeholder": "p. ex. Perceuse Bosch",
-    "description_placeholder": "Que partagez-vous ? Des conditions particulières ?"
+    "description_placeholder": "Que partagez-vous ? Des conditions particulières ?",
+    "yours": "Vous",
+    "view_details": "Voir les détails"
   },
   "bookings": {
     "title": "Mes réservations",
@@ -541,7 +570,9 @@
     "message_requester": "Écrire au demandeur",
     "title_placeholder": "p. ex. Cours de piano",
     "description_placeholder": "Quelle compétence proposez-vous ou recherchez-vous ?",
-    "offline_new": "Nouvelle compétence : {title}"
+    "offline_new": "Nouvelle compétence : {title}",
+    "ask_for_help": "Demander de l'aide",
+    "offer_help": "Proposer de l'aide"
   },
   "crisis": {
     "title": "Urgence",
@@ -646,7 +677,14 @@
     "load_communities_failed": "Échec du chargement de vos communautés.",
     "load_tickets_failed": "Échec du chargement des tickets.",
     "offline_ticket": "Ticket d'urgence : {title}",
-    "untitled": "Sans titre"
+    "untitled": "Sans titre",
+    "red_active": "Red Sky est actif",
+    "red_active_detail": "{community} est en mode crise. Les demandes sont triées par urgence.",
+    "no_internet": "Pas d'internet.",
+    "mesh_reachable": "{count} voisins joignables via le maillage Bluetooth. Les messages se synchronisent au retour de la connexion.",
+    "offline_saved": "Les demandes sont enregistrées sur cet appareil et envoyées au retour de la connexion.",
+    "send_ping": "Envoyer une alerte d'urgence",
+    "open_requests": "Demandes ouvertes"
   },
   "settings": {
     "title": "Paramètres du compte",

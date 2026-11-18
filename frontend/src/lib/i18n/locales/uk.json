@@ -223,7 +223,34 @@
     "level_pillar": "Опора",
     "admin": "Адміністратор",
     "load_failed": "Не вдалося завантажити панель",
-    "someone": "Хтось"
+    "someone": "Хтось",
+    "greeting_morning": "Доброго ранку, {name}",
+    "greeting_afternoon": "Добрий день, {name}",
+    "greeting_evening": "Добрий вечір, {name}",
+    "community_line": "{community} · {count, plural, one {# учасник} few {# учасники} many {# учасників} other {# учасника}}",
+    "share_something": "Поділитися чимось",
+    "needs_you": "Чекає на вас",
+    "nothing_needed": "Зараз на вас нічого не чекає.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "Підтвердьте дати або відхиліть — {name} отримає сповіщення.",
+    "outgoing_detail": "Власник ще не відповів. Ви отримаєте повідомлення.",
+    "message_name": "Написати {name}",
+    "view_item": "Переглянути річ",
+    "open_bookings": "Відкрити бронювання",
+    "unread_title": "{count, plural, one {# непрочитане повідомлення} few {# непрочитані повідомлення} many {# непрочитаних повідомлень} other {# непрочитаного повідомлення}}",
+    "unread_meta": "Від ваших сусідів",
+    "open_messages": "Відкрити повідомлення",
+    "open_ticket": "Відкрити запит",
+    "coming_up": "Незабаром",
+    "see_all": "Усі",
+    "going": "{count} йдуть",
+    "no_events": "Подій ще не заплановано.",
+    "plan_event": "Запланувати",
+    "new_nearby": "Нове поруч",
+    "no_new_items": "У вашій громаді поки нічого нового.",
+    "community_stats": "Поширено речей: {items} у {community} · учасників: {members}",
+    "your_stats": "Ви ділитеся речами: {items}, навичками: {skills}",
+    "reputation_line": "Репутація: {level} · {score} балів"
   },
   "resources": {
     "title": "Спільні ресурси",
@@ -318,7 +345,9 @@
     "mark_available": "Позначити доступним",
     "upload_image": "Завантажити зображення",
     "title_placeholder": "наприклад, дриль Bosch",
-    "description_placeholder": "Чим ділитеся? Є якісь умови?"
+    "description_placeholder": "Чим ділитеся? Є якісь умови?",
+    "yours": "Ви",
+    "view_details": "Детальніше"
   },
   "bookings": {
     "title": "Мої бронювання",
@@ -541,7 +570,9 @@
     "message_requester": "Написати тому, хто шукає",
     "title_placeholder": "наприклад, уроки фортепіано",
     "description_placeholder": "Яку навичку ви пропонуєте чи шукаєте?",
-    "offline_new": "Нова навичка: {title}"
+    "offline_new": "Нова навичка: {title}",
+    "ask_for_help": "Попросити допомоги",
+    "offer_help": "Запропонувати допомогу"
   },
   "crisis": {
     "title": "Надзвичайна ситуація",
@@ -646,7 +677,14 @@
     "load_communities_failed": "Не вдалося завантажити ваші спільноти.",
     "load_tickets_failed": "Не вдалося завантажити заявки.",
     "offline_ticket": "Екстрена заявка: {title}",
-    "untitled": "Без назви"
+    "untitled": "Без назви",
+    "red_active": "Red Sky активний",
+    "red_active_detail": "{community} у кризовому режимі. Запити впорядковано за терміновістю.",
+    "no_internet": "Немає інтернету.",
+    "mesh_reachable": "{count} сусідів доступні через Bluetooth-мережу. Повідомлення синхронізуються, коли з'єднання відновиться.",
+    "offline_saved": "Запити зберігаються на цьому пристрої й надсилаються, коли з'єднання відновиться.",
+    "send_ping": "Надіслати сигнал тривоги",
+    "open_requests": "Відкриті запити"
   },
   "settings": {
     "title": "Налаштування акаунту",

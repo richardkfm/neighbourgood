@@ -223,7 +223,34 @@
     "level_pillar": "ركيزة",
     "admin": "مشرف",
     "load_failed": "تعذّر تحميل لوحة المتابعة",
-    "someone": "شخص ما"
+    "someone": "شخص ما",
+    "greeting_morning": "صباح الخير، {name}",
+    "greeting_afternoon": "مساء الخير، {name}",
+    "greeting_evening": "مساء الخير، {name}",
+    "community_line": "{community} · {count} عضو",
+    "share_something": "شارك شيئًا",
+    "needs_you": "بانتظارك",
+    "nothing_needed": "لا شيء بانتظارك الآن.",
+    "date_range": "{start} – {end}",
+    "incoming_detail": "وافق لتأكيد المواعيد، أو ارفض وسيتم إبلاغ {name}.",
+    "outgoing_detail": "لم يرد المالك بعد. ستصلك رسالة عند الرد.",
+    "message_name": "راسل {name}",
+    "view_item": "عرض الغرض",
+    "open_bookings": "فتح الحجوزات",
+    "unread_title": "{count} رسائل غير مقروءة",
+    "unread_meta": "من جيرانك",
+    "open_messages": "فتح الرسائل",
+    "open_ticket": "فتح البلاغ",
+    "coming_up": "قريبًا",
+    "see_all": "عرض الكل",
+    "going": "{count} مشاركين",
+    "no_events": "لا توجد فعاليات مخططة بعد.",
+    "plan_event": "خطط لواحدة",
+    "new_nearby": "جديد بالقرب منك",
+    "no_new_items": "لا جديد في مجتمعك بعد.",
+    "community_stats": "{items} غرضًا مشاركًا في {community} · {members} عضو",
+    "your_stats": "تشارك {items} أغراض و{skills} مهارات",
+    "reputation_line": "السمعة: {level} · {score} نقطة"
   },
   "resources": {
     "title": "مكتبة الموارد",
@@ -318,7 +345,9 @@
     "mark_available": "تحديد كمتاح",
     "upload_image": "رفع صورة",
     "title_placeholder": "مثلاً: مثقاب بوش",
-    "description_placeholder": "ماذا تشارك؟ وهل هناك شروط؟"
+    "description_placeholder": "ماذا تشارك؟ وهل هناك شروط؟",
+    "yours": "أنت",
+    "view_details": "عرض التفاصيل"
   },
   "bookings": {
     "title": "الحجوزات",
@@ -541,7 +570,9 @@
     "message_requester": "راسل صاحب الطلب",
     "title_placeholder": "مثلاً: دروس بيانو",
     "description_placeholder": "ما المهارة التي تعرضها أو تبحث عنها؟",
-    "offline_new": "مهارة جديدة: {title}"
+    "offline_new": "مهارة جديدة: {title}",
+    "ask_for_help": "اطلب المساعدة",
+    "offer_help": "اعرض المساعدة"
   },
   "crisis": {
     "title": "التنسيق الطارئ",
@@ -646,7 +677,14 @@
     "load_communities_failed": "تعذّر تحميل مجتمعاتك.",
     "load_tickets_failed": "تعذّر تحميل التذاكر.",
     "offline_ticket": "تذكرة طوارئ: {title}",
-    "untitled": "بلا عنوان"
+    "untitled": "بلا عنوان",
+    "red_active": "وضع Red Sky نشط",
+    "red_active_detail": "{community} في وضع الأزمة. الطلبات مرتبة حسب الإلحاح.",
+    "no_internet": "لا يوجد إنترنت.",
+    "mesh_reachable": "{count} من الجيران يمكن الوصول إليهم عبر شبكة البلوتوث. تتم مزامنة الرسائل عند عودة الاتصال.",
+    "offline_saved": "تُحفظ الطلبات على هذا الجهاز وتُرسل عند عودة الاتصال.",
+    "send_ping": "إرسال نداء طوارئ",
+    "open_requests": "الطلبات المفتوحة"
   },
   "settings": {
     "title": "الإعدادات",

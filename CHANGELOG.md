@@ -4,6 +4,90 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.8.2] - 2026-11-17
+
+### Changed
+
+- **Honest server sizing** in the README and self-hosting guide: a 5 € server is described as plenty for a neighbourhood (and several side by side) instead of "a few hundred people", since most neighbourhoods are smaller. Measured on one CPU core: about 250 MB of memory for the app, around 100 requests a second. Minimum RAM raised from 512 MB to 1 GB, and a note to add swap on 1 GB servers, because the build during install and update needs about 1 GB on its own
+
+## [2.8.1] - 2026-11-17
+
+### Changed
+
+- **No more coloured stripes on cards** — the communities page drew your community card with a green stripe on the left and a gradient, and marked your community in the list the same way; the explore list did the same for active communities. These now use the calm design-A card: a plain surface, a slightly darker border, and the existing "Your community" badge. Section headings on the communities page match the quiet serif titles elsewhere. Stripes that carry meaning (alert severity, error messages, crisis panel) stay
+
+## [2.8.0] - 2026-11-17
+
+### Changed
+
+- **Dashboard rebuilt (design A)** — a small community label with the member count, a time-of-day greeting ("Good evening, Felix") and one *Share something* button. *Needs you* lists borrow requests, your own pending requests and unread messages as rows that open on click: a borrow request shows the borrower's note with **Approve**, **Reject** and **Message** right there. *Coming up* shows the next community event with a date block, *New nearby* the three newest items from neighbours with their availability. A one-line summary (items shared in the community, members, what you share) replaces the four count cards, and reputation folds into a single row that opens to show the tiers and how to earn points. The community card with the coloured stripe and the uppercase section labels are gone
+- **Resources, skills and events as expandable cards** — equal cards in a 3/2/1-column grid. Closed: icon (or photo), title, category and owner, availability or attendee count. Opened: description, condition and trust, one filled main action (*Request to borrow*, *Ask for help*/*Offer help*, *Attend*) and quiet *Message …* / *View details* links
+- **Calmer app-wide style** — `.btn-secondary` is now a quiet text button (no fill, no border); the active page in the desktop navigation is underlined instead of filled; page subtitles and meta text are smaller and use the subtle text colour
+- `/resources?new=1` opens the share form directly (used by the dashboard's *Share something*)
+
+### Added
+
+- `ExpandableItem` component (`frontend/src/lib/components/ExpandableItem.svelte`) and the `.kicker`, `.section-title`, `.list-panel`, `.status-text`, `.meta-text`, `.item-grid` and `.btn-outline` styles; `chevron-right` icon
+- 31 i18n keys (dashboard greetings, sections and actions; resource/skill card actions) in all 12 languages, with ICU plurals where the language uses them
+
+### Documentation
+
+- README dashboard screenshot retaken with the new design (phone, light mode, sample data)
+- `docs/design.md`: layout rules for design A
+
+## [Unreleased] - 2026-11-17
+
+### Documentation
+
+- **README rewritten for communities and organisers** — what NeighbourGood does in Blue Sky and Red Sky, a new *Use it from Telegram* section for members, connected communities (federation), the one-line installer as the way to get started, a documentation index and a short roadmap. Down from 585 to about 120 lines
+- **Longer content moved to `docs/`** — new `self-hosting.md` (installer, Docker, updates, reverse proxy, webhooks, local AI, backups), `configuration.md` (every `NG_` setting, incl. Telegram/AI and limits), `development.md` (tech stack, local setup, checks, migrations, project structure), `mesh-networking.md`, `design.md` and a `docs/README.md` index
+- **Moved** `API_ENDPOINTS.md` → `docs/api.md`, `TELEGRAM_SETUP.md` → `docs/telegram-setup.md`, `TELEGRAM_AGENT.md` → `docs/telegram-agent.md`
+- **One roadmap** — new `docs/roadmap.md` with what's done and what's open (admin dashboard, Signal/Matrix, emails in the member's language, audit log, backups, CI and dependency scanning, …). The outdated `PLAN*.md` files moved to `docs/archive/` with a note that they are historical
+- Corrected the general rate limit in CLAUDE.md (200 requests/min, not 60)
+- **New README screenshots of everyday sharing** — onboarding step 3 (*What do you have at home?*, inviting new members to list their own things) followed by the dashboard on a phone in light mode (a borrow request to review, a pending request, an unread message), replacing the old onboarding screenshot, so readers see right away that NeighbourGood is mostly an everyday sharing app that lives from people sharing their own stuff. Images live in `docs/images/` instead of an external attachment; the onboarding shot follows the reader's light/dark theme
+
+## [2.7.0] - 2026-11-17
+
+### Changed
+
+- **No amber in light and dark mode** — `--color-warning` is now a warm brown that fits the palette: `#6b4a33` on `#f3e7da` in light mode, `#d4bc9f` on `#2e241b` in dark mode. This covers pending bookings, offline and cache notices, the queued-requests box, "high" urgency, warning-level federation alerts, mesh reconnecting/sync hints, skill "request" badges and the leader badge
+- **Star ratings are violet** — new `--color-rating` token (follows `--color-primary-text`: violet in light and dark, rose-red in Red Sky). Trust stars, review stars, rating breakdowns and the star buttons when rating a booking use it instead of the warning colour, because a rating is a score, not a warning
+
+### Removed
+
+- Hard-coded amber fallbacks (`#f59e0b`, `#92400e`, `rgba(245, 158, 11, …)`) in `var(--color-warning, …)` across the layout banners, resources, bookings, communities and mesh pages
+
+### Documentation
+
+- **Red Sky animation** — new `docs/red-sky-flow.svg`, an animated street map shown in the README: a household with no internet sends an emergency ping, it hops phone to phone over the Bluetooth mesh to the coordinator, lands as a CRITICAL ticket on top of the Emergency list, a neighbour replies over the mesh and the ticket goes to In progress and Resolved. Plain SVG + CSS (no GIF or video), loops every 14 s and shows a still frame with reduced motion
+- **README refreshed** — "Red Sky in action" walkthrough, tech stack rows for maps (MapLibre GL + OpenFreeMap), offline (service worker + Web Bluetooth) and languages (12, incl. RTL), `docs/` in the project structure, session invalidation ticked off in the security roadmap (done in 2.4.0), a Contributing section with the checks to run, and the license named (GPL-3.0)
+
+## [2.6.0] - 2026-11-17
+
+### Changed
+
+- **Red Sky without amber** — the crisis palette now matches the redesign: warm near-black surfaces (`#170f0f`, `#231818`), red as the only colour, and no amber or orange. Warnings and "high" urgency use a light rose, "medium" and "low" are greys, and "critical" is the strongest red. Urgency is always written out as a label (CRITICAL, HIGH, MEDIUM, LOW, OFFER), so it never depends on colour alone. The focus ring is near-white instead of amber
+- **Logo in Red Sky** — the nav logo is now a light tile with a dark house (new `--color-logo` / `--color-on-logo` tokens) instead of a red tile, so it stays recognisable next to the red buttons. The `-redsky` files in `brand/` are updated to match
+- **Emergency page (`/triage`) redesigned** — in Red Sky it opens with a red "Red Sky is active" banner naming the community, a one-line connection status ("No internet. 6 neighbours reachable over the Bluetooth mesh…") when offline or on the mesh, and one large **Send emergency ping** button that opens the form as a critical ping. Requests are a compact list: urgency label, title, type · status · author → assignee, a two-line description, a relative time ("3 min ago"), and quiet Start/Resolve actions. Filters are smaller and sit under the list heading; the mesh controls are a single line of text buttons
+- **README** — logo header (light and dark versions), a new "Brand and Design" section, Red Sky description of the new look, and section headings without emoji
+
+### Added
+
+- 7 i18n keys (`crisis.red_active`, `red_active_detail`, `no_internet`, `mesh_reachable`, `offline_saved`, `send_ping`, `open_requests`), translated into all 12 languages
+
+## [2.5.0] - 2026-11-17
+
+### Changed
+
+- **New logo** — the house mark is redrawn as a rounded tile with an arched door (it used to have a heart). It reads at 16 px and matches the website (v1.3.0). The nav logo tile now uses the mode colour: violet in Blue Sky, red in Red Sky. "Good" in the wordmark is violet
+- **No more orange** — `--color-accent` (kickers, small labels, mesh hub nodes, the update banner) is now warm brown (`#7a5c47` light, `#c9b8a6` dark) instead of terracotta. Red Sky keeps its amber accent for warnings
+- **App icons and theme colour** — `favicon.png`, `icon.svg`, `icon-192.png`, `icon-512.png` and `apple-touch-icon.png` use the new mark. `theme-color` in `app.html`, `manifest.json` and the offline page is now violet `#4f46e5`. The offline page shows the new logo
+
+### Added
+
+- **Brand kit in `brand/`** — the horizontal logo, the mark, the wordmark and a house glyph as SVG and PNG, each for light, dark, Red Sky, black and white. The wordmark is converted to outlines, so no font is needed. Marks come in 16–1024 px, plus a full-bleed maskable app icon. `brand/README.md` covers usage, clear space, minimum sizes, colours and typefaces
+- **Maskable PWA icon** — `icon-512-maskable.png` keeps the house inside the safe zone, so Android no longer crops the rounded tile
+
 ## [2.4.2] - 2026-10-01
 
 ### Fixed

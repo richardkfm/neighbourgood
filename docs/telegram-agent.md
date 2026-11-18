@@ -193,4 +193,4 @@ Use `&lt;` and `&gt;` for literal angle brackets in non-tag contexts.
 | `NG_TELEGRAM_BOT_NAME` | unset | Bot username without `@` |
 | `NG_TELEGRAM_WEBHOOK_SECRET` | unset | Secret for validating Telegram webhook calls |
 
-All other Telegram and AI setup details are in [TELEGRAM_SETUP.md](TELEGRAM_SETUP.md).
+All other Telegram and AI setup details are in [telegram-setup.md](telegram-setup.md).

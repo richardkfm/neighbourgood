@@ -1,5 +1,7 @@
 # BLE Mesh Development Plan
 
+> **Archived plan.** Kept for history; parts of it are outdated. Current status and open work: [docs/roadmap.md](../roadmap.md).
+
 > Roadmap for evolving the BitChat BLE mesh from a basic gateway relay into a full-featured offline crisis communication system.
 
 ---
